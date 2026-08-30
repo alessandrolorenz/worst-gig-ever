@@ -22,6 +22,7 @@ import type { GameState } from '../state/gameState.ts';
 import { createRound, pauseRound, resumeRound, startRound } from '../state/roundState.ts';
 import { clearEffects } from './effects.ts';
 import { clearShards } from './shards.ts';
+import { clearStageMotion } from './stageMotion.ts';
 import { roundSystem } from './roundSystem.ts';
 
 const EngineComponent = Platform.OS === 'web' ? WebGameEngine : ReactGameEngine;
@@ -79,6 +80,7 @@ export default function GameEngine() {
     scene.round = createRound(level01);
     clearEffects(scene.effects);
     clearShards(scene.shards);
+    clearStageMotion(scene.stageMotion);
   }, [entities]);
 
   const handleRestart = useCallback(() => {

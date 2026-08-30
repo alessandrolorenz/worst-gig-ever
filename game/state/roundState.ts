@@ -11,11 +11,16 @@
  * and VOCALIST_EVENT, which is what makes pause free of special cases.
  */
 import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
-import { TARGET_DEFINITIONS } from '../config/targets.ts';
-import { STAGE, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
+import { HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
+import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { level01, type LevelDefinition, type SpawnPhase } from '../levels/level01.ts';
-import { hitRadiusAt, poseAt, progressAt } from '../systems/approach.ts';
-import { createRng, nextInt, pick, type RngState } from '../utils/rng.ts';
+import {
+  hitRadiusAt,
+  progressAt,
+  throwPoseAt,
+  type Trajectory,
+} from '../systems/approach.ts';
+import { createRng, nextFloat, nextInt, pick, type RngState } from '../utils/rng.ts';
 import type { GameState, TargetKind, TargetStatus } from './gameState.ts';
 import type { RoundEvent } from './roundEvents.ts';
 
@@ -41,6 +46,8 @@ export interface ActiveTarget {
   readonly spawnAtMs: number;
   readonly durationMs: number;
   readonly laneX: number;
+  /** Authored once at spawn; the whole flight follows from it (M5A). */
+  readonly trajectory: Trajectory;
   status: TargetStatus;
   resolvedAtMs: number | null;
 }
@@ -147,6 +154,32 @@ export function resumeRound(state: RoundState): RoundEvent[] {
   return [];
 }
 
+/** Draws a float in [min, max) from the round's seeded generator. */
+function between(rng: RngState, min: number, max: number): number {
+  return min + nextFloat(rng) * (max - min);
+}
+
+/**
+ * Authors one throw (M5A, Priority 2).
+ *
+ * Every value comes from the round's seeded generator, so a seed still replays
+ * a round exactly — the throws are varied, not random at runtime. The origin
+ * is spread across the crowd line rather than pinned to the vanishing point,
+ * which is what makes an object read as thrown by someone instead of sliding
+ * out of a hole in the back wall.
+ */
+function authorTrajectory(rng: RngState, kind: TargetKind, laneX: number): Trajectory {
+  const { arc } = TARGET_DEFINITIONS[kind];
+  return {
+    originX: between(rng, THROW_ORIGIN.minX, THROW_ORIGIN.maxX),
+    originY: between(rng, THROW_ORIGIN.minY, THROW_ORIGIN.maxY),
+    laneX,
+    arcHeightPx: between(rng, arc.minHeightPx, arc.maxHeightPx),
+    driftPx: between(rng, -arc.maxDriftPx, arc.maxDriftPx),
+    spinTurns: between(rng, -arc.maxSpinTurns, arc.maxSpinTurns),
+  };
+}
+
 function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundEvent {
   const kind = pick(state.rng, phase.kinds);
   const laneX = STAGE.laneXs[nextInt(state.rng, STAGE.laneXs.length)];
@@ -156,6 +189,7 @@ function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundE
     spawnAtMs: atMs,
     durationMs: TARGET_DEFINITIONS[kind].approachDurationMs,
     laneX,
+    trajectory: authorTrajectory(state.rng, kind, laneX),
     status: 'active',
     resolvedAtMs: null,
   };
@@ -269,6 +303,19 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
   return events;
 }
 
+/**
+ * The radius a tap is actually judged against (M5A, Priority 1).
+ *
+ * The perspective radius is enlarged and then floored, so a target that is
+ * still far away stays a mark a thumb can find. Without the floor a freshly
+ * spawned bottle is a ~21 px circle on a 1920 px canvas, which is what made
+ * the first playtest read as unresponsive.
+ */
+export function effectiveHitRadius(kind: TargetKind, scale: number): number {
+  const perspective = hitRadiusAt(TARGET_DEFINITIONS[kind].hitRadiusAtDangerLine, scale);
+  return Math.max(HIT_FORGIVENESS.minRadiusPx, perspective * HIT_FORGIVENESS.radiusMultiplier);
+}
+
 function pointHitsVocalist(point: Point2D): boolean {
   const r = VOCALIST_BLOCKING_RECT;
   return (
@@ -289,6 +336,13 @@ function pointHitsVocalist(point: Point2D): boolean {
  * stay resolvable, or the player would lose Show Integrity to an event they
  * were given no way to answer. M1 pauses *spawning* during the event, not
  * the player's ability to defend the kit.
+ *
+ * Resolution is deliberately generous (M5A, Priority 1). A tap inside an
+ * enlarged, floored hitbox is a direct hit and the most urgent of those wins.
+ * A tap that lands inside nothing still resolves the target it came closest
+ * to, measured from the hitbox edge, provided it was within
+ * `HIT_FORGIVENESS.assistRadiusPx`. Direct hits always beat assisted ones, so
+ * aiming carefully is never punished by the assist.
  */
 export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
   const events: RoundEvent[] = [];
@@ -303,23 +357,46 @@ export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
   }
 
   // Prefer the most urgent target under the finger: the closest to the drummer.
-  let best: ActiveTarget | null = null;
-  let bestProgress = -1;
-  let bestPose = { x: 0, y: 0 };
+  // Failing that, fall back to whichever target the swing came nearest to.
+  let direct: ActiveTarget | null = null;
+  let directProgress = -1;
+  let directPose = { x: 0, y: 0 };
+
+  let assisted: ActiveTarget | null = null;
+  let assistedGap = Number.POSITIVE_INFINITY;
+  let assistedProgress = -1;
+  let assistedPose = { x: 0, y: 0 };
 
   for (const target of state.targets) {
     if (target.status !== 'active') continue;
     const progress = progressAt(state.elapsedMs, target.spawnAtMs, target.durationMs);
-    const pose = poseAt(progress, target.laneX);
-    const radius = hitRadiusAt(TARGET_DEFINITIONS[target.kind].hitRadiusAtDangerLine, pose.scale);
-    const dx = point.x - pose.x;
-    const dy = point.y - pose.y;
-    if (dx * dx + dy * dy <= radius * radius && progress > bestProgress) {
-      best = target;
-      bestProgress = progress;
-      bestPose = { x: pose.x, y: pose.y };
+    const pose = throwPoseAt(progress, target.trajectory);
+    const radius = effectiveHitRadius(target.kind, pose.scale);
+    const distance = Math.hypot(point.x - pose.x, point.y - pose.y);
+
+    if (distance <= radius) {
+      if (progress > directProgress) {
+        direct = target;
+        directProgress = progress;
+        directPose = { x: pose.x, y: pose.y };
+      }
+      continue;
+    }
+
+    // Distance from the hitbox edge, not from the centre: a big near target
+    // and a small far one are judged by the same margin of error.
+    const gap = distance - radius;
+    if (gap > HIT_FORGIVENESS.assistRadiusPx) continue;
+    if (gap < assistedGap || (gap === assistedGap && progress > assistedProgress)) {
+      assisted = target;
+      assistedGap = gap;
+      assistedProgress = progress;
+      assistedPose = { x: pose.x, y: pose.y };
     }
   }
+
+  const best = direct ?? assisted;
+  const bestPose = direct === null ? assistedPose : directPose;
 
   if (best === null) return events;
 
@@ -354,12 +431,16 @@ export interface TargetView {
   readonly y: number;
   readonly scale: number;
   readonly progress: number;
+  /** Tumble in radians, so the object looks thrown rather than carried. */
+  readonly rotation: number;
+  /** The radius a tap actually resolves against, forgiveness included. */
+  readonly hitRadius: number;
 }
 
 export function targetViews(state: RoundState): TargetView[] {
   return state.targets.map((target) => {
     const progress = progressAt(state.elapsedMs, target.spawnAtMs, target.durationMs);
-    const pose = poseAt(progress, target.laneX);
+    const pose = throwPoseAt(progress, target.trajectory);
     return {
       id: target.id,
       kind: target.kind,
@@ -368,6 +449,8 @@ export function targetViews(state: RoundState): TargetView[] {
       y: pose.y,
       scale: pose.scale,
       progress,
+      rotation: pose.rotation,
+      hitRadius: effectiveHitRadius(target.kind, pose.scale),
     };
   });
 }

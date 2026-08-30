@@ -3,20 +3,40 @@
  *
  * Draws a snapshot of the round. It owns no gameplay state: score, combo,
  * integrity, the clock, and every target position are read from the domain
- * (M2, rendering boundary). Swapping these blocks for M3 art in slice 7 must
- * not require touching a single rule.
+ * (M2, rendering boundary). Swapping these blocks for M3 art in M6 must not
+ * require touching a single rule.
  *
  * Everything inside the canvas is authored in 1920x1080 reference pixels and
  * scaled once at the root, so no child needs to know the device size.
+ *
+ * Ambient motion (M5A, Priority 4) is read from `stageMotion` and never
+ * computed here: this file picks a transform per pose, and the pose itself is
+ * decided by a tested pure function. That keeps the choreography assertable
+ * without a renderer and keeps this file replaceable by art.
  */
 import React, { useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 
-import { REFERENCE_CANVAS, STAGE, VOCALIST_BLOCKING_RECT, VOCALIST_IDLE_RECT } from '../config/stage.ts';
+import {
+  PERFORMER_ANCHORS,
+  REFERENCE_CANVAS,
+  STAGE,
+  STAGE_MOTION,
+  VOCALIST_BLOCKING_RECT,
+  VOCALIST_IDLE_RECT,
+} from '../config/stage.ts';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
 import { effectProgress, type EffectsState, type TimedEffect } from '../systems/effects.ts';
 import { shardOpacity, type ShardsState } from '../systems/shards.ts';
+import {
+  beatPulse,
+  loopFrameAt,
+  loopMs,
+  performerPose,
+  type PerformerPose,
+  type StageMotionState,
+} from '../systems/stageMotion.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
 import { Hud } from './Hud.tsx';
 
@@ -24,6 +44,7 @@ export interface SceneRendererProps {
   round: RoundState;
   effects: EffectsState;
   shards: ShardsState;
+  stageMotion: StageMotionState;
   viewport: Viewport;
 }
 
@@ -34,39 +55,75 @@ const CROWD_HEADS = Array.from({ length: 26 }, (_, i) => ({
   x: 40 + i * 74,
   y: 470 + ((i * 37) % 26),
   r: 26 + ((i * 13) % 10),
+  /**
+   * A fixed per-head offset. The crowd has to look like many people moving,
+   * not one object; without an offset the whole row bobs as a single bar.
+   */
+  phaseMs: (i * 137) % 900,
 }));
 
-function Backdrop() {
+/**
+ * Graybox vocabulary for the five reaction poses. Deliberately crude: M5A is
+ * judged on whether a reaction is *readable*, not on whether it is animated.
+ * Two-frame loops and a hard pose swap are the intended fidelity.
+ */
+const POSE_TRANSFORMS: Record<PerformerPose, { lift: number; tilt: number; lean: number }> = {
+  idle: { lift: 0, tilt: 0, lean: 0 },
+  loopA: { lift: 0, tilt: -2, lean: 0 },
+  loopB: { lift: -16, tilt: 2, lean: 0 },
+  hitReaction: { lift: -34, tilt: -16, lean: 0 },
+  dodge: { lift: 22, tilt: 12, lean: -46 },
+};
+
+function Backdrop({ stageMotion }: { stageMotion: StageMotionState }) {
+  const pulse = beatPulse(stageMotion.elapsedMs);
+  const period = loopMs();
+
   return (
     <>
       <View style={[styles.fill, { backgroundColor: THEME.venueWall }]} />
-      <View style={styles.venueGlow} />
+      {/* Stage lights breathe on the beat, so the room has a pulse of its own. */}
+      <View style={[styles.venueGlow, { opacity: 0.45 + pulse * 0.4 }]} />
       <View style={styles.stageFloor} />
       <View style={styles.crowdBand}>
-        {CROWD_HEADS.map((head) => (
-          <View
-            key={head.x}
-            style={{
-              position: 'absolute',
-              left: head.x - head.r,
-              top: head.y - head.r,
-              width: head.r * 2,
-              height: head.r * 2,
-              borderRadius: head.r,
-              backgroundColor: THEME.crowd,
-              borderWidth: 2,
-              borderColor: THEME.crowdHighlight,
-            }}
-          />
-        ))}
+        {CROWD_HEADS.map((head) => {
+          const raised =
+            loopFrameAt(stageMotion.elapsedMs + head.phaseMs, period, STAGE_MOTION.loopFrames) > 0;
+          return (
+            <View
+              key={head.x}
+              style={{
+                position: 'absolute',
+                left: head.x - head.r,
+                top: head.y - head.r - (raised ? 14 : 0),
+                width: head.r * 2,
+                height: head.r * 2,
+                borderRadius: head.r,
+                backgroundColor: THEME.crowd,
+                borderWidth: 2,
+                borderColor: THEME.crowdHighlight,
+              }}
+            />
+          );
+        })}
       </View>
     </>
   );
 }
 
-function BandMember({ x, label }: { x: number; label: string }) {
+function BandMember({ x, label, pose }: { x: number; label: string; pose: PerformerPose }) {
+  const { lift, tilt, lean } = POSE_TRANSFORMS[pose];
+
   return (
-    <View style={[styles.bandMember, { left: x }]}>
+    <View
+      style={[
+        styles.bandMember,
+        {
+          left: x,
+          transform: [{ translateX: lean }, { translateY: lift }, { rotate: `${tilt}deg` }],
+        },
+      ]}
+    >
       <View style={styles.bandHead} />
       <View style={styles.bandBody} />
       <Text style={styles.placeholderLabel}>{label}</Text>
@@ -74,10 +131,17 @@ function BandMember({ x, label }: { x: number; label: string }) {
   );
 }
 
-function Vocalist({ round }: { round: RoundState }) {
+/**
+ * The vocalist is the one performer whose pose is gameplay truth rather than
+ * presentation: `blocking` and `hit` come from the round domain and win over
+ * anything ambient. The reaction system only supplies the idle loop, which is
+ * why the two never contradict each other.
+ */
+function Vocalist({ round, pose }: { round: RoundState; pose: PerformerPose }) {
   const status = round.vocalist.status;
   const rect = status === 'idle' ? VOCALIST_IDLE_RECT : VOCALIST_BLOCKING_RECT;
   const isHit = status === 'hit';
+  const ambient = status === 'idle' ? POSE_TRANSFORMS[pose] : POSE_TRANSFORMS.idle;
 
   return (
     <View
@@ -88,7 +152,10 @@ function Vocalist({ round }: { round: RoundState }) {
         width: rect.width,
         height: rect.height,
         alignItems: 'center',
-        transform: [{ rotate: isHit ? '-14deg' : '0deg' }, { translateY: isHit ? -40 : 0 }],
+        transform: [
+          { rotate: isHit ? '-14deg' : `${ambient.tilt}deg` },
+          { translateY: isHit ? -40 : ambient.lift },
+        ],
       }}
     >
       <View
@@ -125,7 +192,7 @@ function DangerLine() {
 
 function DrumKit() {
   return (
-    <View style={styles.drumkit} pointerEvents="none">
+    <View style={styles.drumkit}>
       <View style={[styles.cymbal, { left: 150 }]} />
       <View style={[styles.cymbal, { left: 1560 }]} />
       <View style={[styles.tom, { left: 520 }]} />
@@ -153,6 +220,8 @@ function TargetShape({ view }: { view: TargetView }) {
         alignItems: 'center',
         justifyContent: 'flex-end',
         opacity: missed ? 0.45 : 1,
+        // The tumble the object picked up when it was thrown (M5A).
+        transform: [{ rotate: `${view.rotation}rad` }],
       }}
     >
       {isBottle ? (
@@ -195,6 +264,31 @@ function TargetShape({ view }: { view: TargetView }) {
         </>
       )}
     </View>
+  );
+}
+
+/**
+ * Faint ring on the actual tap radius.
+ *
+ * A graybox affordance, not decoration: M5A widened the hitbox, and the
+ * playtest cannot judge whether the widening is enough unless the observer can
+ * see what they were aiming at. It draws the same number hit resolution uses.
+ */
+function HitHalo({ view }: { view: TargetView }) {
+  const size = view.hitRadius * 2;
+  return (
+    <View
+      style={{
+        position: 'absolute',
+        left: view.x - view.hitRadius,
+        top: view.y - view.hitRadius,
+        width: size,
+        height: size,
+        borderRadius: view.hitRadius,
+        borderWidth: 2,
+        borderColor: THEME.dangerLineSoft,
+      }}
+    />
   );
 }
 
@@ -269,7 +363,7 @@ function Debris({ shards }: { shards: ShardsState }) {
   );
 }
 
-export function SceneRenderer({ round, effects, shards, viewport }: SceneRendererProps) {
+export function SceneRenderer({ round, effects, shards, stageMotion, viewport }: SceneRendererProps) {
   const rootRef = useRef<View>(null);
 
   const onLayout = useCallback(
@@ -277,7 +371,8 @@ export function SceneRenderer({ round, effects, shards, viewport }: SceneRendere
       const { width, height } = event.nativeEvent.layout;
       viewport.width = width;
       viewport.height = height;
-      // Browser input arrives in window coordinates; native touches do not.
+      // Input arrives in window coordinates on both platforms (M5A), so the
+      // play surface's own window position is part of the mapping.
       rootRef.current?.measureInWindow?.((pageX, pageY) => {
         viewport.pageX = pageX;
         viewport.pageY = pageY;
@@ -288,10 +383,17 @@ export function SceneRenderer({ round, effects, shards, viewport }: SceneRendere
 
   const fit = fitCanvas(viewport.width, viewport.height);
   const views = targetViews(round);
+  const showHalos = round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT';
 
   return (
     <View ref={rootRef} style={styles.root} onLayout={onLayout}>
+      {/*
+        Nothing inside the canvas is interactive: the engine listens on its own
+        container, and letting a nested view become the touch target is what
+        made native taps resolve at the wrong coordinates (M5A, Priority 1).
+      */}
       <View
+        pointerEvents="none"
         style={[
           styles.canvas,
           {
@@ -301,14 +403,27 @@ export function SceneRenderer({ round, effects, shards, viewport }: SceneRendere
           },
         ]}
       >
-        <Backdrop />
-        <BandMember x={200} label="BASSIST" />
-        <BandMember x={1520} label="GUITARIST" />
-        <Vocalist round={round} />
+        <Backdrop stageMotion={stageMotion} />
+        <BandMember
+          x={PERFORMER_ANCHORS.bassist.x - 120}
+          label="BASSIST"
+          pose={performerPose(stageMotion, 'bassist')}
+        />
+        <BandMember
+          x={PERFORMER_ANCHORS.guitarist.x - 120}
+          label="GUITARIST"
+          pose={performerPose(stageMotion, 'guitarist')}
+        />
+        <Vocalist round={round} pose={performerPose(stageMotion, 'vocalist')} />
         <DangerLine />
 
         {views.map((view) =>
-          view.status === 'hit' ? null : <TargetShape key={view.id} view={view} />,
+          view.status === 'hit' ? null : (
+            <React.Fragment key={view.id}>
+              {showHalos && view.status === 'active' && <HitHalo view={view} />}
+              <TargetShape view={view} />
+            </React.Fragment>
+          ),
         )}
 
         <Debris shards={shards} />
@@ -350,7 +465,6 @@ const styles = StyleSheet.create({
     height: 700,
     borderRadius: 500,
     backgroundColor: THEME.venueGlow,
-    opacity: 0.7,
   },
   stageFloor: {
     position: 'absolute',

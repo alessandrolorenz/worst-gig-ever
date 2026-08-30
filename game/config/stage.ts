@@ -45,3 +45,54 @@ export const VOCALIST_IDLE_RECT = {
   width: 300,
   height: 420,
 } as const;
+
+/**
+ * Band-member anchors, in canvas pixels. Reaction proximity is defined here
+ * rather than derived from the placeholder block sizes, so replacing the
+ * graybox with M3 art cannot change who ducks (AGENTS.md rule 17).
+ */
+export const PERFORMER_ANCHORS = {
+  bassist: { x: 320, y: 470 },
+  guitarist: { x: 1640, y: 470 },
+  vocalist: { x: 960, y: 510 },
+} as const;
+
+/**
+ * Band in the crowd that objects are thrown from.
+ *
+ * M4 launched every target from the single vanishing point, which read as
+ * sliding rather than throwing. Spreading the origin across the crowd line is
+ * what makes the throw look like it came from a person (M5A, Priority 2).
+ */
+export const THROW_ORIGIN = {
+  minX: 260,
+  maxX: 1660,
+  minY: 400,
+  maxY: 505,
+} as const;
+
+/**
+ * Ambient stage cadence (M5A, Priority 4).
+ *
+ * Intentionally low-frame: loops step between poses on the beat rather than
+ * interpolating, because "alive enough" is the target and choppy is acceptable.
+ * `bpm` is an authored cadence, not a value measured from the music track —
+ * it is a tuning input like every other number in `config/`.
+ */
+export const STAGE_MOTION = {
+  bpm: 132,
+  /** Poses per ambient loop. Two is the minimum that reads as movement. */
+  loopFrames: 2,
+  /** Beats spent on a full loop, so the stage moves with the song. */
+  beatsPerLoop: 2,
+  /** One-shot reaction durations. */
+  hitReactionMs: 420,
+  dodgeMs: 520,
+  /** How close a target must pass a performer, in canvas px, to scare them. */
+  dodgeProximity: 210,
+  /** A target only reads as "passing" the band inside this progress window. */
+  dodgeFromProgress: 0.2,
+  dodgeToProgress: 0.8,
+  /** How close an impact must land to a performer for them to flinch. */
+  impactReactionRadius: 320,
+} as const;

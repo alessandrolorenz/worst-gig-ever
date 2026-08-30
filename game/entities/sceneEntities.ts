@@ -12,6 +12,7 @@ import type React from 'react';
 import type { AudioService } from '../audio/audioService.ts';
 import { createEffects, type EffectsState } from '../systems/effects.ts';
 import { createShards, type ShardsState } from '../systems/shards.ts';
+import { createStageMotion, type StageMotionState } from '../systems/stageMotion.ts';
 import { createViewport, type Viewport } from '../rendering/layout.ts';
 import { createRound, type RoundState } from '../state/roundState.ts';
 import type { GameState } from '../state/gameState.ts';
@@ -21,6 +22,8 @@ export interface SceneEntity {
   round: RoundState;
   effects: EffectsState;
   shards: ShardsState;
+  /** Ambient band/crowd motion and performer reactions. Presentation only. */
+  stageMotion: StageMotionState;
   audio: AudioService;
   viewport: Viewport;
   /** Notified when the domain state changes, so React can swap overlays. */
@@ -42,6 +45,7 @@ export function createSceneEntities(
       round: createRound(level01),
       effects: createEffects(),
       shards: createShards(),
+      stageMotion: createStageMotion(),
       audio,
       viewport: createViewport(),
       onStateChange: null,

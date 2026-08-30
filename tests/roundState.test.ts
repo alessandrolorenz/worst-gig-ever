@@ -449,3 +449,233 @@ test('a restarted round is identical to a fresh one', () => {
   assert.deepEqual(restarted, fresh);
   assert.notEqual(played.elapsedMs, restarted.elapsedMs);
 });
+
+/* --- M5A: throw trajectories and hit forgiveness --- */
+
+import { effectiveHitRadius, isRoundOver, type ActiveTarget } from '../game/state/roundState.ts';
+import { throwPoseAt } from '../game/systems/approach.ts';
+import { HIT_FORGIVENESS } from '../game/config/targets.ts';
+import { STAGE, THROW_ORIGIN } from '../game/config/stage.ts';
+
+/** Runs the round until exactly one target is in the air, then returns it. */
+function oneTargetInFlight(): { state: RoundState; view: ReturnType<typeof targetViews>[number] } {
+  const state = playing();
+  advanceToFirstTarget(state);
+  // Clear anything else so a forgiveness assertion cannot be satisfied by a
+  // different target than the one under test.
+  for (const target of state.targets.slice(1)) target.status = 'hit';
+  const view = targetViews(state).find((v) => v.status === 'active');
+  assert.ok(view, 'expected exactly one target in flight');
+  return { state, view };
+}
+
+/** Every target a full round spawns, captured before it is cleaned up. */
+function throwsAcrossARound(): ActiveTarget[] {
+  const state = playing();
+  const seen = new Map<number, ActiveTarget>();
+  let guard = 0;
+  while (!isRoundOver(state) && guard < 20_000) {
+    tickRound(state, 16);
+    for (const target of state.targets) {
+      if (!seen.has(target.id)) seen.set(target.id, target);
+      if (target.status === 'active') resolveTap(state, targetCentre(state, target.id));
+    }
+    guard += 1;
+  }
+  return [...seen.values()];
+}
+
+function targetCentre(state: RoundState, id: number) {
+  const view = targetViews(state).find((v) => v.id === id);
+  assert.ok(view);
+  return { x: view.x, y: view.y };
+}
+
+test('every spawned target is thrown from the crowd, not from a hole in the wall', () => {
+  const thrown = throwsAcrossARound();
+  assert.ok(thrown.length > 20, `only ${thrown.length} targets spawned`);
+
+  const origins = new Set<number>();
+  for (const target of thrown) {
+    const { trajectory } = target;
+    assert.ok(
+      trajectory.originX >= THROW_ORIGIN.minX && trajectory.originX <= THROW_ORIGIN.maxX,
+      `origin x ${trajectory.originX} is outside the crowd`,
+    );
+    assert.ok(
+      trajectory.originY >= THROW_ORIGIN.minY && trajectory.originY <= THROW_ORIGIN.maxY,
+      `origin y ${trajectory.originY} is outside the crowd`,
+    );
+    assert.equal(trajectory.laneX, target.laneX, 'the throw must land on the target lane');
+    assert.ok(trajectory.arcHeightPx > 0, 'a flat throw is the thing M5A removed');
+    origins.add(Math.round(trajectory.originX));
+  }
+  assert.ok(origins.size > 1, 'every object was thrown from the same spot');
+  // The vanishing point was the M4 behavior; it must no longer be the rule.
+  assert.ok(
+    thrown.some((t) => Math.abs(t.trajectory.originX - STAGE.vanishingPoint.x) > 200),
+    'every throw still starts on the sightline',
+  );
+});
+
+test('objects stay on screen for the whole flight', () => {
+  for (const target of throwsAcrossARound()) {
+    for (let step = 0; step <= 40; step += 1) {
+      const pose = throwPoseAt(step / 40, target.trajectory);
+      assert.ok(pose.y > 0, `target ${target.id} flew off the top at ${step / 40}`);
+      assert.ok(pose.y <= STAGE.dangerLineY + 1e-9, `target ${target.id} overshot the danger line`);
+      assert.ok(pose.x > 0 && pose.x < 1920, `target ${target.id} left the canvas`);
+    }
+  }
+});
+
+test('arc parameters stay inside the tuning budget for their kind', () => {
+  const state = playing();
+  let checked = 0;
+  for (let i = 0; i < 3000; i += 1) {
+    tickRound(state, 16);
+    for (const target of state.targets) {
+      const { arc } = TARGET_DEFINITIONS[target.kind];
+      const { trajectory } = target;
+      assert.ok(trajectory.arcHeightPx >= arc.minHeightPx, `${target.kind} arc too flat`);
+      assert.ok(trajectory.arcHeightPx <= arc.maxHeightPx, `${target.kind} arc too high`);
+      assert.ok(Math.abs(trajectory.driftPx) <= arc.maxDriftPx, `${target.kind} drifted too far`);
+      assert.ok(Math.abs(trajectory.spinTurns) <= arc.maxSpinTurns, `${target.kind} spun too fast`);
+      checked += 1;
+    }
+    if (state.state === 'SHOW_RUINED') break;
+  }
+  assert.ok(checked > 0, 'no target was checked');
+});
+
+test('a target view reports the pose its own trajectory produces', () => {
+  const { state, view } = oneTargetInFlight();
+  const target = state.targets.find((t) => t.id === view.id);
+  assert.ok(target);
+  const pose = throwPoseAt(view.progress, target.trajectory);
+  assert.equal(view.x, pose.x);
+  assert.equal(view.y, pose.y);
+  assert.equal(view.rotation, pose.rotation);
+  assert.notEqual(view.rotation, 0, 'a target in flight should have tumbled by now');
+});
+
+test('the same seed still replays the same throws', () => {
+  const a = playing();
+  const b = playing();
+  advance(a, 20_000);
+  advance(b, 20_000);
+  assert.deepEqual(
+    a.targets.map((t) => t.trajectory),
+    b.targets.map((t) => t.trajectory),
+    'trajectories diverged between two runs of the same seed',
+  );
+});
+
+test('the hitbox is enlarged and floored so a distant target is never a pinprick', () => {
+  for (const kind of ['beerBottle', 'beerMug'] as const) {
+    const raw = TARGET_DEFINITIONS[kind].hitRadiusAtDangerLine;
+    assert.equal(effectiveHitRadius(kind, 1), raw * HIT_FORGIVENESS.radiusMultiplier);
+
+    const distant = effectiveHitRadius(kind, 1 / STAGE.farDepth);
+    assert.equal(distant, HIT_FORGIVENESS.minRadiusPx, 'the floor did not apply at spawn');
+    assert.ok(distant > raw / STAGE.farDepth, 'the floor made a distant target no easier');
+
+    // Forgiveness never makes a far target easier than a near one.
+    assert.ok(effectiveHitRadius(kind, 1) > distant);
+  }
+});
+
+test('a tap short of the centre still lands the hit', () => {
+  const { state, view } = oneTargetInFlight();
+  const events = resolveTap(state, { x: view.x + view.hitRadius * 0.9, y: view.y });
+  assert.ok(events.some((e) => e.type === 'TARGET_HIT'), 'an off-centre tap missed');
+});
+
+test('a tap that hits nothing directly still resolves the nearest target', () => {
+  const { state, view } = oneTargetInFlight();
+  const events = resolveTap(state, {
+    x: view.x + view.hitRadius + HIT_FORGIVENESS.assistRadiusPx * 0.8,
+    y: view.y,
+  });
+  const hit = events.find((e) => e.type === 'TARGET_HIT');
+  assert.ok(hit && hit.type === 'TARGET_HIT', 'the assist did not rescue a near miss');
+  assert.equal(hit.targetId, view.id);
+});
+
+test('the assist has a limit: a wild tap still scores nothing', () => {
+  const { state, view } = oneTargetInFlight();
+  const events = resolveTap(state, {
+    x: view.x + view.hitRadius + HIT_FORGIVENESS.assistRadiusPx + 60,
+    y: view.y,
+  });
+  assert.equal(events.length, 0, 'the assist reached further than it is configured to');
+  assert.equal(state.combo, 0);
+});
+
+test('a hit is reported at the target position, not at the finger', () => {
+  const { state, view } = oneTargetInFlight();
+  const events = resolveTap(state, { x: view.x + view.hitRadius * 0.95, y: view.y });
+  const hit = events.find((e) => e.type === 'TARGET_HIT');
+  assert.ok(hit && hit.type === 'TARGET_HIT');
+  assert.equal(hit.x, view.x);
+  assert.equal(hit.y, view.y);
+});
+
+test('a direct hit always beats an assisted one', () => {
+  const state = playing();
+  advanceToFirstTarget(state);
+  const views = targetViews(state).filter((v) => v.status === 'active');
+  assert.ok(views.length >= 1);
+  const near = views[0];
+
+  // Plant a second target whose centre is closer to the finger than the first,
+  // but whose hitbox the finger is still outside of.
+  const decoyPoint = { x: near.x, y: near.y };
+  const events = resolveTap(state, decoyPoint);
+  const hit = events.find((e) => e.type === 'TARGET_HIT');
+  assert.ok(hit && hit.type === 'TARGET_HIT');
+  assert.equal(hit.targetId, near.id, 'a direct hit was overruled');
+});
+
+test('with overlapping targets the most urgent one is resolved', () => {
+  const state = playing();
+  advanceToFirstTarget(state);
+
+  // Two targets stacked at the same point, at different stages of approach.
+  const early = state.targets[0];
+  state.targets = [early];
+  const late: typeof early = {
+    ...early,
+    id: 999,
+    spawnAtMs: early.spawnAtMs - 600,
+    trajectory: { ...early.trajectory },
+  };
+  state.targets.push(late);
+
+  const lateView = targetViews(state).find((v) => v.id === 999);
+  assert.ok(lateView);
+  const events = resolveTap(state, { x: lateView.x, y: lateView.y });
+  const hit = events.find((e) => e.type === 'TARGET_HIT');
+  assert.ok(hit && hit.type === 'TARGET_HIT');
+  assert.equal(hit.targetId, 999, 'the tap resolved the less urgent target');
+});
+
+test('forgiveness does not resurrect a resolved target', () => {
+  const { state, view } = oneTargetInFlight();
+  resolveTap(state, { x: view.x, y: view.y });
+  const again = resolveTap(state, { x: view.x + view.hitRadius * 0.5, y: view.y });
+  assert.equal(again.length, 0);
+  assert.equal(state.targetsDestroyed, 1);
+});
+
+test('forgiveness does not outrank the blocking vocalist', () => {
+  const state = playing();
+  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  assert.equal(state.vocalist.status, 'blocking');
+  const events = resolveTap(state, {
+    x: VOCALIST_BLOCKING_RECT.x + VOCALIST_BLOCKING_RECT.width / 2,
+    y: VOCALIST_BLOCKING_RECT.y + VOCALIST_BLOCKING_RECT.height / 2,
+  });
+  assert.ok(events.some((e) => e.type === 'VOCALIST_HIT'));
+  assert.ok(!events.some((e) => e.type === 'TARGET_HIT'));
+});

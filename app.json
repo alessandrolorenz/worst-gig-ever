@@ -33,7 +33,9 @@
     },
     "jsEngine": "jsc",
     "plugins": [
-      "expo-audio"
+      "expo-audio",
+      "expo-asset",
+      "expo-font"
     ]
   }
 }

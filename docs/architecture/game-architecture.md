@@ -38,7 +38,12 @@ Reads level phase configuration and creates targets.
 
 ### Approach system
 
-Updates target progress based on elapsed time.
+Updates target progress based on elapsed time, and turns that progress into a
+screen pose. Since M5A a pose follows an authored throw arc — origin in the
+crowd, lift, drift, and spin — rather than a straight line to the vanishing
+point. The arc is a closed-form function of progress layered on top of the
+same perspective interpolation, so both endpoints are unchanged and motion
+stays deterministic and testable (ADR 0007).
 
 ### Hit system
 
@@ -56,6 +61,16 @@ Consumes misses and ends the show when integrity reaches zero.
 
 Triggers the vocalist event once at the configured timeline position.
 
+### Stage motion system
+
+Presentation only, added in M5A. Owns the five performer poses (`idle`,
+`loopA`, `loopB`, `hitReaction`, `dodge`), the ambient band and crowd loops,
+and the beat pulse. Dodges are derived from the targets currently in flight;
+flinches come from resolved hit events. It runs on its own elapsed-time
+accumulator so the stage stays alive while the round clock is stopped, and it
+owns no gameplay truth — the vocalist interruption remains in the round state
+(ADR 0007).
+
 ### Audio system
 
 Responds to game events and manages lifecycle.
@@ -71,9 +86,10 @@ Established at the M0–M2 bootstrap; the behavior in each system is written dur
 | Layer | Location | State at bootstrap |
 |---|---|---|
 | Level schedule | `game/levels/` | `level01.ts` present (data) |
-| Tuning data, hitboxes | `game/config/` | `targets.ts`, `scoring.ts` present (data) |
+| Tuning data, hitboxes, arcs, stage cadence | `game/config/` | `targets.ts`, `scoring.ts`, `stage.ts` (data) |
 | Round state vocabulary | `game/state/` | `gameState.ts` present (types) |
 | Clock, spawn, approach, hit, score, integrity, special event | `game/systems/` | template `GameLoop.ts` only — replaced in M4 |
+| Performer reactions and ambient stage loops | `game/systems/stageMotion.ts` | added in M5A |
 | Entity view models | `game/entities/` | template Balloon/Wall — replaced in M4 |
 | Renderer and asset registry | `game/rendering/` | empty |
 | Audio service | `game/audio/` | empty; `expo-audio` installed, unused |
@@ -96,3 +112,8 @@ SHOW_RUINED
 ```
 
 An implementation may use direct reducer/actions instead of a formal event bus. Do not add infrastructure merely to imitate this diagram.
+
+Presentation-only reactions do **not** get their own events. A performer ducking
+an object in flight is derived from the round snapshot the player can already
+see; only things that are not recoverable from a later snapshot — where an
+object broke, for instance — travel as events (ADR 0007).

@@ -15,7 +15,15 @@ import { dirname, join, resolve } from 'node:path';
 
 import { level01 } from '../game/levels/level01.ts';
 import { COMBO_TIERS, SCORING } from '../game/config/scoring.ts';
-import { TARGET_DEFINITIONS } from '../game/config/targets.ts';
+import { HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../game/config/targets.ts';
+import {
+  PERFORMER_ANCHORS,
+  REFERENCE_CANVAS,
+  STAGE,
+  STAGE_MOTION,
+  THROW_ORIGIN,
+} from '../game/config/stage.ts';
+import { PERFORMER_IDS } from '../game/systems/stageMotion.ts';
 import { GAME_STATES, TARGET_KINDS, TARGET_STATUSES } from '../game/state/gameState.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -144,4 +152,71 @@ test('M2: no MIDI file is referenced as a runtime asset', () => {
       assert.ok(!path.endsWith('.mid'), `${key}: MIDI must not be a runtime asset (${path})`);
     }
   }
+});
+
+/* --- M5A: first tuning pass --- */
+
+test('M5A: hit forgiveness is generous but bounded', () => {
+  assert.ok(HIT_FORGIVENESS.radiusMultiplier >= 1, 'forgiveness must not shrink a hitbox');
+  assert.ok(HIT_FORGIVENESS.minRadiusPx > 0);
+  assert.ok(HIT_FORGIVENESS.assistRadiusPx > 0);
+  assert.ok(HIT_FORGIVENESS.duplicateTapDistancePx > 0);
+
+  // Generosity has a ceiling: a swing aimed at one lane must never be able to
+  // reach an object two lanes away, or the player stops choosing a target.
+  const lanePitch = Math.min(
+    ...STAGE.laneXs.slice(1).map((x, i) => Math.abs(x - STAGE.laneXs[i])),
+  );
+  for (const kind of TARGET_KINDS) {
+    const reach =
+      TARGET_DEFINITIONS[kind].hitRadiusAtDangerLine * HIT_FORGIVENESS.radiusMultiplier +
+      HIT_FORGIVENESS.assistRadiusPx;
+    assert.ok(reach < lanePitch * 2, `a ${kind} swing reaches two lanes over`);
+  }
+  assert.ok(HIT_FORGIVENESS.minRadiusPx < lanePitch, 'the floor is wider than a whole lane');
+});
+
+test('M5A: every target kind declares a real throw arc', () => {
+  for (const kind of TARGET_KINDS) {
+    const { arc } = TARGET_DEFINITIONS[kind];
+    assert.ok(arc.minHeightPx > 0, `${kind} can still be thrown flat`);
+    assert.ok(arc.maxHeightPx >= arc.minHeightPx, `${kind} arc range is inverted`);
+    assert.ok(arc.maxDriftPx >= 0);
+    assert.ok(arc.maxSpinTurns >= 0);
+  }
+  // The heavier object lobs flatter and tumbles less than the bottle.
+  assert.ok(TARGET_DEFINITIONS.beerMug.arc.maxHeightPx < TARGET_DEFINITIONS.beerBottle.arc.maxHeightPx);
+  assert.ok(TARGET_DEFINITIONS.beerMug.arc.maxSpinTurns < TARGET_DEFINITIONS.beerBottle.arc.maxSpinTurns);
+});
+
+test('M5A: objects are thrown from the crowd, above the danger line', () => {
+  assert.ok(THROW_ORIGIN.minX < THROW_ORIGIN.maxX);
+  assert.ok(THROW_ORIGIN.minY < THROW_ORIGIN.maxY);
+  assert.ok(THROW_ORIGIN.minX >= 0 && THROW_ORIGIN.maxX <= REFERENCE_CANVAS.width);
+  assert.ok(THROW_ORIGIN.maxY < STAGE.dangerLineY, 'objects must be thrown from behind the kit');
+  assert.ok(
+    THROW_ORIGIN.maxX - THROW_ORIGIN.minX > REFERENCE_CANVAS.width / 2,
+    'the throw origin is too narrow to read as a crowd',
+  );
+});
+
+test('M5A: the ambient stage cadence is playable data, not magic numbers', () => {
+  assert.ok(STAGE_MOTION.bpm > 0);
+  assert.ok(STAGE_MOTION.loopFrames >= 2 && STAGE_MOTION.loopFrames <= 3, 'M5A wants low-frame loops');
+  assert.ok(STAGE_MOTION.beatsPerLoop >= 1);
+  assert.ok(STAGE_MOTION.hitReactionMs > 0);
+  assert.ok(STAGE_MOTION.dodgeMs > 0);
+  assert.ok(STAGE_MOTION.dodgeFromProgress < STAGE_MOTION.dodgeToProgress);
+  assert.ok(STAGE_MOTION.dodgeFromProgress >= 0 && STAGE_MOTION.dodgeToProgress <= 1);
+});
+
+test('M5A: every performer has an anchor on the stage', () => {
+  for (const id of PERFORMER_IDS) {
+    const anchor = PERFORMER_ANCHORS[id];
+    assert.ok(anchor, `${id} has no anchor`);
+    assert.ok(anchor.x >= 0 && anchor.x <= REFERENCE_CANVAS.width, `${id} is off the canvas`);
+    assert.ok(anchor.y >= 0 && anchor.y < STAGE.dangerLineY, `${id} stands behind the drummer`);
+  }
+  const xs = PERFORMER_IDS.map((id) => PERFORMER_ANCHORS[id].x);
+  assert.equal(new Set(xs).size, xs.length, 'two performers share a position');
 });
