@@ -9,7 +9,7 @@ Completed baseline before art production: `90cf9d7b29bb895d7283d017352424426e000
 - M5A is complete at `4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3`; do not reimplement it.
 - M6 is complete at `6506698fd6d399c97d2960332996f98d78c63765`.
 - M6A is complete at `90cf9d7b29bb895d7283d017352424426e000a4c`.
-- Pack 1 required assets: 23 present, 10 missing, 0 invalid.
+- Pack 1 required assets: 26 present, 7 missing, 0 invalid.
 - Optional assets missing: 2 (`whiskeyBottle`, `dustPuff`); optional files do not block the gate.
 - Current validator result: `PASS_CONTRACT_ART_MISSING` / `ART_ASSETS_MISSING`.
 - M6B has not started. The running game still uses graybox rendering until M6B integrates the PNG files.
@@ -57,6 +57,9 @@ These decisions are also recorded in the M3/M6 specs and Pack 1 prompt files.
 | `assets/art/band/guitarist_loop_b.png` | `exec-a4f22a33-9275-48c7-8d22-cd02126faccc.png` | 640x900 RGBA | `9469ae4b836036db18e0dc6424bde0a1b8bbafa232d34c0add129b694c6d4f86` |
 | `assets/art/band/guitarist_hit_reaction.png` | `exec-6fb982b7-0356-4aa5-b953-04abd77a706c.png` | 640x900 RGBA | `f2cd839734d24a03e9ab968e056ebe7a1bbbf8b2f625250416487cbf3eaa0477` |
 | `assets/art/band/guitarist_dodge.png` | `exec-c2c69de6-94d5-44c7-963e-36ea6d4d0dfd.png` | 640x900 RGBA | `5b9430a04bb43bb4a9c09c63adcf79523c5fcbc439d6c7e088f968dabb8f8933` |
+| `assets/art/props/beer_bottle.png` | `exec-789ef5fc-9934-4ba2-9ff5-8cdcf72db8f6.png` | 256x512 RGBA | `ce5464eb358d2819aef6b673f98dd9c482fc78f43fa318140c31b91c0a4ff9f0` |
+| `assets/art/props/beer_mug.png` | `exec-947d5d04-8c15-4ef7-88fc-ddd58f64a3de.png` | 384x384 RGBA | `9f0c38992c6a627a871bd7b62ea555a5d95eab5caf543d0892a9c6d810ac2854` |
+| `assets/art/props/drumstick.png` | `exec-a87717a8-9676-4d7d-a5b9-e02434beb4fa.png` | 640x96 RGBA | `e7a20882809915d86d23359c7ed795f680b27924f16d7336a4e4eb4faf4137e2` |
 
 Generator outputs live under
 `/Users/alessandrolorenz/.codex/generated_images/01a05487-7d2d-71a2-b39d-5ec1bf3a8134/`.
@@ -73,8 +76,7 @@ The production copies in `assets/art/` are the authoritative versions.
 
 ## Missing required assets and production order
 
-1. Props: `beer_bottle`, `beer_mug`, `drumstick`.
-2. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
+1. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
 
 The complete dimensions, alpha requirements, and matching prompt paths are
 authoritative in `assets/manifest/asset-manifest.json` and are printed by
