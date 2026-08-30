@@ -6,11 +6,13 @@ Worst Band Ever — working title
 
 ## Current phase
 
-**M5A first tuning pass complete (2026-08-30). Awaiting a re-run of the physical playtest against the tuned build.**
+**M6 art direction locked (2026-08-30). M6A asset-pack production contract is next.**
 
 The first observation pass produced four actionable complaints — unreliable hits, straight-line object travel, a static band, and a stage that reads as a diagram. All four have been addressed in `docs/decisions/0007-m5a-first-tuning-pass.md`. No gameplay rule, event family, or scoring value changed.
 
-M3 (art) is drafted but unfilled: no art asset has been produced. The slice still runs on graybox shapes, as M4 and M5A both require.
+M3 has been reconciled with M6 and M5A's runtime presentation vocabulary. No
+art asset has been produced. The slice still runs on graybox shapes, and M6
+made no gameplay implementation change.
 
 ## Product hypothesis
 
@@ -64,22 +66,21 @@ One 60-second show with:
 
 ## Immediate next action
 
-Rebuild the development client and re-run `docs/specs/M5-physical-playtest-checklist.md` against the tuned slice. Three of M5A's five success criteria are subjective and cannot be closed without a device and a person:
-
-1. can the player reliably hit incoming objects (checklist B3, B4, G2);
-2. is the vocalist event still readable and chaotic (section E);
-3. does the stage feel more alive (sections A3, B1, I).
-
-The underlying question is still the one in `START-HERE.md`: is hitting objects and surviving the show fun enough that someone immediately wants another round?
+Execute M6A: finalize the additive manifest plan, mechanically validate Pack 1
+paths, and prepare the art provenance ledger. If any required Pack 1 image is
+missing at the art gate, stop at `ART_ASSETS_REQUIRED` with the exact
+generation checklist. The physical fun judgement remains owner-only and is
+not claimed by M6.
 
 ## Gates
 
 - M0–M2 Fast Track: **COMPLETE** (2026-08-30)
-- M3 Asset Contract: DRAFTED — audio acquired, verified, and integrated; art not yet produced
+- M3 Asset Contract: RECONCILED WITH M6 — audio acquired, verified, and integrated; art not yet produced
 - M4 Vertical Slice: **COMPLETE** (2026-08-30), commit `733fb15`
 - M5 Physical Playtest: **FIRST OBSERVATION DONE** (2026-08-30) — outcome: TUNE
 - M5A First Tuning Pass: **COMPLETE** (2026-08-30) — awaiting a second playtest
-- M6 Art Direction & Asset Pack 1: NOT STARTED
+- M6 Art Direction Lock: **COMPLETE** (2026-08-30) — Pack 1 frozen; no gameplay change
+- M6A Asset Pack 1 Production Contract: NOT STARTED
 
 ## Device validation performed (2026-08-30)
 
@@ -96,6 +97,16 @@ Smoke validation only. No subjective judgement was made and no gameplay value wa
 | Round runs on device | Yes — clock counts down, targets approach, Show Integrity decrements when targets are ignored |
 
 **Not validated:** touch feel, frame pacing, audio latency, readability at phone size, and everything else that requires a human holding a real phone. An emulator cannot answer any of it.
+
+## Running the game
+
+`docs/running-the-game.md` — step by step for web, the Android emulator, and a
+physical device, plus the troubleshooting for the failure modes recorded in
+ADR 0006.
+
+Verified 2026-08-30 on the `Pixel_9` AVD: dev client installs, connects to
+Metro, and plays the M5A slice. A control run of one tap to start and no
+further input ended SHOW_RUINED with 0 destroyed and 3 misses.
 
 ## Physical playtest instrument
 
@@ -114,6 +125,7 @@ Full reasoning in ADR 0007. In summary:
 | 2 Arcs | Objects are thrown from across the crowd on an authored arc with lift, drift, and spin; endpoints and determinism unchanged | `game/systems/approach.ts` |
 | 3 Reactions | Five performer poses, flinches on nearby impacts, dodges derived from targets in flight | `game/systems/stageMotion.ts` |
 | 4 Ambience | Two-frame band and crowd loops on a 132 bpm cadence, stage glow pulsing on the beat | `game/systems/stageMotion.ts` |
+| 4 Ambience | Fixed a pre-M5A defect: the crowd was rendered ~380 px below its authored position, hidden behind the drum kit, and had never been visible | `game/rendering/SceneRenderer.tsx` |
 
 ## Open items carried into the next playtest
 

@@ -151,6 +151,24 @@ more — which is the intended joke.
 Crowd heads bob on the same loop with a fixed per-head phase offset, and the
 stage glow pulses on the beat.
 
+### The crowd was never visible
+
+Running the tuned build on a device immediately showed the crowd missing.
+`CROWD_HEADS` are authored in canvas coordinates (y roughly 444-495, which is
+where a crowd standing behind the band belongs), but they were rendered inside
+a container offset to `top: 380`. That pushed every head to an absolute y of
+roughly 824-849 — below the stage floor and behind the opaque drum-kit block,
+where none of it could be seen.
+
+The defect predates M5A; it has been there since the M4 graybox was written.
+It only became worth fixing now because Priority 4 asks for crowd loop motion,
+and animating something invisible is not support for anything. The container is
+now a plain absolute fill, so the authored coordinates mean what they say.
+
+This is the one change in M5A that a test could not have caught, and it is a
+good argument for looking at the thing on a screen before calling a
+presentation milestone done.
+
 ## Consequences
 
 - Tuning remains a data edit. Approach speed, arc shape, forgiveness, and the
@@ -168,6 +186,13 @@ stage glow pulses on the beat.
 
 `npm run verify` is green: type-check clean, lint clean, 116/116 tests passing
 (59 before M5A). `npx expo export` succeeds for android and web.
+
+Run on the `Pixel_9` emulator (Android `android-37.1`, arm64) against Metro: the
+slice loads, the round plays, and the crowd, band loops, throw arcs, and hit
+halos all render. A control run — one tap to start, then no further input —
+ended in SHOW_RUINED with score 0, 0 objects destroyed, and 3 misses, which is
+exactly correct and confirms neither the assist nor the tap deduplication
+resolves anything the player did not ask for.
 
 The coordinate-mapping fix and the tap-deduplication were each confirmed by
 mutation: reverting them individually turns seven and one test red

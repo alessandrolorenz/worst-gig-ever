@@ -85,7 +85,12 @@ function Backdrop({ stageMotion }: { stageMotion: StageMotionState }) {
       {/* Stage lights breathe on the beat, so the room has a pulse of its own. */}
       <View style={[styles.venueGlow, { opacity: 0.45 + pulse * 0.4 }]} />
       <View style={styles.stageFloor} />
-      <View style={styles.crowdBand}>
+      {/*
+        Head positions are canvas coordinates, so the container must not add an
+        offset of its own — it did until M5A, which pushed the whole crowd down
+        behind the opaque drum kit where none of it was ever visible.
+      */}
+      <View style={styles.crowdBand} pointerEvents="none">
         {CROWD_HEADS.map((head) => {
           const raised =
             loopFrameAt(stageMotion.elapsedMs + head.phaseMs, period, STAGE_MOTION.loopFrames) > 0;
@@ -475,11 +480,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.stageFloor,
   },
   crowdBand: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 380,
-    height: 240,
+    ...StyleSheet.absoluteFillObject,
   },
   bandMember: {
     position: 'absolute',
