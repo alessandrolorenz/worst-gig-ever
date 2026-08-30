@@ -101,7 +101,7 @@ Combo multiplier:
 - combo 10–19: x3
 - combo 20+: x4
 
-A miss resets combo to zero.
+A miss resets combo to zero. "Miss" means a target reached the danger line unhit — a tap that lands on empty space costs nothing (ADR 0005). The multiplier is applied to the combo *after* the hit is counted, so the fifth consecutive hit is the first to score x2.
 
 This table may be tuned during M5 without changing the game architecture.
 
@@ -126,6 +126,14 @@ At approximately 38–45 seconds:
 8. Award a fixed bonus of 500 points.
 
 The event is intentionally silly and non-graphic.
+
+### Implementation clarifications (M4)
+
+M1 was silent on three points that only surface once the event is played. Resolved in ADR 0005:
+
+- targets already in flight when the interruption starts stay hittable; only *spawning* pauses. Blocking them would cost Show Integrity for an event the player cannot answer;
+- the vocalist is in the foreground and wins any tap that lands on them;
+- if the player never swings, the vocalist gives up after 7 seconds and normal flow resumes without the bonus, so the round cannot stall.
 
 ## Difficulty curve
 

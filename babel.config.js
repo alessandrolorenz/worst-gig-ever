@@ -10,10 +10,8 @@ module.exports = function (api) {
 					extensions: ['.ios.ts', '.android.ts', '.ts', '.ios.tsx', '.android.tsx', '.jsx', '.js', '.json'],
 					alias: {
 						'@entities': './game/entities',
-						"@game": "./game",
 						'@systems': './game/systems',
 						'@svg': './assets/SVG',
-						'@types': './game/types',
 					},
 				},
 			],
