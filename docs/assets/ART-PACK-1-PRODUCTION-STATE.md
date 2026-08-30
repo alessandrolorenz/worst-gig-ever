@@ -9,7 +9,7 @@ Completed baseline before art production: `90cf9d7b29bb895d7283d017352424426e000
 - M5A is complete at `4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3`; do not reimplement it.
 - M6 is complete at `6506698fd6d399c97d2960332996f98d78c63765`.
 - M6A is complete at `90cf9d7b29bb895d7283d017352424426e000a4c`.
-- Pack 1 required assets: 8 present, 25 missing, 0 invalid.
+- Pack 1 required assets: 18 present, 15 missing, 0 invalid.
 - Optional assets missing: 2 (`whiskeyBottle`, `dustPuff`); optional files do not block the gate.
 - Current validator result: `PASS_CONTRACT_ART_MISSING` / `ART_ASSETS_MISSING`.
 - M6B has not started. The running game still uses graybox rendering until M6B integrates the PNG files.
@@ -42,6 +42,16 @@ These decisions are also recorded in the M3/M6 specs and Pack 1 prompt files.
 | `assets/art/crowd/crowd_front_03.png` | `exec-7dd74df5-a53c-4469-baf7-32c30b911b32.png` | 1920x420 RGBA | `85c1309657ff785c0b674ffccc50c93bc750699235f71b1c0b43be920a9959fb` |
 | `assets/art/drums/drumkit_pov.png` | `exec-3bab72b4-6818-41a7-81f3-e286bc0dd20b.png` | 1920x700 RGBA | `df12c0bf2794084325f596e862e87dacb7359cedcfd3a83ea38d94c5fdc1` |
 | `assets/art/band/vocalist_idle.png` | `exec-ff5b49e7-3af1-4c68-98ce-ee3190b32e38.png` | 640x900 RGBA | `d9530009b991b98ffaa0c0b63a019db13be5938873aee431d29a2291cbe31fc0` |
+| `assets/art/band/vocalist_loop_a.png` | `exec-2b5efc5e-2227-4800-91b1-24fca3e9648f.png` | 640x900 RGBA | `95eab2953a1277545900bb39c2c4989e1d00ceab8a796f25937dd1edb8760526` |
+| `assets/art/band/vocalist_loop_b.png` | `exec-b54be34f-7ef1-4b8b-9658-a43d911b0392.png` | 640x900 RGBA | `c7a2e3e34f36a0229d908e3a2e0366c7fba004ed1f6bdeadc7ad0dde320a751f` |
+| `assets/art/band/vocalist_blocking.png` | `exec-00c8edd9-83c5-4550-8b92-9cc4af4ce87d.png` | 640x900 RGBA | `35b1bf1599f7dbe7099aa984df2206b54d05d1e18334d4991ae71f704f88ca3d` |
+| `assets/art/band/vocalist_hit_reaction.png` | `exec-88692c14-e5c0-4b73-94e9-2674dc3429bf.png` | 640x900 RGBA | `eb8c940a544ded3887bc6b0cf42c456a2e1c4fc7ab5cb015e705a4e4276513f2` |
+| `assets/art/band/vocalist_dodge.png` | `exec-cdc29961-a375-4be6-8b92-4e18a4551107.png` | 640x900 RGBA | `254ed99467dee8789947361ee5b36357a331f0477efc880f5bc14ca97bed2ca7` |
+| `assets/art/band/bassist_idle.png` | `exec-d207e23f-0c0c-4531-89fb-34548db08395.png` | 640x900 RGBA | `ffa4201d2e2b9aa28c25e7740e8cc302e30dc7cab3d539c33df23464a79fe898` |
+| `assets/art/band/bassist_loop_a.png` | `exec-2df56f87-7e2e-48d0-9c03-aed9c40d1c9f.png` | 640x900 RGBA | `a72fea4c51a24e1c2383b84d94716f9f74dcbf5b2d6f9abf7ad70ec66cda51d9` |
+| `assets/art/band/bassist_loop_b.png` | `exec-a0498f7c-f20a-4d0f-978e-b7674b12b206.png` | 640x900 RGBA | `49e23e12f2acb525e7ff5a5c8a30d6721e45a83b25a4683f9256a1b1f8a1aca0` |
+| `assets/art/band/bassist_hit_reaction.png` | `exec-40afdd26-2f58-4c21-8610-94e0ca2e6bfb.png` | 640x900 RGBA | `e2dedbd9333b841b065a686d5736adf7f08337d4c49e20da3fe2980cff8a21ae` |
+| `assets/art/band/bassist_dodge.png` | `exec-4f35519f-1ccf-45fa-b688-2f2efd3ea2f6.png` | 640x900 RGBA | `59992720815e288cbe8375c1de25ecf5654ab65e14517becc8ccbf776841289b` |
 
 Generator outputs live under
 `/Users/alessandrolorenz/.codex/generated_images/01a05487-7d2d-71a2-b39d-5ec1bf3a8134/`.
@@ -53,15 +63,14 @@ The production copies in `assets/art/` are the authoritative versions.
 - Initial crowd attempts faced away from the drummer (`exec-c592...`, `exec-428...`).
 - Several reference/edit attempts embedded a checkerboard or gradient into RGB pixels instead of real transparency (`exec-1c135...`, `exec-cd117...`, `exec-9a170...`, `exec-0f525...`, `exec-052bc...`, `exec-5aab...`, `exec-f04e...`). Do not use them.
 - A friendlier valid vocalist (`exec-0038c0d6...`) was superseded after owner feedback. Do not restore it.
+- A bassist reference/edit attempt (`exec-ea62437f...`) baked a checkerboard into RGB pixels and was rejected.
 - Direct, concise transparent-cutout generations have produced reliable RGBA files. Always inspect with `file` or `sips -g hasAlpha` before accepting an output.
 
 ## Missing required assets and production order
 
-1. Vocalist: `vocalist_loop_a`, `vocalist_loop_b`, `vocalist_blocking`, `vocalist_hit_reaction`, `vocalist_dodge`.
-2. Bassist: `bassist_idle`, `bassist_loop_a`, `bassist_loop_b`, `bassist_hit_reaction`, `bassist_dodge`.
-3. Guitarist: `guitarist_idle`, `guitarist_loop_a`, `guitarist_loop_b`, `guitarist_hit_reaction`, `guitarist_dodge`.
-4. Props: `beer_bottle`, `beer_mug`, `drumstick`.
-5. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
+1. Guitarist: `guitarist_idle`, `guitarist_loop_a`, `guitarist_loop_b`, `guitarist_hit_reaction`, `guitarist_dodge`.
+2. Props: `beer_bottle`, `beer_mug`, `drumstick`.
+3. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
 
 The complete dimensions, alpha requirements, and matching prompt paths are
 authoritative in `assets/manifest/asset-manifest.json` and are printed by
