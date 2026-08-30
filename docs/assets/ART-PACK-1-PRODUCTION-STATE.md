@@ -9,10 +9,11 @@ Completed baseline before art production: `90cf9d7b29bb895d7283d017352424426e000
 - M5A is complete at `4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3`; do not reimplement it.
 - M6 is complete at `6506698fd6d399c97d2960332996f98d78c63765`.
 - M6A is complete at `90cf9d7b29bb895d7283d017352424426e000a4c`.
-- Pack 1 required assets: 26 present, 7 missing, 0 invalid.
+- Pack 1 required assets: 33 present, 0 missing, 0 invalid.
 - Optional assets missing: 2 (`whiskeyBottle`, `dustPuff`); optional files do not block the gate.
-- Current validator result: `PASS_CONTRACT_ART_MISSING` / `ART_ASSETS_MISSING`.
-- M6B has not started. The running game still uses graybox rendering until M6B integrates the PNG files.
+- Current validator result: `PASS_ART_READY` with `--require-ready`.
+- The Art Gate is cleared. M6B is the next stage and has not started yet.
+- The running game still uses graybox rendering until M6B integrates the PNG files.
 
 Run `npm run validate:art` for the current inventory and
 `npm run validate:art -- --require-ready` for the blocking Art Gate.
@@ -60,6 +61,13 @@ These decisions are also recorded in the M3/M6 specs and Pack 1 prompt files.
 | `assets/art/props/beer_bottle.png` | `exec-789ef5fc-9934-4ba2-9ff5-8cdcf72db8f6.png` | 256x512 RGBA | `ce5464eb358d2819aef6b673f98dd9c482fc78f43fa318140c31b91c0a4ff9f0` |
 | `assets/art/props/beer_mug.png` | `exec-947d5d04-8c15-4ef7-88fc-ddd58f64a3de.png` | 384x384 RGBA | `9f0c38992c6a627a871bd7b62ea555a5d95eab5caf543d0892a9c6d810ac2854` |
 | `assets/art/props/drumstick.png` | `exec-a87717a8-9676-4d7d-a5b9-e02434beb4fa.png` | 640x96 RGBA | `e7a20882809915d86d23359c7ed795f680b27924f16d7336a4e4eb4faf4137e2` |
+| `assets/art/effects/hit_burst.png` | `exec-1d0b61d9-409d-4dbd-826d-6aac2e12309d.png` | 256x256 RGBA | `822acfec03e04a96b0a5f55b9478736b1b97c5d311fc49ab8c94c619d4bb0bbc` |
+| `assets/art/effects/glass_shard_01.png` | `exec-7d86a777-3a27-4ea8-aa26-de4069b74e82.png` | 128x128 RGBA | `5d8b11d5a46d2ec84c2f97e71baea0c4033d0b008b7f104a3f3ddb511ecd0bda` |
+| `assets/art/effects/glass_shard_02.png` | `exec-33bf64a2-060b-4181-a4b5-11009d89a203.png` | 128x128 RGBA | `8788e32a5abe3b5f761ca42030155e817008e4f432ea39e99205656083304f5f` |
+| `assets/art/effects/glass_shard_03.png` | `exec-d6e46b01-3a88-49c4-a55a-14d2aaca8d77.png` | 128x128 RGBA | `613a4c89c8ef48b98af8b22503071c085f38647aa738d488063b2b0b563fa72c` |
+| `assets/art/effects/glass_shard_04.png` | `exec-c6ffa873-8765-4309-b923-09435aa6b46a.png` | 128x128 RGBA | `e54866e47f5354e62355650de0ca9b469ecf9f46bb3a159251fd44ca766b94bc` |
+| `assets/art/effects/glass_shard_05.png` | `exec-4360788c-6750-4ad1-b710-5fb7e114988c.png` | 128x128 RGBA | `11f0e2f4bc56cbd254f6801b2616b5ab5b0d77d32a9187d3791eafc5d68dc646` |
+| `assets/art/effects/glass_shard_06.png` | `exec-0f3b8e74-b6a6-4720-8f25-733582599b7d.png` | 128x128 RGBA | `6bead7516daad72d620f0c54dd2c98e81066b38b61b926988d376b5615f47e0e` |
 
 Generator outputs live under
 `/Users/alessandrolorenz/.codex/generated_images/01a05487-7d2d-71a2-b39d-5ec1bf3a8134/`.
@@ -76,7 +84,8 @@ The production copies in `assets/art/` are the authoritative versions.
 
 ## Missing required assets and production order
 
-1. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
+No required Pack 1 assets are missing. Optional `whiskeyBottle` and `dustPuff`
+remain intentionally absent and do not block integration.
 
 The complete dimensions, alpha requirements, and matching prompt paths are
 authoritative in `assets/manifest/asset-manifest.json` and are printed by
@@ -90,7 +99,7 @@ authoritative in `assets/manifest/asset-manifest.json` and are printed by
 4. Confirm the exact dimensions and required alpha with `file`/`sips` and `npm run validate:art`.
 5. Add a factual row to `docs/assets/ART-PROVENANCE.md` for every accepted file.
 6. Update this document after each character/effect group so another agent can resume without reconstructing decisions.
-7. Once all 33 required assets exist, run `npm run validate:art -- --require-ready`. Continue to M6B only after `PASS_ART_READY`.
-8. During M6B, integrate with `pointerEvents="none"`, preserve M5A page-coordinate mapping, hitboxes, forgiveness, and projectile arcs, then run the game for visual smoke testing.
+7. `npm run validate:art -- --require-ready` now returns `PASS_ART_READY`.
+8. Resume at M6B: integrate with `pointerEvents="none"`, preserve M5A page-coordinate mapping, hitboxes, forgiveness, and projectile arcs, then run the game for visual smoke testing.
 
 Do not push, run EAS, publish, or add third-party substitute art.
