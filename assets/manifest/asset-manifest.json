@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "referenceCanvas": {
+    "width": 1920,
+    "height": 1080,
+    "orientation": "landscape"
+  },
+  "assets": {
+    "stageBgBase": {
+      "path": "assets/art/backgrounds/stage_bg_base.png",
+      "kind": "background",
+      "requiredForMvp": true
+    },
+    "crowdBack": {
+      "path": "assets/art/crowd/crowd_back.png",
+      "kind": "layer",
+      "requiredForMvp": true
+    },
+    "crowdFront": {
+      "path": "assets/art/crowd/crowd_front.png",
+      "kind": "layer",
+      "requiredForMvp": true
+    },
+    "drumkitPov": {
+      "path": "assets/art/drums/drumkit_pov.png",
+      "kind": "foreground",
+      "requiredForMvp": true
+    },
+    "vocalistIdle": {
+      "path": "assets/art/band/vocalist_idle.png",
+      "kind": "character",
+      "requiredForMvp": true
+    },
+    "vocalistBlocking": {
+      "path": "assets/art/band/vocalist_blocking.png",
+      "kind": "character",
+      "requiredForMvp": true
+    },
+    "vocalistHitReaction": {
+      "path": "assets/art/band/vocalist_hit_reaction.png",
+      "kind": "character",
+      "requiredForMvp": true
+    },
+    "bassistIdle": {
+      "path": "assets/art/band/bassist_idle.png",
+      "kind": "character",
+      "requiredForMvp": true
+    },
+    "bassistGroove": {
+      "path": "assets/art/band/bassist_groove.png",
+      "kind": "character",
+      "requiredForMvp": false
+    },
+    "guitaristIdle": {
+      "path": "assets/art/band/guitarist_idle.png",
+      "kind": "character",
+      "requiredForMvp": true
+    },
+    "beerBottle": {
+      "path": "assets/art/props/beer_bottle.png",
+      "kind": "target",
+      "requiredForMvp": true
+    },
+    "beerMug": {
+      "path": "assets/art/props/beer_mug.png",
+      "kind": "target",
+      "requiredForMvp": true
+    },
+    "whiskeyBottle": {
+      "path": "assets/art/props/whiskey_bottle.png",
+      "kind": "target",
+      "requiredForMvp": false
+    },
+    "drumstick": {
+      "path": "assets/art/props/drumstick.png",
+      "kind": "feedback",
+      "requiredForMvp": true
+    },
+    "hitBurst": {
+      "path": "assets/art/effects/hit_burst.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "dustPuff": {
+      "path": "assets/art/effects/dust_puff.png",
+      "kind": "effect",
+      "requiredForMvp": false
+    },
+    "glassShard01": {
+      "path": "assets/art/effects/glass_shard_01.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "glassShard02": {
+      "path": "assets/art/effects/glass_shard_02.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "glassShard03": {
+      "path": "assets/art/effects/glass_shard_03.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "glassShard04": {
+      "path": "assets/art/effects/glass_shard_04.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "glassShard05": {
+      "path": "assets/art/effects/glass_shard_05.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    },
+    "glassShard06": {
+      "path": "assets/art/effects/glass_shard_06.png",
+      "kind": "effect",
+      "requiredForMvp": true
+    }
+  },
+  "audio": {
+    "musicRock01": {
+      "sourceMidi": "assets/audio/music/source/rock_theme_song.mid",
+      "runtime": "assets/audio/music/runtime/rock_theme_song_loop.wav",
+      "requiredForMvp": true
+    },
+    "glassBreak": {
+      "path": "assets/audio/sfx/glass_breaking.wav",
+      "requiredForMvp": true
+    },
+    "stickWhoosh": {
+      "path": "assets/audio/sfx/stick_whoosh.wav",
+      "requiredForMvp": true
+    },
+    "impactThwack": {
+      "path": "assets/audio/sfx/impact_thwack.wav",
+      "requiredForMvp": false
+    },
+    "crowdApplause": {
+      "path": "assets/audio/sfx/crowd_applause.wav",
+      "requiredForMvp": true
+    }
+  }
+}

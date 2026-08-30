@@ -1,0 +1,146 @@
+{
+  "package": "worst-band-ever-sdd-bootstrap",
+  "generated": "2026-08-30",
+  "files": [
+    {
+      "path": "AGENTS.md",
+      "sha256": "a93a3c1281df1cbdea90ac58f54796c514aaa31320604d3022d86efe0e46dfd5",
+      "bytes": 3837
+    },
+    {
+      "path": "START-HERE.md",
+      "sha256": "e50fdb1ffabb6f4d3ed83224a3c4064e75bea87d8c6f45f46d2a4e658d9cc6c9",
+      "bytes": 2629
+    },
+    {
+      "path": "assets/art/backgrounds/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/band/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/crowd/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/drums/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/effects/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/props/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/art/ui/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/audio/music/runtime/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/audio/music/source/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/audio/sfx/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "assets/manifest/asset-manifest.json",
+      "sha256": "3a628eaa2970596f4fbbd0fc845638d21c09da9df1730a1701f798cb3c6729fe",
+      "bytes": 3763
+    },
+    {
+      "path": "docs/architecture/game-architecture.md",
+      "sha256": "877d5adb85754626d0336f1cd4946c3881c713d914b4c069b69942f22d5bfcf6",
+      "bytes": 1518
+    },
+    {
+      "path": "docs/assets/ART-PROMPTS.md",
+      "sha256": "fca5294d71a958efa2cde1fc84d1d5ebad119d60ec109ebc05161e3a0aaa9cc9",
+      "bytes": 4310
+    },
+    {
+      "path": "docs/assets/AUDIO-SOURCES.md",
+      "sha256": "ad838392a5f54c504ca545aebecf22a1f3e9bc4110f375a6f2e07e596c5de29a",
+      "bytes": 3804
+    },
+    {
+      "path": "docs/decisions/.gitkeep",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "path": "docs/specs/M0-product-brief.md",
+      "sha256": "e51af8409838c7820d58db224246f6562bda1a1e7b2a6bd250b2d662f40652b1",
+      "bytes": 2566
+    },
+    {
+      "path": "docs/specs/M1-gameplay-spec.md",
+      "sha256": "28ac3e4f775da12cb84c16842a134832a54aa29b9a92e5986dedf85dda96f10c",
+      "bytes": 4835
+    },
+    {
+      "path": "docs/specs/M2-technical-foundation.md",
+      "sha256": "6d37f9d16df76b2654b8c040b40dece368ee63e585e85222ebb3a403f9845ed0",
+      "bytes": 4918
+    },
+    {
+      "path": "docs/specs/M3-art-and-asset-contract.md",
+      "sha256": "45d439ff258f2674bfdbcc37417a2b9829520614d40a0f35f34d6d5a9e74b3a7",
+      "bytes": 5039
+    },
+    {
+      "path": "docs/specs/M4-vertical-slice-plan.md",
+      "sha256": "cf3278259775b88f7cef02747352efebac97f1127856fc8c30f42225748e94c3",
+      "bytes": 2516
+    },
+    {
+      "path": "docs/specs/M5-playtest-and-decision.md",
+      "sha256": "802780f0f8fcff35c903ae08f0b543f13601dd0ae5c0a0bf7f20be51d5a81c0c",
+      "bytes": 1590
+    },
+    {
+      "path": "project-status.md",
+      "sha256": "3fb24edee513873168b8a6e4beb0bc53c26a617dc67098b21ff02835d1dafcd5",
+      "bytes": 1074
+    },
+    {
+      "path": "prompts/00-m0-m2-fast-track-bootstrap.md",
+      "sha256": "d6b1611a7bc340ec2f98559362301b7c060fffba81bd01a56fb7360ede07df7f",
+      "bytes": 3982
+    },
+    {
+      "path": "prompts/01-m4-graybox-vertical-slice.md",
+      "sha256": "fc820236c5c94cb825d62a2b948cf43495bca447414210cf0ee519b3b5b9caf0",
+      "bytes": 1865
+    },
+    {
+      "path": "prompts/02-m3-art-and-audio-integration.md",
+      "sha256": "20920b3f8dba44371d5c821e23cdf32def5bb0efb75189291e377a3a1eb74643",
+      "bytes": 1618
+    },
+    {
+      "path": "prompts/03-m5-playtest-polish.md",
+      "sha256": "3c33536da3192cb59acc41202f63a776eaea4143883fa92baa9930062740259c",
+      "bytes": 906
+    }
+  ]
+}
