@@ -16,7 +16,7 @@ Background/crowd:
 Drums:
 - `assets/art/drums/drumkit_pov.png` — 1920×700 transparent
 
-Vocalist (640×900 transparent unless justified wider reaction canvas):
+Vocalist (640×900 transparent):
 - `assets/art/band/vocalist_idle.png`
 - `assets/art/band/vocalist_loop_a.png`
 - `assets/art/band/vocalist_loop_b.png`
@@ -66,6 +66,22 @@ For every generated asset record canonical key, local path, generation tool/prov
 
 ## Manifest migration
 The live manifest already has M3 keys. Preserve existing semantic keys, add new state-frame keys additively, do not delete audio entries, and do not create eager runtime references to files that do not yet exist.
+
+## Implementation record
+
+- `assets/manifest/asset-manifest.json` version 2 is the machine-readable Pack
+  1 contract. Production entries record canonical path, dimensions,
+  transparency, prompt, and M6B requirement.
+- The pre-M6 `crowdFront` and `bassistGroove` semantic keys remain as
+  deprecated aliases of `crowdFront01` and `bassistLoopA`; neither creates a
+  second path or generation request.
+- All five audio entries are retained byte-for-byte in the live manifest.
+- The manifest is safe to merge before art exists because runtime code does
+  not import it or eagerly require its art paths. M6B will add explicit image
+  imports only after the art gate passes.
+- `npm run validate:art` reports PRESENT/MISSING/INVALID using Node built-ins.
+  Add `-- --require-ready` when a missing/invalid required file must fail the
+  command.
 
 ## Exit
 M6A is complete when exact files are defined, prompts are consistent, manifest merge plan is explicit, provenance exists, and ART GATE can mechanically report PRESENT/MISSING.

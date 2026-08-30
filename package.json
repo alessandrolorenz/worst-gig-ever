@@ -22,6 +22,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test",
+    "validate:art": "node scripts/validate-pack1-art.mjs",
     "verify": "npm run type-check && npm run lint && npm test"
   },
   "dependencies": {

@@ -105,9 +105,8 @@ The desired visual language is **vector-like cartoon clip art**, not realism.
 
 ### Vocalist
 
-All vocalist assets depict the same original fictional person and outfit on a
-640 × 900 transparent canvas. A wider reaction canvas is allowed only when
-needed, with the same feet/ground anchor.
+All vocalist assets depict the same original fictional person and outfit on an
+exact 640 × 900 transparent canvas with the same feet/ground anchor.
 
 - `vocalist_idle`
 - `vocalist_loop_a`

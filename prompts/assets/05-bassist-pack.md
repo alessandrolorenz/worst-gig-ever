@@ -3,11 +3,11 @@
 Read `00-style-bible.md` first.
 
 Create one original fictional bassist reference and preserve it across:
-- `bassist_idle.png`
-- `bassist_loop_a.png`
-- `bassist_loop_b.png`
-- `bassist_hit_reaction.png`
-- `bassist_dodge.png`
+- `assets/art/band/bassist_idle.png`
+- `assets/art/band/bassist_loop_a.png`
+- `assets/art/band/bassist_loop_b.png`
+- `assets/art/band/bassist_hit_reaction.png`
+- `assets/art/band/bassist_dodge.png`
 
 640×900 transparent PNG target canvas.
 

@@ -3,10 +3,10 @@
 Read `00-style-bible.md` first.
 
 Create:
-- `crowd_back.png` — 1920×520 transparent
-- `crowd_front_01.png` — 1920×420 transparent
-- `crowd_front_02.png` — 1920×420 transparent
-- `crowd_front_03.png` — 1920×420 transparent
+- `assets/art/crowd/crowd_back.png` — 1920×520 transparent PNG
+- `assets/art/crowd/crowd_front_01.png` — 1920×420 transparent PNG
+- `assets/art/crowd/crowd_front_02.png` — 1920×420 transparent PNG
+- `assets/art/crowd/crowd_front_03.png` — 1920×420 transparent PNG
 
 Front frames depict the **same crowd composition** with small pose changes: arms move, heads/bodies bob, hands/fists/horns change height. No person teleports or changes identity.
 

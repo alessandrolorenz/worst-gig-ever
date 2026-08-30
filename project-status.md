@@ -6,7 +6,7 @@ Worst Band Ever — working title
 
 ## Current phase
 
-**M6 art direction locked (2026-08-30). M6A asset-pack production contract is next.**
+**M6A asset-pack production contract complete (2026-08-30). Art gate is `ART_ASSETS_REQUIRED`.**
 
 The first observation pass produced four actionable complaints — unreliable hits, straight-line object travel, a static band, and a stage that reads as a diagram. All four have been addressed in `docs/decisions/0007-m5a-first-tuning-pass.md`. No gameplay rule, event family, or scoring value changed.
 
@@ -66,11 +66,11 @@ One 60-second show with:
 
 ## Immediate next action
 
-Execute M6A: finalize the additive manifest plan, mechanically validate Pack 1
-paths, and prepare the art provenance ledger. If any required Pack 1 image is
-missing at the art gate, stop at `ART_ASSETS_REQUIRED` with the exact
-generation checklist. The physical fun judgement remains owner-only and is
-not claimed by M6.
+Generate the 33 required Pack 1 PNGs at the exact manifest paths using the
+matching files under `prompts/assets/`, then complete every provenance row in
+`docs/assets/ART-PROVENANCE.md`. Run `npm run validate:art -- --require-ready`;
+M6B remains blocked until it reports `PASS_ART_READY`. Optional whiskey and
+dust-puff art do not block the gate.
 
 ## Gates
 
@@ -79,8 +79,10 @@ not claimed by M6.
 - M4 Vertical Slice: **COMPLETE** (2026-08-30), commit `733fb15`
 - M5 Physical Playtest: **FIRST OBSERVATION DONE** (2026-08-30) — outcome: TUNE
 - M5A First Tuning Pass: **COMPLETE** (2026-08-30) — awaiting a second playtest
-- M6 Art Direction Lock: **COMPLETE** (2026-08-30) — Pack 1 frozen; no gameplay change
-- M6A Asset Pack 1 Production Contract: NOT STARTED
+- M6 Art Direction Lock: **COMPLETE** (2026-08-30), commit `6506698` — Pack 1 frozen; no gameplay change
+- M6A Asset Pack 1 Production Contract: **COMPLETE** (2026-08-30) — gate outcome `PASS_CONTRACT_ART_MISSING`
+- Art Gate: **ART_ASSETS_REQUIRED** — 0/33 required files present; two optional files also absent
+- M6B Asset Integration: BLOCKED ON ART GATE
 
 ## Device validation performed (2026-08-30)
 

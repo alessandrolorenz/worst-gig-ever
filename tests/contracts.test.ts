@@ -109,7 +109,10 @@ test('M1/M2: the declared state and target vocabularies are complete', () => {
 
 interface AssetManifest {
   referenceCanvas: { width: number; height: number; orientation: string };
-  assets: Record<string, { path: string; kind: string; requiredForMvp: boolean }>;
+  assets: Record<
+    string,
+    { path?: string; aliasOf?: string; kind: string; requiredForMvp: boolean }
+  >;
   audio: Record<string, { path?: string; sourceMidi?: string; runtime?: string; requiredForMvp: boolean }>;
 }
 
@@ -125,7 +128,7 @@ test('M3: the asset manifest declares a landscape reference canvas', () => {
 
 test('M3: every manifest path is unique and lives under assets/', () => {
   const paths = [
-    ...Object.values(manifest.assets).map((entry) => entry.path),
+    ...Object.values(manifest.assets).flatMap((entry) => (entry.path ? [entry.path] : [])),
     ...Object.values(manifest.audio).flatMap((entry) =>
       [entry.path, entry.sourceMidi, entry.runtime].filter((p): p is string => Boolean(p)),
     ),

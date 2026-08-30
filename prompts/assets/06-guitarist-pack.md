@@ -3,11 +3,11 @@
 Read `00-style-bible.md` first.
 
 Create one original fictional guitarist reference and preserve it across:
-- `guitarist_idle.png`
-- `guitarist_loop_a.png`
-- `guitarist_loop_b.png`
-- `guitarist_hit_reaction.png`
-- `guitarist_dodge.png`
+- `assets/art/band/guitarist_idle.png`
+- `assets/art/band/guitarist_loop_a.png`
+- `assets/art/band/guitarist_loop_b.png`
+- `assets/art/band/guitarist_hit_reaction.png`
+- `assets/art/band/guitarist_dodge.png`
 
 640×900 transparent PNG target canvas.
 

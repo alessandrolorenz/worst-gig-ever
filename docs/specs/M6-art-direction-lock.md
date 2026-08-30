@@ -88,8 +88,7 @@ Vocalist:
 - `assets/art/band/vocalist_hit_reaction.png`
 - `assets/art/band/vocalist_dodge.png`
 
-Vocalist files are 640×900 transparent unless a wider reaction canvas is
-justified while preserving the same ground anchor.
+Vocalist files are exactly 640×900 transparent with the same ground anchor.
 
 Bassist:
 - `assets/art/band/bassist_idle.png`

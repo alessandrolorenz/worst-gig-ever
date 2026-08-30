@@ -3,14 +3,14 @@
 Read `00-style-bible.md` first.
 
 Establish one original fictional rock vocalist reference, then derive the exact same character into:
-- `vocalist_idle.png`
-- `vocalist_loop_a.png`
-- `vocalist_loop_b.png`
-- `vocalist_blocking.png`
-- `vocalist_hit_reaction.png`
-- `vocalist_dodge.png`
+- `assets/art/band/vocalist_idle.png`
+- `assets/art/band/vocalist_loop_a.png`
+- `assets/art/band/vocalist_loop_b.png`
+- `assets/art/band/vocalist_blocking.png`
+- `assets/art/band/vocalist_hit_reaction.png`
+- `assets/art/band/vocalist_dodge.png`
 
-Target canvas ~640×900 transparent; wider reaction canvas only if necessary while preserving anchor.
+Every output is exactly 640×900 transparent PNG with the same feet/ground anchor.
 
 Ambient cycle: idle neutral performance; loop A small head/shoulder/arm movement; loop B another small rhythmic movement; no large displacement.
 
