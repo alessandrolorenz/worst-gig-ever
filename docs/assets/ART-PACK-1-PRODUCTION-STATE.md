@@ -9,7 +9,7 @@ Completed baseline before art production: `90cf9d7b29bb895d7283d017352424426e000
 - M5A is complete at `4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3`; do not reimplement it.
 - M6 is complete at `6506698fd6d399c97d2960332996f98d78c63765`.
 - M6A is complete at `90cf9d7b29bb895d7283d017352424426e000a4c`.
-- Pack 1 required assets: 18 present, 15 missing, 0 invalid.
+- Pack 1 required assets: 23 present, 10 missing, 0 invalid.
 - Optional assets missing: 2 (`whiskeyBottle`, `dustPuff`); optional files do not block the gate.
 - Current validator result: `PASS_CONTRACT_ART_MISSING` / `ART_ASSETS_MISSING`.
 - M6B has not started. The running game still uses graybox rendering until M6B integrates the PNG files.
@@ -52,6 +52,11 @@ These decisions are also recorded in the M3/M6 specs and Pack 1 prompt files.
 | `assets/art/band/bassist_loop_b.png` | `exec-a0498f7c-f20a-4d0f-978e-b7674b12b206.png` | 640x900 RGBA | `49e23e12f2acb525e7ff5a5c8a30d6721e45a83b25a4683f9256a1b1f8a1aca0` |
 | `assets/art/band/bassist_hit_reaction.png` | `exec-40afdd26-2f58-4c21-8610-94e0ca2e6bfb.png` | 640x900 RGBA | `e2dedbd9333b841b065a686d5736adf7f08337d4c49e20da3fe2980cff8a21ae` |
 | `assets/art/band/bassist_dodge.png` | `exec-4f35519f-1ccf-45fa-b688-2f2efd3ea2f6.png` | 640x900 RGBA | `59992720815e288cbe8375c1de25ecf5654ab65e14517becc8ccbf776841289b` |
+| `assets/art/band/guitarist_idle.png` | `exec-49516bc7-4b34-4c72-ae42-b93b181912f4.png` | 640x900 RGBA | `b344f6c033f1c2a431586f19a60f12a93c21d936a0165fa48aefffa1ff5c47d7` |
+| `assets/art/band/guitarist_loop_a.png` | `exec-b51f9d95-8a44-459b-883d-c06a3748e682.png` | 640x900 RGBA | `fabc96444d34f6f5e63889f67f343dfc532ece8448603c40fa922b29057d2cfc` |
+| `assets/art/band/guitarist_loop_b.png` | `exec-a4f22a33-9275-48c7-8d22-cd02126faccc.png` | 640x900 RGBA | `9469ae4b836036db18e0dc6424bde0a1b8bbafa232d34c0add129b694c6d4f86` |
+| `assets/art/band/guitarist_hit_reaction.png` | `exec-6fb982b7-0356-4aa5-b953-04abd77a706c.png` | 640x900 RGBA | `f2cd839734d24a03e9ab968e056ebe7a1bbbf8b2f625250416487cbf3eaa0477` |
+| `assets/art/band/guitarist_dodge.png` | `exec-c2c69de6-94d5-44c7-963e-36ea6d4d0dfd.png` | 640x900 RGBA | `5b9430a04bb43bb4a9c09c63adcf79523c5fcbc439d6c7e088f968dabb8f8933` |
 
 Generator outputs live under
 `/Users/alessandrolorenz/.codex/generated_images/01a05487-7d2d-71a2-b39d-5ec1bf3a8134/`.
@@ -68,9 +73,8 @@ The production copies in `assets/art/` are the authoritative versions.
 
 ## Missing required assets and production order
 
-1. Guitarist: `guitarist_idle`, `guitarist_loop_a`, `guitarist_loop_b`, `guitarist_hit_reaction`, `guitarist_dodge`.
-2. Props: `beer_bottle`, `beer_mug`, `drumstick`.
-3. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
+1. Props: `beer_bottle`, `beer_mug`, `drumstick`.
+2. Effects: `hit_burst`, `glass_shard_01` through `glass_shard_06`.
 
 The complete dimensions, alpha requirements, and matching prompt paths are
 authoritative in `assets/manifest/asset-manifest.json` and are printed by
