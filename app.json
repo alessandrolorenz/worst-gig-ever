@@ -1,9 +1,9 @@
 {
   "expo": {
-    "name": "react-native-game-engine-expo-typescript-template",
-    "slug": "react-native-game-engine-expo-typescript-template",
+    "name": "Worst Band Ever",
+    "slug": "worst-band-ever",
     "version": "1.0.1",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -19,18 +19,21 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.nightness.reactnativegameengineexpotypescripttemplate"
+      "bundleIdentifier": "com.worstbandever.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.nightness.reactnativegameengineexpotypescripttemplate"
+      "package": "com.worstbandever.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "jsEngine": "jsc"
+    "jsEngine": "jsc",
+    "plugins": [
+      "expo-audio"
+    ]
   }
 }

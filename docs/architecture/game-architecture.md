@@ -64,6 +64,24 @@ Responds to game events and manages lifecycle.
 
 Maps game state to visual components/assets. Rendering must not own score or timer rules.
 
+## Planned module homes
+
+Established at the M0–M2 bootstrap; the behavior in each system is written during M4.
+
+| Layer | Location | State at bootstrap |
+|---|---|---|
+| Level schedule | `game/levels/` | `level01.ts` present (data) |
+| Tuning data, hitboxes | `game/config/` | `targets.ts`, `scoring.ts` present (data) |
+| Round state vocabulary | `game/state/` | `gameState.ts` present (types) |
+| Clock, spawn, approach, hit, score, integrity, special event | `game/systems/` | template `GameLoop.ts` only — replaced in M4 |
+| Entity view models | `game/entities/` | template Balloon/Wall — replaced in M4 |
+| Renderer and asset registry | `game/rendering/` | empty |
+| Audio service | `game/audio/` | empty; `expo-audio` installed, unused |
+| Shared helpers | `game/utils/` | empty |
+| Contract tests | `tests/` | `contracts.test.ts` |
+
+Systems consume data from `config/`, `levels/`, and `state/` and must not import concrete image files. Nothing under `config/`, `levels/`, or `state/` may import React or React Native, so that all of it stays testable outside Metro.
+
 ## Event examples
 
 ```text

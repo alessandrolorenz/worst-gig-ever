@@ -8,14 +8,34 @@ module.exports = {
     "plugin:@typescript-eslint/recommended",
     "plugin:react/recommended",
   ],
+  settings: {
+    react: {
+      version: "detect",
+    },
+  },
   overrides: [
     {
+      // Node-executed tooling and config files.
       env: {
         node: true,
       },
-      files: [".eslintrc.{js,cjs}"],
+      files: [
+        ".eslintrc.{js,cjs}",
+        "*.config.js",
+        "tests/**/*.ts",
+      ],
       parserOptions: {
         sourceType: "script",
+      },
+      rules: {
+        "@typescript-eslint/no-var-requires": "off",
+      },
+    },
+    {
+      // node:test files use ESM syntax.
+      files: ["tests/**/*.ts", "**/*.test.ts"],
+      parserOptions: {
+        sourceType: "module",
       },
     },
   ],
@@ -24,7 +44,9 @@ module.exports = {
     ecmaVersion: "latest",
     sourceType: "module",
   },
-  plugins: ["@typescript-eslint", "react"],
-  rules: {},
-  ignorePatterns: ["*.d.ts"],
+  rules: {
+    // Props are validated by TypeScript in this project.
+    "react/prop-types": "off",
+  },
+  ignorePatterns: ["*.d.ts", "node_modules/", "dist/", "web-build/", ".expo/"],
 };

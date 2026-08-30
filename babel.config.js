@@ -13,7 +13,7 @@ module.exports = function (api) {
 						"@game": "./game",
 						'@systems': './game/systems',
 						'@svg': './assets/SVG',
-						'@types': './game',
+						'@types': './game/types',
 					},
 				},
 			],
