@@ -9,6 +9,12 @@ The player is seated behind a drum kit during a terrible, chaotic rock show.
 Immediate read:
 > I am the drummer. The gig is out of control. Things are being thrown at us. I have to survive the show.
 
+Orientation invariant: the camera is the drummer's eyes at the rear of the
+stage. The audience faces the camera/stage, so faces and front torsos are
+visible. Ambient performers stand between drummer and crowd and are read
+mostly from the back or three-quarter back; the vocalist turns toward the
+drummer during the blocking event.
+
 ## Visual tone
 - simple cartoon/vector-like clip art;
 - readable rather than detailed;

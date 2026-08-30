@@ -12,6 +12,10 @@ vocabulary.
 
 Create a simple, funny, readable 2D cartoon game with a pseudo-3D drummer point of view.
 
+The camera is behind the kit looking outward. Crowd members face the
+drummer/stage/camera; ambient performers face away toward the audience and are
+seen mainly from behind or three-quarter back.
+
 The desired visual language is **vector-like cartoon clip art**, not realism.
 
 ## Master composition

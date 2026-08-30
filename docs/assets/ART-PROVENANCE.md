@@ -1,10 +1,19 @@
 # Art Provenance
 
-No production visual assets exist yet. Add one completed row for every asset
-before it is eligible for M6B integration.
+Production visual assets are original images created for this project with the
+OpenAI built-in image generator. Every selected image is recorded here before
+it is eligible for M6B integration.
 
 | Asset key | Local path | Source type | Tool/provider | Prompt file | Reference used | Generated/created date | Manual edits | Rights/licensing note |
 |---|---|---|---|---|---|---|---|---|
+| `stageBgBase` | `assets/art/backgrounds/stage_bg_base.png` | generated/original | OpenAI built-in image generation | `prompts/assets/01-stage-environment.md` | Owner direction: drummer POV from rear of stage, looking toward crowd | 2026-08-30 | Resized with `sips` to 1920x1080 | Original/generated for this project; no real likeness, logo, or brand |
+| `stageLightsOverlay` | `assets/art/backgrounds/stage_lights_overlay.png` | generated/original | OpenAI built-in image generation | `prompts/assets/01-stage-environment.md` | `stageBgBase` composition and palette | 2026-08-30 | Resized with `sips` to 1920x1080 | Original/generated for this project; no real likeness, logo, or brand |
+| `crowdBack` | `assets/art/crowd/crowd_back.png` | generated/original | OpenAI built-in image generation | `prompts/assets/02-crowd-3frame.md` | Owner direction: crowd faces drummer/camera and is comically furious | 2026-08-30 | Resized with `sips` to 1920x520 | Original/generated for this project; no real likeness, logo, or brand |
+| `crowdFront01` | `assets/art/crowd/crowd_front_01.png` | generated/original | OpenAI built-in image generation | `prompts/assets/02-crowd-3frame.md` | `crowdBack` cast archetypes, palette, POV, and owner throwing-direction notes | 2026-08-30 | Resized with `sips` to 1920x420 | Original/generated for this project; no real likeness, logo, or brand |
+| `crowdFront02` | `assets/art/crowd/crowd_front_02.png` | generated/original | OpenAI built-in image generation | `prompts/assets/02-crowd-3frame.md` | `crowdBack` cast archetypes, palette, POV, and owner throwing-direction notes | 2026-08-30 | Resized with `sips` to 1920x420 | Original/generated for this project; no real likeness, logo, or brand |
+| `crowdFront03` | `assets/art/crowd/crowd_front_03.png` | generated/original | OpenAI built-in image generation | `prompts/assets/02-crowd-3frame.md` | `crowdBack` cast archetypes, palette, POV, and owner throwing-direction notes | 2026-08-30 | Resized with `sips` to 1920x420 | Original/generated for this project; no real likeness, logo, or brand |
+| `drumKitPov` | `assets/art/drums/drumkit_pov.png` | generated/original | OpenAI built-in image generation | `prompts/assets/03-drum-kit.md` | Owner direction: kit seen from the drummer's eyes | 2026-08-30 | Resized with `sips` to 1920x700 | Original/generated for this project; no real likeness, logo, or brand |
+| `vocalistIdle` | `assets/art/band/vocalist_idle.png` | generated/original | OpenAI built-in image generation | `prompts/assets/04-vocalist-pack.md` | Canonical vocalist: teal messy shaved-side hair, mustard ripped sleeveless vest, magenta shirt, black skinny jeans, white high-tops; three-quarter back, tense toward crowd | 2026-08-30 | Resized with `sips` to 640x900 | Original/generated for this project; fictional character, generic microphone, no real likeness, logo, or brand |
 
 Rules:
 - Do not leave provenance blank for a production asset.
