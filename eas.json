@@ -34,6 +34,14 @@
         "resourceClass": "m-medium"
       }
     },
+    "preview:device": {
+      "channel": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk",
+        "image": "latest"
+      }
+    },
     "production": {
       "channel": "production",
       "android": {
