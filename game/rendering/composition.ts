@@ -40,11 +40,17 @@ export function absolute(rect: Rect) {
   } as const;
 }
 
-/** Rear crowd. Authored at canvas width, so it is placed at its native size. */
-export const CROWD_BACK_RECT: Rect = { x: 0, y: 300, width: 1920, height: 520 };
-
-/** Front crowd, the three-frame loop. Also authored at canvas width. */
-export const CROWD_FRONT_RECT: Rect = { x: 0, y: 430, width: 1920, height: 420 };
+/**
+ * Crowd layers, back and front, both authored at canvas width.
+ *
+ * Their vertical placement is the depth order: whoever is nearer stands lower
+ * on screen. Placed flush, the front row's feet landed *above* the rear row's,
+ * so the near crowd read as standing on the far crowd's heads. The venue floor
+ * ends at the stage lip around y=828 in the background art, so both rows stay
+ * above it — the crowd is beyond the stage, the band is on it.
+ */
+export const CROWD_BACK_RECT: Rect = { x: 0, y: 282, width: 1920, height: 520 };
+export const CROWD_FRONT_RECT: Rect = { x: 0, y: 440, width: 1920, height: 420 };
 
 /**
  * How far the kit is dropped below a bottom-anchored placement, in canvas px.
@@ -133,7 +139,15 @@ export function targetVisibleReach(kind: TargetKind, scale: number): number {
  * stage (M6, "the same ground anchor").
  */
 export const PERFORMER_FRAME = { width: 370, height: 520 } as const;
-export const PERFORMER_BASELINE_Y = 800;
+
+/**
+ * The stage floor the band stands on.
+ *
+ * Below both crowd rows, because the band is nearer than the audience, and
+ * below the stage lip in the background art so they are standing on the boards
+ * rather than in the pit. Their feet meet the drum kit, which is nearer still.
+ */
+export const PERFORMER_BASELINE_Y = 862;
 
 /**
  * The frame a performer's art is drawn into. Horizontal position comes from

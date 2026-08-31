@@ -68,17 +68,19 @@ test('M1: target definitions match the specified point values and miss cost', ()
   for (const kind of TARGET_KINDS) {
     assert.equal(TARGET_DEFINITIONS[kind].integrityCostOnMiss, 1);
     assert.ok(TARGET_DEFINITIONS[kind].hitRadiusAtDangerLine > 0);
-    assert.ok(TARGET_DEFINITIONS[kind].approachDurationMs > 0);
+    const approach = TARGET_DEFINITIONS[kind].approachMs;
+    assert.ok(approach.minMs > 0);
+    assert.ok(approach.maxMs > approach.minMs, `${kind} should throw at a range of speeds`);
   }
   // The mug is the wider, slower target (M1, Target types).
   assert.ok(
     TARGET_DEFINITIONS.beerMug.hitRadiusAtDangerLine >
       TARGET_DEFINITIONS.beerBottle.hitRadiusAtDangerLine,
   );
-  assert.ok(
-    TARGET_DEFINITIONS.beerMug.approachDurationMs >
-      TARGET_DEFINITIONS.beerBottle.approachDurationMs,
-  );
+  // Slower at both ends of the range, so the mug is never the faster kind on
+  // average however the draw falls.
+  assert.ok(TARGET_DEFINITIONS.beerMug.approachMs.minMs > TARGET_DEFINITIONS.beerBottle.approachMs.minMs);
+  assert.ok(TARGET_DEFINITIONS.beerMug.approachMs.maxMs > TARGET_DEFINITIONS.beerBottle.approachMs.maxMs);
 });
 
 test('M1: the combo table is ordered and matches the specified multipliers', () => {

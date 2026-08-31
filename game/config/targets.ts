@@ -28,6 +28,20 @@ export interface ArcDefinition {
   readonly maxSpinTurns: number;
 }
 
+/**
+ * How long a throw takes to cross the room, as a range (2026-08-31 tuning).
+ *
+ * A fixed duration per kind made every bottle of a kind arrive at exactly the
+ * same speed, which the player learns in a few throws. Drawing the duration
+ * per target means some come in noticeably harder than others and the read has
+ * to be made each time. The draw is from the round's seeded generator, so a
+ * seed still replays a round exactly (AGENTS.md rule 6).
+ */
+export interface ApproachWindow {
+  readonly minMs: number;
+  readonly maxMs: number;
+}
+
 export interface TargetDefinition {
   /** Points awarded before the combo multiplier is applied. */
   readonly basePoints: number;
@@ -39,7 +53,7 @@ export interface TargetDefinition {
    */
   readonly hitRadiusAtDangerLine: number;
   /** Spawn-to-danger-line travel time. Lower means a faster, harder target. */
-  readonly approachDurationMs: number;
+  readonly approachMs: ApproachWindow;
   readonly arc: ArcDefinition;
 }
 
@@ -48,7 +62,7 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
     basePoints: 100,
     integrityCostOnMiss: 1,
     hitRadiusAtDangerLine: 90,
-    approachDurationMs: 2200,
+    approachMs: { minMs: 1600, maxMs: 2150 },
     // Light and end-over-end: a thrown bottle spins hard and wanders.
     arc: { minHeightPx: 170, maxHeightPx: 320, maxDriftPx: 95, maxSpinTurns: 2.4 },
   },
@@ -56,7 +70,7 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
     basePoints: 75,
     integrityCostOnMiss: 1,
     hitRadiusAtDangerLine: 120,
-    approachDurationMs: 2600,
+    approachMs: { minMs: 1950, maxMs: 2550 },
     // Heavy: a flatter lob with a lazier tumble.
     arc: { minHeightPx: 120, maxHeightPx: 230, maxDriftPx: 60, maxSpinTurns: 1.1 },
   },

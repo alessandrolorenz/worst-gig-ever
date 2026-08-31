@@ -99,6 +99,28 @@ test('the drum kit spans the canvas at the size the art was authored at', () => 
   assert.equal(DRUM_KIT_RECT.height, 700);
 });
 
+test('ground lines run in depth order: band nearest, then front crowd, then rear', () => {
+  // The defect this guards: placed flush, the band's feet sat *above* both
+  // crowd rows and the front row's above the rear row's, so the nearest
+  // figures read as standing on the heads of the ones behind them. Whoever is
+  // nearer stands lower on screen.
+  const bandFloor = PERFORMER_BASELINE_Y;
+  const frontFloor = CROWD_FRONT_RECT.y + CROWD_FRONT_RECT.height;
+  const backFloor = CROWD_BACK_RECT.y + CROWD_BACK_RECT.height;
+  assert.ok(bandFloor > frontFloor, `band floor ${bandFloor} is not below the front crowd`);
+  assert.ok(frontFloor > backFloor, `front crowd floor ${frontFloor} is not below the rear crowd`);
+});
+
+test('the band stands on the stage and the crowd stays beyond its lip', () => {
+  // The wooden stage in `stage_bg_base.png` starts around y=828.
+  const stageLipY = 828;
+  assert.ok(PERFORMER_BASELINE_Y > stageLipY, 'the band is standing in the pit');
+  assert.ok(
+    CROWD_BACK_RECT.y + CROWD_BACK_RECT.height < stageLipY,
+    'the rear crowd has climbed onto the stage',
+  );
+});
+
 test('the crowd layers span the canvas and stay behind the drummer', () => {
   for (const rect of [CROWD_BACK_RECT, CROWD_FRONT_RECT]) {
     assert.equal(rect.x, 0);

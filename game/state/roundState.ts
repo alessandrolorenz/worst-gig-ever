@@ -187,7 +187,11 @@ function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundE
     id: state.nextTargetId++,
     kind,
     spawnAtMs: atMs,
-    durationMs: TARGET_DEFINITIONS[kind].approachDurationMs,
+    durationMs: between(
+      state.rng,
+      TARGET_DEFINITIONS[kind].approachMs.minMs,
+      TARGET_DEFINITIONS[kind].approachMs.maxMs,
+    ),
     laneX,
     trajectory: authorTrajectory(state.rng, kind, laneX),
     status: 'active',

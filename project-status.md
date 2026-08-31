@@ -214,6 +214,27 @@ the drums, and high enough to be crossed while the object is still in flight —
 `y` climbs steeply at the end of an arc, so a line flush with the drums is only
 reached in the last one percent of the throw and the swap never reads.
 
+## Second tweak pass (2026-08-31)
+
+| Change | Detail | Where |
+|---|---|---|
+| Throws are faster and varied | `approachDurationMs` became a seeded range per target instead of one constant per kind. Bottle 1600–2150 ms (was 2200 fixed), mug 1950–2550 ms (was 2600). Measured over a full round: bottle averages 1863 ms, mug 2295 ms | `approachMs` in `game/config/targets.ts` |
+| Depth order of ground lines | Band 862, front crowd 860, rear crowd 802. They ran the other way — the band's feet sat above both crowd rows and the front row's above the rear row's, so the nearest figures read as standing on the heads of the ones behind them | `PERFORMER_BASELINE_Y`, `CROWD_*_RECT` |
+| The band stands on the stage | The wooden stage in the background art starts at y≈828; the band's floor line was at 800, which put them in the pit with the audience | `PERFORMER_BASELINE_Y` |
+
+The speed change is the first deliberate difficulty increase since M5A and is a
+tuning value, not a rule: M1 specifies only "standard speed" for the bottle and
+"slightly slower" for the mug, and the mug stays slower at both ends of its
+range. The draw is from the round's seeded generator, so a seed still replays a
+round exactly (AGENTS.md rule 6).
+
+`tests/roundState.test.ts` "gameplay speed does not depend on frame rate" was
+rewritten. It had been comparing the live target list at a fixed instant, which
+only matched because fixed durations happened to land on both step grids. It
+now plays the round perfectly so the clock never stops, and compares the spawn
+stream. When a landed target is *noticed* is inherently tick-bound and capped
+by `MAX_TICK_DELTA_MS`; that is detection latency, not speed.
+
 ## Open items carried into the next playtest
 
 1. **The tuned build has not been played by a human.** M5A's three subjective success criteria are unverified.

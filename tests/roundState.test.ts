@@ -155,18 +155,36 @@ test('pause blocks scoring', () => {
 });
 
 test('gameplay speed does not depend on frame rate', () => {
-  const coarse = playing();
-  const fine = playing();
-  advance(coarse, 12_000, MAX_TICK_DELTA_MS);
-  advance(fine, 12_000, 8);
+  // Played perfectly on purpose. A ruined show stops the clock, and when the
+  // third miss is *noticed* is inherently tick-bound — a 100 ms step can spot
+  // it up to 100 ms after an 8 ms step does. That is detection latency,
+  // capped by MAX_TICK_DELTA_MS, not a difference in how fast the game runs.
+  // What must not move with the step size is the schedule itself.
+  const run = (stepMs: number) => {
+    const state = playing();
+    const events = [];
+    for (let elapsed = 0; elapsed < 12_000; elapsed += stepMs) {
+      events.push(...tickRound(state, Math.min(stepMs, 12_000 - elapsed)));
+      for (let guard = 0; guard < 8; guard += 1) {
+        const view = targetViews(state).find((v) => v.status === 'active');
+        if (!view) break;
+        resolveTap(state, { x: view.x, y: view.y });
+      }
+    }
+    return { state, events };
+  };
 
-  assert.equal(coarse.elapsedMs, fine.elapsedMs);
-  assert.equal(coarse.nextTargetId, fine.nextTargetId, 'different spawn counts');
+  const coarse = run(MAX_TICK_DELTA_MS);
+  const fine = run(8);
+
+  assert.equal(coarse.state.elapsedMs, fine.state.elapsedMs);
+  assert.equal(coarse.state.nextTargetId, fine.state.nextTargetId, 'different spawn counts');
   assert.deepEqual(
-    coarse.targets.map((t) => [t.kind, t.laneX, t.spawnAtMs]),
-    fine.targets.map((t) => [t.kind, t.laneX, t.spawnAtMs]),
-    'target schedule diverged between step sizes',
+    coarse.events.filter((event) => event.type === 'TARGET_SPAWNED'),
+    fine.events.filter((event) => event.type === 'TARGET_SPAWNED'),
+    'spawn stream diverged between step sizes',
   );
+  assert.ok(coarse.state.nextTargetId > 5, 'expected a useful number of throws');
 });
 
 test('the same seed replays the same round', () => {
