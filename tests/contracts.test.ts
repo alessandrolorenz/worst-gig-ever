@@ -15,7 +15,7 @@ import { dirname, join, resolve } from 'node:path';
 
 import { level01 } from '../game/levels/level01.ts';
 import { COMBO_TIERS, SCORING } from '../game/config/scoring.ts';
-import { HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../game/config/targets.ts';
+import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../game/config/targets.ts';
 import {
   PERFORMER_ANCHORS,
   REFERENCE_CANVAS,
@@ -81,6 +81,39 @@ test('M1: target definitions match the specified point values and miss cost', ()
   // average however the draw falls.
   assert.ok(TARGET_DEFINITIONS.beerMug.approachMs.minMs > TARGET_DEFINITIONS.beerBottle.approachMs.minMs);
   assert.ok(TARGET_DEFINITIONS.beerMug.approachMs.maxMs > TARGET_DEFINITIONS.beerBottle.approachMs.maxMs);
+});
+
+test('2026-08-31 tuning: every kind has a separate, distinctly faster window', () => {
+  assert.ok(
+    FASTBALL_CHANCE > 0 && FASTBALL_CHANCE < 1,
+    'a fastball must be possible, and must not be the normal case',
+  );
+  for (const kind of TARGET_KINDS) {
+    const { approachMs, fastApproachMs } = TARGET_DEFINITIONS[kind];
+    assert.ok(fastApproachMs.minMs > 0);
+    assert.ok(fastApproachMs.maxMs > fastApproachMs.minMs, `${kind} fastballs never vary`);
+    // Separated rather than overlapping: a fastball has to read as a different
+    // throw, not as an ordinary one arriving slightly early.
+    assert.ok(
+      fastApproachMs.maxMs < approachMs.minMs,
+      `${kind}'s fast window overlaps its normal one`,
+    );
+  }
+  // The mug stays the slower kind in the fast window too, as it is in the
+  // normal one (M1, Target types).
+  assert.ok(
+    TARGET_DEFINITIONS.beerMug.fastApproachMs.minMs >
+      TARGET_DEFINITIONS.beerBottle.fastApproachMs.minMs,
+  );
+  assert.ok(
+    TARGET_DEFINITIONS.beerMug.fastApproachMs.maxMs >
+      TARGET_DEFINITIONS.beerBottle.fastApproachMs.maxMs,
+  );
+  // Harder, not impossible. The whole flight is the player's reaction window,
+  // and a throw that crosses the room in under a second is not a difficulty
+  // setting, it is a coin toss.
+  const fastest = Math.min(...TARGET_KINDS.map((k) => TARGET_DEFINITIONS[k].fastApproachMs.minMs));
+  assert.ok(fastest >= 1000, `the hardest throw crosses in ${fastest}ms, inside human reaction`);
 });
 
 test('M1: the combo table is ordered and matches the specified multipliers', () => {

@@ -45,12 +45,17 @@ export function absolute(rect: Rect) {
  *
  * Their vertical placement is the depth order: whoever is nearer stands lower
  * on screen. Placed flush, the front row's feet landed *above* the rear row's,
- * so the near crowd read as standing on the far crowd's heads. The venue floor
- * ends at the stage lip around y=828 in the background art, so both rows stay
- * above it — the crowd is beyond the stage, the band is on it.
+ * so the near crowd read as standing on the far crowd's heads. Both rows start
+ * above the stage lip around y=828 in the background art — the crowd is beyond
+ * the stage, the band is on it.
+ *
+ * The boxes are larger than the drawn crowds: the bitmaps carry transparent
+ * padding, so these edges were tuned by eye on device and the front row's
+ * lower edge in particular runs behind the band and the foreground kit rather
+ * than marking a ground line.
  */
-export const CROWD_BACK_RECT: Rect = { x: 0, y: 282, width: 1920, height: 520 };
-export const CROWD_FRONT_RECT: Rect = { x: 0, y: 440, width: 1920, height: 420 };
+export const CROWD_BACK_RECT: Rect = { x: 0, y: 440, width: 1920, height: 420 };
+export const CROWD_FRONT_RECT: Rect = { x: 0, y: 482, width: 1920, height: 520 };
 
 /**
  * How far the kit is dropped below a bottom-anchored placement, in canvas px.
@@ -87,12 +92,19 @@ export const DRUM_KIT_RECT: Rect = {
  * `tests/composition.test.ts` holds them to it.
  *
  * The mug is drawn larger than the bottle because the domain already says it
- * is a bigger target (a 120 px tap radius against the bottle's 90). Until now
+ * is a bigger target (a 120 px tap radius against the bottle's 104). Until now
  * the art said the opposite.
+ *
+ * Enlarged again on 2026-08-31 so a target reads at the shorter approach
+ * times: bottle +19%, mug +29%. The mug had that much slack against its own
+ * tap circle; the bottle did not, and is the reason
+ * `beerBottle.hitRadiusAtDangerLine` moved with it. A bottle is a tall, thin,
+ * hard-spinning object, so its half-diagonal — the ceiling here — is nearly
+ * its half-height, and it runs out of room long before the squat mug does.
  */
 export const TARGET_DRAW_SIZE: Readonly<Record<TargetKind, { width: number; height: number }>> = {
-  beerBottle: { width: 108, height: 220 },
-  beerMug: { width: 186, height: 180 },
+  beerBottle: { width: 128, height: 260 },
+  beerMug: { width: 240, height: 232 },
 };
 
 /** Pack 1 prop frames, and the opaque artwork inside them, in source px. */
@@ -143,9 +155,9 @@ export const PERFORMER_FRAME = { width: 370, height: 520 } as const;
 /**
  * The stage floor the band stands on.
  *
- * Below both crowd rows, because the band is nearer than the audience, and
- * below the stage lip in the background art so they are standing on the boards
- * rather than in the pit. Their feet meet the drum kit, which is nearer still.
+ * Below the rear crowd's ground line, because the band is nearer than the
+ * audience, and below the stage lip in the background art so they are standing
+ * on the boards rather than in the pit. Their feet meet the drum kit, which is nearer still.
  */
 export const PERFORMER_BASELINE_Y = 862;
 

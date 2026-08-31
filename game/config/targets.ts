@@ -42,6 +42,22 @@ export interface ApproachWindow {
   readonly maxMs: number;
 }
 
+/**
+ * How often a throw is drawn from `fastApproachMs` instead of `approachMs`
+ * (2026-08-31 tuning, second speed pass).
+ *
+ * Widening one window would have made every throw a little faster and none of
+ * them alarming: a uniform draw spends most of its time near the middle, so
+ * the tail a player has to fear is rare enough to be noise. Two separated
+ * windows instead give a readable baseline and an occasional throw that is
+ * plainly harder — the fast window does not overlap the normal one, so a
+ * fastball is a different object to react to, not the same one slightly early.
+ *
+ * One roll per spawn, from the round's seeded generator, so the fastballs fall
+ * in the same places on every replay of a seed.
+ */
+export const FASTBALL_CHANCE = 0.2;
+
 export interface TargetDefinition {
   /** Points awarded before the combo multiplier is applied. */
   readonly basePoints: number;
@@ -54,6 +70,8 @@ export interface TargetDefinition {
   readonly hitRadiusAtDangerLine: number;
   /** Spawn-to-danger-line travel time. Lower means a faster, harder target. */
   readonly approachMs: ApproachWindow;
+  /** The window used instead, `FASTBALL_CHANCE` of the time. Strictly faster. */
+  readonly fastApproachMs: ApproachWindow;
   readonly arc: ArcDefinition;
 }
 
@@ -61,8 +79,13 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
   beerBottle: {
     basePoints: 100,
     integrityCostOnMiss: 1,
-    hitRadiusAtDangerLine: 90,
-    approachMs: { minMs: 1600, maxMs: 2150 },
+    // Raised from 90 with the bottle's drawn size (2026-08-31): the artwork is
+    // held inside this circle by `tests/composition.test.ts`, so a bottle big
+    // enough to read at speed does not fit a 90 px one. The dial is here, in
+    // config, and moved on purpose — art still does not define it (rule 17).
+    hitRadiusAtDangerLine: 104,
+    approachMs: { minMs: 1450, maxMs: 1950 },
+    fastApproachMs: { minMs: 1050, maxMs: 1250 },
     // Light and end-over-end: a thrown bottle spins hard and wanders.
     arc: { minHeightPx: 170, maxHeightPx: 320, maxDriftPx: 95, maxSpinTurns: 2.4 },
   },
@@ -70,7 +93,8 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
     basePoints: 75,
     integrityCostOnMiss: 1,
     hitRadiusAtDangerLine: 120,
-    approachMs: { minMs: 1950, maxMs: 2550 },
+    approachMs: { minMs: 1800, maxMs: 2350 },
+    fastApproachMs: { minMs: 1350, maxMs: 1550 },
     // Heavy: a flatter lob with a lazier tumble.
     arc: { minHeightPx: 120, maxHeightPx: 230, maxDriftPx: 60, maxSpinTurns: 1.1 },
   },

@@ -78,7 +78,7 @@ Measured 2026-08-30 at commit `fb2170978eae4b3bb59e0232e7cc421741c78b32`.
 | `npm test` | `node --test` (native TypeScript type stripping) |
 | `npm run verify` | all three, in order |
 
-Last run 2026-08-31 (post-playtest tweaks): type-check clean, lint clean, 141/141 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
+Last run 2026-08-31 (third tweak pass): type-check clean, lint clean, 145/145 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
 
 ## Current scope
 
@@ -234,6 +234,45 @@ only matched because fixed durations happened to land on both step grids. It
 now plays the round perfectly so the clock never stops, and compares the spawn
 stream. When a landed target is *noticed* is inherently tick-bound and capped
 by `MAX_TICK_DELTA_MS`; that is detection latency, not speed.
+
+## Third tweak pass (2026-08-31)
+
+Owner asked for bigger, more visible projectiles and faster throws — "some
+really fast" — harder without being impossible.
+
+| Change | Detail | Where |
+|---|---|---|
+| Targets drawn bigger | Bottle +19% (108x220 to 128x260), mug +29% (186x180 to 240x232). Visible artwork at full approach: bottle 55x247, mug 186x205 | `TARGET_DRAW_SIZE` in `game/rendering/composition.ts` |
+| Bottle tap radius raised | 90 to 104 px. Forced by the enlargement, not by the art file: a bottle is tall, thin and spins hard, so its half-diagonal is nearly its half-height and it left only 5% of headroom inside a 90 px circle. The mug had 40% and did not need one | `hitRadiusAtDangerLine` in `game/config/targets.ts` |
+| Throws faster again | Bottle 1450–1950 ms (was 1600–2150), mug 1800–2350 ms (was 1950–2550) | `approachMs` |
+| Some throws much faster | A new `fastApproachMs` window, drawn instead of the normal one on a `FASTBALL_CHANCE` = 0.2 roll: bottle 1050–1250 ms, mug 1350–1550 ms | `fastApproachMs`, `FASTBALL_CHANCE` |
+
+Measured over a full 60 s round (37 spawns): the bottle averages 1618 ms
+against 1863 before, the mug 1880 ms against 2295, and 8 of 37 throws came
+from the fast window. The fastest throw a player can face is a 1050 ms bottle.
+
+The two windows are deliberately separated rather than one widened range. A
+uniform draw spends most of its time near the middle, so simply widening it
+makes every throw slightly faster and none of them alarming; a gap means a
+fastball reads as a different object to react to rather than an ordinary one
+arriving early. The roll comes from the round's seeded generator before the
+duration is drawn, and is always rolled, so the call sequence per spawn is
+fixed and a seed still replays a round exactly (AGENTS.md rule 6).
+
+**This pass moves a hitbox**, which the previous two did not. It is a config
+value in `game/config/targets.ts`, not a dimension read off the art (AGENTS.md
+rule 17), and M1 specifies only a "standard hitbox" for the bottle against a
+"wider" one for the mug — still true at 104 against 120. The direction is worth
+naming: the bottle is now easier to *land* and harder to *reach*, and the two
+have not been judged together on a device. If the next playtest finds the game
+too forgiving, this is the first value to hand back.
+
+Two tests were added: `tests/contracts.test.ts` holds the fast window separate
+from the normal one, slower for the mug in both, and no faster than 1000 ms in
+either; `tests/roundState.test.ts` plays a full round and asserts that both
+windows are actually used and that no throw lands between them. The existing
+"a target is never drawn larger than the circle that can be tapped" test is
+what caught the bottle's enlargement in the first place.
 
 ## Open items carried into the next playtest
 

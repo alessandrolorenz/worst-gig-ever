@@ -11,7 +11,7 @@
  * and VOCALIST_EVENT, which is what makes pause free of special cases.
  */
 import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
-import { HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
+import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
 import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { level01, type LevelDefinition, type SpawnPhase } from '../levels/level01.ts';
 import {
@@ -183,15 +183,16 @@ function authorTrajectory(rng: RngState, kind: TargetKind, laneX: number): Traje
 function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundEvent {
   const kind = pick(state.rng, phase.kinds);
   const laneX = STAGE.laneXs[nextInt(state.rng, STAGE.laneXs.length)];
+  // Rolled before the duration is drawn, and always rolled, so the sequence of
+  // generator calls per spawn is fixed and a seed replays a round exactly.
+  const definition = TARGET_DEFINITIONS[kind];
+  const window =
+    nextFloat(state.rng) < FASTBALL_CHANCE ? definition.fastApproachMs : definition.approachMs;
   const target: ActiveTarget = {
     id: state.nextTargetId++,
     kind,
     spawnAtMs: atMs,
-    durationMs: between(
-      state.rng,
-      TARGET_DEFINITIONS[kind].approachMs.minMs,
-      TARGET_DEFINITIONS[kind].approachMs.maxMs,
-    ),
+    durationMs: between(state.rng, window.minMs, window.maxMs),
     laneX,
     trajectory: authorTrajectory(state.rng, kind, laneX),
     status: 'active',

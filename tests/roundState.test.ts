@@ -577,6 +577,44 @@ test('a target view reports the pose its own trajectory produces', () => {
   assert.notEqual(view.rotation, 0, 'a target in flight should have tumbled by now');
 });
 
+test('a round throws from both windows, and never from between them', () => {
+  // The point of the fast window is that it is *reachable* in a real round and
+  // still the exception. A chance that never fires is a dead constant; one
+  // that fires most of the time is just a faster game with no baseline to
+  // read against.
+  const state = playing();
+  const thrown = new Map<number, { kind: 'beerBottle' | 'beerMug'; durationMs: number }>();
+  let guard = 0;
+  while (state.elapsedMs < level01.durationMs && guard < 20_000) {
+    tickRound(state, 16);
+    for (const target of state.targets) {
+      thrown.set(target.id, { kind: target.kind, durationMs: target.durationMs });
+    }
+    for (const view of targetViews(state)) {
+      if (view.status === 'active') resolveTap(state, { x: view.x, y: view.y });
+    }
+    guard += 1;
+  }
+
+  const throws = [...thrown.values()];
+  assert.ok(throws.length > 10, `only ${throws.length} throws in a full round`);
+  const isFast = ({ kind, durationMs }: { kind: 'beerBottle' | 'beerMug'; durationMs: number }) =>
+    durationMs <= TARGET_DEFINITIONS[kind].fastApproachMs.maxMs;
+
+  for (const target of throws) {
+    const { approachMs, fastApproachMs } = TARGET_DEFINITIONS[target.kind];
+    const window = isFast(target) ? fastApproachMs : approachMs;
+    assert.ok(
+      target.durationMs >= window.minMs && target.durationMs <= window.maxMs,
+      `a ${target.kind} crossed in ${target.durationMs.toFixed(0)}ms, outside both windows`,
+    );
+  }
+
+  const fastballs = throws.filter(isFast).length;
+  assert.ok(fastballs > 0, 'a full round threw no fastball at all');
+  assert.ok(fastballs < throws.length / 2, `${fastballs} of ${throws.length} throws were fastballs`);
+});
+
 test('the same seed still replays the same throws', () => {
   const a = playing();
   const b = playing();
