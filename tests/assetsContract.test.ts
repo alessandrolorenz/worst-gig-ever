@@ -131,3 +131,21 @@ test('M6A: provenance ledger is ready for production rows', () => {
   assert.match(provenance, /\| Asset key \| Local path \|/);
   assert.ok(!provenance.includes('| example |'));
 });
+
+test('M6B: every required Pack 1 file is statically registered for Metro', () => {
+  const registry = readFileSync(join(repoRoot, 'game/rendering/artAssets.ts'), 'utf8');
+  for (const [key, entry] of production.filter(([, asset]) => asset.requiredForM6B)) {
+    const runtimePath = `../../${entry.path}`;
+    assert.ok(registry.includes(runtimePath), `${key}: runtime registry is missing ${runtimePath}`);
+  }
+});
+
+test('M6B: the art renderer preserves the input boundary and hides graybox debug by default', () => {
+  const renderer = readFileSync(join(repoRoot, 'game/rendering/SceneRenderer.tsx'), 'utf8');
+  assert.match(renderer, /pointerEvents="none"/);
+  assert.match(renderer, /SHOW_GRAYBOX_DEBUG = false/);
+  assert.ok(!renderer.includes('placeholderLabel'));
+  // The tap-radius ring and the danger line are the same family of tuning aid,
+  // and neither may leak into a scene that is now carrying final art.
+  assert.match(renderer, /SHOW_GRAYBOX_DEBUG && <DangerLine \/>/);
+});

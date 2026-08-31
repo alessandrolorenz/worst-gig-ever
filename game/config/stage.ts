@@ -19,8 +19,13 @@ export const STAGE = {
   vanishingPoint: { x: 960, y: 430 },
   /** Screen line where an unhit target reaches the drummer. */
   dangerLineY: 880,
-  /** Top of the foreground drum kit block. */
-  drumkitTopY: 812,
+  /**
+   * Canvas line where the foreground drum kit's solid mass begins, measured
+   * off the Pack 1 kit art. Below it a target is nearer to the player than
+   * their own toms, so the renderer draws it in front of the kit rather than
+   * behind (M6B). Presentation only: no rule reads it.
+   */
+  drumkitNearY: 740,
   /**
    * Lane x positions at full approach. Targets diverge from the vanishing
    * point toward one of these as they come forward.
@@ -38,18 +43,15 @@ export const VOCALIST_BLOCKING_RECT = {
   height: 560,
 } as const;
 
-/** Where the vocalist stands when not interrupting. */
-export const VOCALIST_IDLE_RECT = {
-  x: 810,
-  y: 300,
-  width: 300,
-  height: 420,
-} as const;
-
 /**
  * Band-member anchors, in canvas pixels. Reaction proximity is defined here
  * rather than derived from the placeholder block sizes, so replacing the
  * graybox with M3 art cannot change who ducks (AGENTS.md rule 17).
+ *
+ * The idle vocalist has no rectangle of their own: all three performers share
+ * one frame and one floor line off these anchors (M6B,
+ * `game/rendering/composition.ts`). Only the blocking event, which is a tap
+ * region, keeps an authored rectangle.
  */
 export const PERFORMER_ANCHORS = {
   bassist: { x: 320, y: 470 },
@@ -81,10 +83,14 @@ export const THROW_ORIGIN = {
  */
 export const STAGE_MOTION = {
   bpm: 132,
-  /** Poses per ambient loop. Two is the minimum that reads as movement. */
-  loopFrames: 2,
-  /** Beats spent on a full loop, so the stage moves with the song. */
-  beatsPerLoop: 2,
+  /** Pack 1 cycles idle, loopA, and loopB as a deliberately choppy loop. */
+  loopFrames: 3,
+  /**
+   * Beats spent on a full loop, so the stage moves with the song. One beat per
+   * pose: at three frames over two beats the poses landed off the beat and
+   * held for 300 ms each, which reads as twitching rather than as playing.
+   */
+  beatsPerLoop: 3,
   /** One-shot reaction durations. */
   hitReactionMs: 420,
   dodgeMs: 520,

@@ -6,13 +6,41 @@ Worst Band Ever — working title
 
 ## Current phase
 
-**M6A asset-pack production contract complete (2026-08-30). Art gate is `ART_ASSETS_REQUIRED`.**
+**M6B asset integration complete (2026-08-30). Art gate is `PASS_ART_READY`; the automated M6B gate is green.**
 
-The first observation pass produced four actionable complaints — unreliable hits, straight-line object travel, a static band, and a stage that reads as a diagram. All four have been addressed in `docs/decisions/0007-m5a-first-tuning-pass.md`. No gameplay rule, event family, or scoring value changed.
+All 33 required Pack 1 PNGs are produced and integrated. The scene runs
+entirely on final art: background, light overlay, rear crowd, three-frame front
+crowd, three performers across five poses, projectiles, hit burst, six debris
+sprites, drum-kit foreground, and the drumstick strike. Graybox shapes and
+labels are gone.
 
-M3 has been reconciled with M6 and M5A's runtime presentation vocabulary. No
-art asset has been produced. The slice still runs on graybox shapes, and M6
-made no gameplay implementation change.
+Two verification passes were run. The first composited the layers at their
+authored rects and found three defects (ADR 0008). The second ran the actual
+build in a browser and found four more that the first could not see, because
+it drew every layer where the code *said* it went rather than where React
+Native actually put it (ADR 0009): three layers never positioned at all, a
+scene root that collapsed to zero height on web, a strobing light overlay, and
+image-source swaps that blank a frame. All are fixed.
+
+No gameplay rule, hitbox, trajectory, scoring value, or timing value changed.
+
+**Known shortfall:** the Pack 1 ambient frames are not a loop — `idle`,
+`loopA`, and `loopB` are three separate drawings of each character, differing
+by 60–87% of the drawn subject, against M6's frozen continuity rule. The scene
+holds a single ambient frame (`AMBIENT_LOOP_ART_READY = false`) until they are
+regenerated. The band is quieter than M5A intended; nothing was substituted.
+
+**Emulator smoke (2026-08-30, `Pixel_9`, `npx expo run:android`):** builds,
+installs, launches, and plays. The scene composes correctly in landscape —
+drum kit in the foreground, band readable beside the corridor, crowd behind,
+projectiles visible in the near field in front of the toms, no clipping and no
+missing-image blocks. A control run of one tap to start and no further input
+ended SHOW_RUINED with 3 misses, as the rules require.
+
+**Still not judged:** frame pacing, touch feel, audio latency, reaction
+anchoring in motion, and readability at real phone size — all of which need a
+human holding a device. The ambient loop is held, so the three-frame check does
+not apply yet.
 
 ## Product hypothesis
 
@@ -50,7 +78,7 @@ Measured 2026-08-30 at commit `fb2170978eae4b3bb59e0232e7cc421741c78b32`.
 | `npm test` | `node --test` (native TypeScript type stripping) |
 | `npm run verify` | all three, in order |
 
-Last run 2026-08-30 (post-M5A): type-check clean, lint clean, 116/116 tests passing. `npx expo export` succeeds for android and web.
+Last run 2026-08-30 (post-M6B): type-check clean, lint clean, 135/135 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
 
 ## Current scope
 
@@ -66,11 +94,22 @@ One 60-second show with:
 
 ## Immediate next action
 
-Generate the 33 required Pack 1 PNGs at the exact manifest paths using the
-matching files under `prompts/assets/`, then complete every provenance row in
-`docs/assets/ART-PROVENANCE.md`. Run `npm run validate:art -- --require-ready`;
-M6B remains blocked until it reports `PASS_ART_READY`. Optional whiskey and
-dust-puff art do not block the gate.
+**Regenerate the ambient loop art.** For each of the bassist, guitarist,
+vocalist, and front crowd, `idle`, `loopA`, and `loopB` must be one drawing in
+three slightly different poses — same outline weight, palette, proportions,
+silhouette, camera, and foot anchor, with only body/head/instrument movement
+between them. Generating each frame independently is what produced the current
+set. Then set `AMBIENT_LOOP_ART_READY = true` in
+`game/rendering/SceneRenderer.tsx`.
+
+Then run the M6B visual smoke on the Android emulator or a device: landscape
+composition, drum-kit foreground, band readable beside the projectile corridor,
+projectiles visible through the whole arc including arrival, loops that read as
+animation rather than as cuts, reaction frames anchored, no clipping. Everything
+automated in `docs/verification/M6B-gate.md` already passes, and the web build
+has been inspected running.
+
+Then continue to M7 (`prompts/08-m7-stage-chaos-interactions.md`).
 
 ## Gates
 
@@ -81,8 +120,9 @@ dust-puff art do not block the gate.
 - M5A First Tuning Pass: **COMPLETE** (2026-08-30) — awaiting a second playtest
 - M6 Art Direction Lock: **COMPLETE** (2026-08-30), commit `6506698` — Pack 1 frozen; no gameplay change
 - M6A Asset Pack 1 Production Contract: **COMPLETE** (2026-08-30) — gate outcome `PASS_CONTRACT_ART_MISSING`
-- Art Gate: **ART_ASSETS_REQUIRED** — 0/33 required files present; two optional files also absent
-- M6B Asset Integration: BLOCKED ON ART GATE
+- Art Gate: **PASS_ART_READY** — 33/33 required files present, 0 missing, 0 invalid; the two optional files are intentionally absent
+- M6B Asset Integration: **AUTOMATED GATE GREEN** (2026-08-30) — device/emulator visual smoke outstanding
+- M7 Stage Chaos Interactions: not started
 
 ## Device validation performed (2026-08-30)
 
@@ -129,13 +169,35 @@ Full reasoning in ADR 0007. In summary:
 | 4 Ambience | Two-frame band and crowd loops on a 132 bpm cadence, stage glow pulsing on the beat | `game/systems/stageMotion.ts` |
 | 4 Ambience | Fixed a pre-M5A defect: the crowd was rendered ~380 px below its authored position, hidden behind the drum kit, and had never been visible | `game/rendering/SceneRenderer.tsx` |
 
+## What M6B changed
+
+Full reasoning in ADR 0008. Presentation only — no rule, hitbox, trajectory,
+scoring value, or timing value moved.
+
+| Area | Change | Where |
+|---|---|---|
+| Assets | One static registry for all 33 required Pack 1 PNGs; Metro resolves every path at build time | `game/rendering/artAssets.ts` |
+| Scene | Every graybox block replaced by layered art: background, light overlay, rear crowd, three-frame front crowd, performers, projectiles, burst, debris, kit, strike | `game/rendering/SceneRenderer.tsx` |
+| Ambience | The ambient loop runs the locked three-frame `idle → loopA → loopB` cycle instead of two frames | `game/config/stage.ts`, `game/systems/stageMotion.ts` |
+| Depth | Targets, bursts, and debris past `STAGE.drumkitNearY` draw *in front of* the drum kit. Behind it, the kit hid 44% of a target's area on average through the last tenth of its flight | `game/rendering/composition.ts` |
+| Anchors | All three performers share one frame and one floor line off `PERFORMER_ANCHORS`; the stale `VOCALIST_IDLE_RECT` is gone. The blocking tap region is unchanged | `game/rendering/composition.ts`, `game/config/stage.ts` |
+| Debug | The tap-radius ring and the danger line are gated behind `SHOW_GRAYBOX_DEBUG`, off by default | `game/rendering/SceneRenderer.tsx` |
+| Layout | The rear crowd, front crowd, and drum kit were handed bare `x`/`y` rects as styles, which React Native ignores — all three fell into flow layout and stacked down the screen. Every rect now goes through `absolute()` | `game/rendering/composition.ts` |
+| Layout | The scene root used `flex: 1` inside the engine's non-flex web container, so it had zero height and `overflow: hidden` clipped the whole scene. It now fills its parent explicitly | `game/rendering/SceneRenderer.tsx` |
+| Flicker | `beatPulse` snapped from 0 back to 1 on every beat; on a full-canvas overlay that strobed the stage. It is now a continuous raised cosine, and the overlay swings 0.58–0.72 instead of 0.36–0.78 | `game/systems/stageMotion.ts` |
+| Flicker | Pose changes swapped an `Image`'s `source`, which blanks it while the new bitmap loads. Every frame is now mounted once and switched by opacity | `game/rendering/SceneRenderer.tsx` |
+| Flicker | The ambient loop holds one frame while the Pack 1 loop art is not a loop | `game/rendering/SceneRenderer.tsx` |
+
 ## Open items carried into the next playtest
 
 1. **The tuned build has not been played by a human.** M5A's three subjective success criteria are unverified.
 2. `crowd_applause.wav` is still the full 39 s / 6.9 MB source, and volume normalization across the five files has not been done. Both are audible in the current build and are deliberately left alone until after observation.
 3. Tuning values in `game/config/` and `game/levels/level01.ts` remain first guesses. M5A moved hitbox radius, arc shape, and stage cadence; approach duration and spawn cadence are untouched. If the game now plays too easily, `HIT_FORGIVENESS.minRadiusPx` is the first dial to turn, then `assistRadiusPx`.
-4. The hit-radius halo drawn around active targets is a graybox affordance for observing whether the widened hitbox is enough. It is not intended to survive art integration.
+4. The hit-radius halo and the danger line are tuning affordances, now behind `SHOW_GRAYBOX_DEBUG` in `game/rendering/SceneRenderer.tsx`. Turn the flag on if the next playtest needs to see what the player was aiming at.
 5. The development client is a **debug** build and `jsEngine` is still `jsc`, not Hermes. Both add overhead; do not judge frame pacing without re-checking a release build (ADR 0006).
 6. The generated manifest requests `RECORD_AUDIO`, pulled in by expo-audio's config plugin even though the game never records. Harmless for a playtest; must be removed before any store submission.
 7. `com.worstbandever.app` is a provisional application identifier (ADR 0004). Confirm before any store submission.
 8. `package-lock.json` is git-ignored by the template, so dependency resolution is not reproducible across machines — this directly caused the autolinking failure documented in ADR 0006.
+9. **The M6B scene has been inspected running in a browser, but not on a device.** Frame pacing, touch, and readability at phone size are all still unverified.
+10. **The Pack 1 ambient loop art must be regenerated** as one drawing in three poses per set. Until then `AMBIENT_LOOP_ART_READY` is `false` and the band and crowd hold a single frame. `loopA`, `loopB`, `crowd_front_02` and `crowd_front_03` are bundled but unused; they are the frames to replace.
+11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. A frame-to-frame continuity check belongs in that script and does not exist yet.

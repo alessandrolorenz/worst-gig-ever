@@ -67,14 +67,29 @@ test('a degenerate loop holds a single frame instead of dividing by zero', () =>
   assert.equal(loopFrameAt(1234, 1000, 0), 0);
 });
 
-test('the beat pulse falls from one to zero across every beat', () => {
-  assert.equal(beatPulse(0), 1);
-  assert.ok(beatPulse(beatMs() * 0.5) > 0.49 && beatPulse(beatMs() * 0.5) < 0.51);
-  assert.ok(beatPulse(beatMs() * 0.99) < 0.02);
+test('the beat pulse peaks on the beat and bottoms out between two', () => {
+  assert.ok(Math.abs(beatPulse(0) - 1) < 1e-9);
+  assert.ok(beatPulse(beatMs() * 0.5) < 0.01, 'the pulse should be dark halfway through a beat');
+  assert.ok(beatPulse(beatMs() * 0.25) > 0.49 && beatPulse(beatMs() * 0.25) < 0.51);
   assert.ok(Math.abs(beatPulse(beatMs() * 3) - 1) < 1e-9, 'the pulse must repeat every beat');
   for (const t of [0, 137, 999, 5000, 61_234]) {
     const pulse = beatPulse(t);
     assert.ok(pulse >= 0 && pulse <= 1, `pulse out of range at ${t}`);
+  }
+});
+
+test('the beat pulse never jumps, so the lights breathe instead of strobing', () => {
+  // The defect this guards: a pulse that ramped down and snapped back to 1 on
+  // every beat made a full-canvas light overlay flash rather than pulse.
+  const step = 4;
+  let previous = beatPulse(0);
+  for (let t = step; t <= beatMs() * 4; t += step) {
+    const pulse = beatPulse(t);
+    assert.ok(
+      Math.abs(pulse - previous) < 0.05,
+      `the pulse jumped ${Math.abs(pulse - previous).toFixed(3)} in ${step}ms at ${t}`,
+    );
+    previous = pulse;
   }
 });
 
@@ -101,7 +116,7 @@ test('the band does not bob in lockstep', () => {
   );
 });
 
-test('every performer visits both loop poses within a few loops', () => {
+test('every performer visits all three Pack 1 ambient poses within a few loops', () => {
   const stage = createStageMotion();
   const poses: Record<string, Set<string>> = {};
   for (const id of PERFORMER_IDS) poses[id] = new Set();
@@ -110,6 +125,7 @@ test('every performer visits both loop poses within a few loops', () => {
     for (const id of PERFORMER_IDS) poses[id].add(performerPose(stage, id));
   }
   for (const id of PERFORMER_IDS) {
+    assert.ok(poses[id].has('idle'), `${id} never played idle`);
     assert.ok(poses[id].has('loopA'), `${id} never played loopA`);
     assert.ok(poses[id].has('loopB'), `${id} never played loopB`);
   }
@@ -157,7 +173,7 @@ test('a reaction plays out and then hands back to the ambient loop', () => {
 
   advance(stage, 64);
   assert.equal(isReacting(stage, 'bassist'), false);
-  assert.ok(['loopA', 'loopB'].includes(performerPose(stage, 'bassist')));
+  assert.ok(['idle', 'loopA', 'loopB'].includes(performerPose(stage, 'bassist')));
 });
 
 test('a reaction already playing is not restarted by a second impact', () => {
@@ -205,7 +221,7 @@ test('a dodge ends even while the target is still overhead, so nobody freezes mi
 
   advance(stage, STAGE_MOTION.dodgeMs * 2 + 64, []);
   assert.equal(isReacting(stage, 'vocalist'), false);
-  assert.ok(['loopA', 'loopB'].includes(performerPose(stage, 'vocalist')));
+  assert.ok(['idle', 'loopA', 'loopB'].includes(performerPose(stage, 'vocalist')));
 });
 
 test('a hit reaction outranks a dodge while it is playing', () => {

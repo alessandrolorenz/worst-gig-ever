@@ -83,14 +83,14 @@ export function createStageMotion(): StageMotionState {
   return {
     elapsedMs: 0,
     performers: {
-      bassist: { id: 'bassist', pose: 'loopA', reactionMsLeft: 0, loopMs: LOOP_PHASE_MS.bassist },
+      bassist: { id: 'bassist', pose: 'idle', reactionMsLeft: 0, loopMs: LOOP_PHASE_MS.bassist },
       guitarist: {
         id: 'guitarist',
-        pose: 'loopA',
+        pose: 'idle',
         reactionMsLeft: 0,
         loopMs: LOOP_PHASE_MS.guitarist,
       },
-      vocalist: { id: 'vocalist', pose: 'loopA', reactionMsLeft: 0, loopMs: LOOP_PHASE_MS.vocalist },
+      vocalist: { id: 'vocalist', pose: 'idle', reactionMsLeft: 0, loopMs: LOOP_PHASE_MS.vocalist },
     },
   };
 }
@@ -114,19 +114,26 @@ export function loopFrameAt(elapsedMs: number, periodMs: number, frames: number)
 }
 
 /**
- * Beat pulse for stage lights: 1 on the beat, decaying to 0 just before the
- * next one. The only continuous value in this module — a light that stepped
- * would read as a fault rather than a pulse.
+ * Beat pulse for stage lights: 1 on the beat, 0 halfway between two, and back.
+ * The only continuous value in this module — a light that stepped would read
+ * as a fault rather than a pulse.
+ *
+ * It breathes rather than decays. The first shape here ramped from 1 down to
+ * 0 across the beat and then snapped back to 1, and that reset is a strobe:
+ * on a full-canvas light overlay it made the whole stage flash twice a second
+ * instead of pulsing. A raised cosine has no discontinuity anywhere, so the
+ * brightness meets itself at the bar line.
  */
 export function beatPulse(elapsedMs: number): number {
   const period = beatMs();
   const phase = ((elapsedMs % period) + period) % period;
-  return 1 - phase / period;
+  return (1 + Math.cos((phase / period) * 2 * Math.PI)) / 2;
 }
 
 /** The pose a performer falls back to once no reaction is playing. */
 function ambientPose(performer: PerformerState): PerformerPose {
-  return loopFrameAt(performer.loopMs, loopMs(), STAGE_MOTION.loopFrames) === 0 ? 'loopA' : 'loopB';
+  const frame = loopFrameAt(performer.loopMs, loopMs(), STAGE_MOTION.loopFrames);
+  return (['idle', 'loopA', 'loopB'] as const)[frame] ?? 'idle';
 }
 
 function startReaction(performer: PerformerState, pose: PerformerPose, durationMs: number): void {

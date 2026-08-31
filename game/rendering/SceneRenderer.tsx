@@ -1,39 +1,43 @@
 /**
- * Graybox scene renderer.
+ * Pack 1 scene renderer.
  *
- * Draws a snapshot of the round. It owns no gameplay state: score, combo,
- * integrity, the clock, and every target position are read from the domain
- * (M2, rendering boundary). Swapping these blocks for M3 art in M6 must not
- * require touching a single rule.
- *
- * Everything inside the canvas is authored in 1920x1080 reference pixels and
- * scaled once at the root, so no child needs to know the device size.
- *
- * Ambient motion (M5A, Priority 4) is read from `stageMotion` and never
- * computed here: this file picks a transform per pose, and the pose itself is
- * decided by a tested pure function. That keeps the choreography assertable
- * without a renderer and keeps this file replaceable by art.
+ * Draws a snapshot of the round without owning gameplay state. Everything is
+ * authored on the 1920x1080 reference canvas and scaled once at the root. Art
+ * bounds never become hitboxes; positions and radii come from the domain.
  */
 import React, { useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
+import { Image, View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 
+import { REFERENCE_CANVAS, STAGE, STAGE_MOTION, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import {
-  PERFORMER_ANCHORS,
-  REFERENCE_CANVAS,
-  STAGE,
-  STAGE_MOTION,
-  VOCALIST_BLOCKING_RECT,
-  VOCALIST_IDLE_RECT,
-} from '../config/stage.ts';
+  DRUMSTICK_ART,
+  GLASS_SHARD_ART,
+  HIT_BURST_ART,
+  PERFORMER_ART,
+  STAGE_ART,
+  TARGET_ART,
+  VOCALIST_BLOCKING_ART,
+} from './artAssets.ts';
+import {
+  CROWD_BACK_RECT,
+  CROWD_FRONT_RECT,
+  DRUM_KIT_RECT,
+  absolute,
+  partitionByDepth,
+  performerRect,
+} from './composition.ts';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
 import { effectProgress, type EffectsState, type TimedEffect } from '../systems/effects.ts';
-import { shardOpacity, type ShardsState } from '../systems/shards.ts';
+import { shardOpacity, type Shard, type ShardsState } from '../systems/shards.ts';
 import {
+  ONE_SHOT_POSES,
+  PERFORMER_POSES,
   beatPulse,
   loopFrameAt,
   loopMs,
   performerPose,
+  type PerformerId,
   type PerformerPose,
   type StageMotionState,
 } from '../systems/stageMotion.ts';
@@ -48,144 +52,164 @@ export interface SceneRendererProps {
   viewport: Viewport;
 }
 
-/** Where the drumstick strike appears to swing from. */
-const STICK_ORIGIN = { x: REFERENCE_CANVAS.width / 2, y: REFERENCE_CANVAS.height + 60 };
-
-const CROWD_HEADS = Array.from({ length: 26 }, (_, i) => ({
-  x: 40 + i * 74,
-  y: 470 + ((i * 37) % 26),
-  r: 26 + ((i * 13) % 10),
-  /**
-   * A fixed per-head offset. The crowd has to look like many people moving,
-   * not one object; without an offset the whole row bobs as a single bar.
-   */
-  phaseMs: (i * 137) % 900,
-}));
+/**
+ * M5A observation aids — the tap-radius ring and the danger line — kept for
+ * tuning and deliberately off in normal play, now that the art says where the
+ * kit is and how big a target reads.
+ */
+export const SHOW_GRAYBOX_DEBUG = false;
 
 /**
- * Graybox vocabulary for the five reaction poses. Deliberately crude: M5A is
- * judged on whether a reaction is *readable*, not on whether it is animated.
- * Two-frame loops and a hard pose swap are the intended fidelity.
+ * Whether the Pack 1 ambient frames actually form a loop.
+ *
+ * They do not. `idle`, `loopA`, and `loopB` are three separate drawings of
+ * each performer rather than three poses of one: proportions, line weight,
+ * palette, and foot anchor all move, and 60-87% of the drawn subject changes
+ * between frames — the crowd is the worst at 85%. M6 froze the opposite
+ * ("the same fictional person... and approximate foot anchor", "differences
+ * are subtle"), so cutting between them at tempo reads as flickering rather
+ * than as animation. No renderer trick makes three unrelated drawings a loop.
+ *
+ * Until the frames are regenerated as variations of one drawing, the scene
+ * holds the first ambient frame. The choreography itself keeps running and
+ * stays tested — only the bitmap choice is pinned — so this becomes `true`
+ * again with no other change. Reactions are unaffected: `hitReaction` and
+ * `dodge` are one-shots answering an event, and a hard change there reads as
+ * a reaction rather than as a flicker. See ADR 0009.
  */
-const POSE_TRANSFORMS: Record<PerformerPose, { lift: number; tilt: number; lean: number }> = {
-  idle: { lift: 0, tilt: 0, lean: 0 },
-  loopA: { lift: 0, tilt: -2, lean: 0 },
-  loopB: { lift: -16, tilt: 2, lean: 0 },
-  hitReaction: { lift: -34, tilt: -16, lean: 0 },
-  dodge: { lift: 22, tilt: 12, lean: -46 },
-};
+export const AMBIENT_LOOP_ART_READY = false;
+
+/** The ambient loop frame to draw, honouring the hold above. */
+function ambientFrame(frame: number): number {
+  return AMBIENT_LOOP_ART_READY ? frame : 0;
+}
+
+/** The pose to draw. One-shot reactions always play; the loop may be pinned. */
+function ambientPoseArt(pose: PerformerPose): PerformerPose {
+  if (AMBIENT_LOOP_ART_READY || ONE_SHOT_POSES.includes(pose)) return pose;
+  return 'idle';
+}
+
+const STICK_ORIGIN = { x: REFERENCE_CANVAS.width / 2, y: REFERENCE_CANVAS.height + 60 };
+
+/**
+ * How far the stage lights breathe either side of their resting brightness.
+ *
+ * Small on purpose. The overlay covers the whole canvas, so a wide swing does
+ * not read as lighting — it reads as the screen flashing, which is what the
+ * first device build of this scene actually did.
+ */
+const LIGHT_BASE_OPACITY = 0.58;
+const LIGHT_PULSE_OPACITY = 0.14;
+
+/**
+ * Every frame of a low-frame loop, mounted at once with only one visible.
+ *
+ * Swapping an `Image`'s `source` makes the platform fetch and repaint a
+ * different bitmap. At three poses a bar, across three performers and the
+ * crowd, that reads as flickering rather than as animation — the swap is a
+ * blank frame, not a pose change. Mounting every frame keeps all of them
+ * decoded and resident, so changing pose is an opacity change and nothing
+ * loads. The frame list is fixed for the life of the component, so `index`
+ * is a stable key.
+ */
+function FrameStack({
+  sources,
+  current,
+  resizeMode = 'contain',
+}: {
+  sources: readonly number[];
+  current: number;
+  resizeMode?: 'contain' | 'stretch';
+}) {
+  return (
+    <>
+      {sources.map((source, index) => (
+        <Image
+          key={index}
+          source={source}
+          style={[styles.fill, index === current ? styles.frameShown : styles.frameHidden]}
+          resizeMode={resizeMode}
+        />
+      ))}
+    </>
+  );
+}
 
 function Backdrop({ stageMotion }: { stageMotion: StageMotionState }) {
   const pulse = beatPulse(stageMotion.elapsedMs);
-  const period = loopMs();
+  const crowdFrame = loopFrameAt(stageMotion.elapsedMs, loopMs(), STAGE_MOTION.loopFrames);
 
   return (
     <>
-      <View style={[styles.fill, { backgroundColor: THEME.venueWall }]} />
-      {/* Stage lights breathe on the beat, so the room has a pulse of its own. */}
-      <View style={[styles.venueGlow, { opacity: 0.45 + pulse * 0.4 }]} />
-      <View style={styles.stageFloor} />
-      {/*
-        Head positions are canvas coordinates, so the container must not add an
-        offset of its own — it did until M5A, which pushed the whole crowd down
-        behind the opaque drum kit where none of it was ever visible.
-      */}
-      <View style={styles.crowdBand} pointerEvents="none">
-        {CROWD_HEADS.map((head) => {
-          const raised =
-            loopFrameAt(stageMotion.elapsedMs + head.phaseMs, period, STAGE_MOTION.loopFrames) > 0;
-          return (
-            <View
-              key={head.x}
-              style={{
-                position: 'absolute',
-                left: head.x - head.r,
-                top: head.y - head.r - (raised ? 14 : 0),
-                width: head.r * 2,
-                height: head.r * 2,
-                borderRadius: head.r,
-                backgroundColor: THEME.crowd,
-                borderWidth: 2,
-                borderColor: THEME.crowdHighlight,
-              }}
-            />
-          );
-        })}
+      <Image source={STAGE_ART.background} style={styles.fill} resizeMode="stretch" />
+      <Image
+        source={STAGE_ART.lights}
+        style={[styles.fill, { opacity: LIGHT_BASE_OPACITY + pulse * LIGHT_PULSE_OPACITY }]}
+        resizeMode="stretch"
+      />
+      <Image source={STAGE_ART.crowdBack} style={absolute(CROWD_BACK_RECT)} resizeMode="stretch" />
+      <View style={absolute(CROWD_FRONT_RECT)}>
+        <FrameStack
+          sources={STAGE_ART.crowdFrames}
+          current={ambientFrame(crowdFrame)}
+          resizeMode="stretch"
+        />
       </View>
     </>
   );
 }
 
-function BandMember({ x, label, pose }: { x: number; label: string; pose: PerformerPose }) {
-  const { lift, tilt, lean } = POSE_TRANSFORMS[pose];
-
+function BandMember({ id, pose }: { id: Exclude<PerformerId, 'vocalist'>; pose: PerformerPose }) {
   return (
-    <View
-      style={[
-        styles.bandMember,
-        {
-          left: x,
-          transform: [{ translateX: lean }, { translateY: lift }, { rotate: `${tilt}deg` }],
-        },
-      ]}
-    >
-      <View style={styles.bandHead} />
-      <View style={styles.bandBody} />
-      <Text style={styles.placeholderLabel}>{label}</Text>
+    <View style={absolute(performerRect(id))}>
+      <FrameStack
+        sources={POSE_FRAMES[id]}
+        current={PERFORMER_POSES.indexOf(ambientPoseArt(pose))}
+      />
     </View>
   );
 }
 
 /**
- * The vocalist is the one performer whose pose is gameplay truth rather than
- * presentation: `blocking` and `hit` come from the round domain and win over
- * anything ambient. The reaction system only supplies the idle loop, which is
- * why the two never contradict each other.
+ * Pose bitmaps in one fixed order per performer, so a `FrameStack` index means
+ * the same thing on every frame.
+ */
+const POSE_FRAMES: Record<PerformerId, readonly number[]> = {
+  bassist: PERFORMER_POSES.map((pose) => PERFORMER_ART.bassist[pose]),
+  guitarist: PERFORMER_POSES.map((pose) => PERFORMER_ART.guitarist[pose]),
+  vocalist: PERFORMER_POSES.map((pose) => PERFORMER_ART.vocalist[pose]),
+};
+
+/** The vocalist carries one extra frame the ambient loop never reaches. */
+const VOCALIST_FRAMES: readonly number[] = [...POSE_FRAMES.vocalist, VOCALIST_BLOCKING_ART];
+const VOCALIST_BLOCKING_FRAME = VOCALIST_FRAMES.length - 1;
+
+/**
+ * Round vocalist status outranks presentation-only ambient poses.
+ *
+ * While idle the vocalist shares the band's frame and floor line, so all three
+ * stand on the same stage. `blocking` is the one pose that leaves it: the
+ * singer steps into the drummer's face, and the art fills the tap region the
+ * domain already owns so the player swings at what they can see.
  */
 function Vocalist({ round, pose }: { round: RoundState; pose: PerformerPose }) {
   const status = round.vocalist.status;
-  const rect = status === 'idle' ? VOCALIST_IDLE_RECT : VOCALIST_BLOCKING_RECT;
-  const isHit = status === 'hit';
-  const ambient = status === 'idle' ? POSE_TRANSFORMS[pose] : POSE_TRANSFORMS.idle;
+  const rect = status === 'idle' ? performerRect('vocalist') : VOCALIST_BLOCKING_RECT;
+  const frame =
+    status === 'blocking'
+      ? VOCALIST_BLOCKING_FRAME
+      : PERFORMER_POSES.indexOf(status === 'hit' ? 'hitReaction' : ambientPoseArt(pose));
 
   return (
-    <View
-      style={{
-        position: 'absolute',
-        left: rect.x,
-        top: rect.y,
-        width: rect.width,
-        height: rect.height,
-        alignItems: 'center',
-        transform: [
-          { rotate: isHit ? '-14deg' : `${ambient.tilt}deg` },
-          { translateY: isHit ? -40 : ambient.lift },
-        ],
-      }}
-    >
-      <View
-        style={[
-          styles.vocalistHead,
-          { backgroundColor: isHit ? THEME.vocalistHit : THEME.vocalistHead },
-        ]}
-      />
-      <View
-        style={[
-          styles.vocalistBody,
-          {
-            backgroundColor: isHit ? THEME.vocalistHit : THEME.vocalistBody,
-            width: rect.width * 0.72,
-          },
-        ]}
-      />
-      {status === 'blocking' && (
-        <Text style={styles.vocalistCue}>TAP THE SINGER</Text>
-      )}
-      <Text style={styles.placeholderLabel}>{isHit ? 'VOCALIST (HIT)' : 'VOCALIST'}</Text>
+    <View style={[styles.vocalistFrame, absolute(rect)]}>
+      <FrameStack sources={VOCALIST_FRAMES} current={frame} />
+      {status === 'blocking' && <Text style={styles.vocalistCue}>TAP THE SINGER</Text>}
     </View>
   );
 }
 
+/** Debug-only: the art now marks the arrival line with the kit itself. */
 function DangerLine() {
   return (
     <>
@@ -196,89 +220,33 @@ function DangerLine() {
 }
 
 function DrumKit() {
-  return (
-    <View style={styles.drumkit}>
-      <View style={[styles.cymbal, { left: 150 }]} />
-      <View style={[styles.cymbal, { left: 1560 }]} />
-      <View style={[styles.tom, { left: 520 }]} />
-      <View style={[styles.tom, { left: 1160 }]} />
-      <View style={styles.snare} />
-      <Text style={styles.drumkitLabel}>DRUM KIT (GRAYBOX FOREGROUND)</Text>
-    </View>
-  );
+  return <Image source={STAGE_ART.drumKit} style={absolute(DRUM_KIT_RECT)} resizeMode="stretch" />;
 }
 
 function TargetShape({ view }: { view: TargetView }) {
   const isBottle = view.kind === 'beerBottle';
+  // Keep M5A's apparent bounds; only the pixels inside them have changed.
   const width = (isBottle ? 92 : 132) * view.scale;
   const height = (isBottle ? 186 : 128) * view.scale;
-  const missed = view.status === 'missed';
 
   return (
-    <View
+    <Image
+      source={TARGET_ART[view.kind]}
       style={{
         position: 'absolute',
         left: view.x - width / 2,
         top: view.y - height / 2,
         width,
         height,
-        alignItems: 'center',
-        justifyContent: 'flex-end',
-        opacity: missed ? 0.45 : 1,
-        // The tumble the object picked up when it was thrown (M5A).
+        opacity: view.status === 'missed' ? 0.45 : 1,
         transform: [{ rotate: `${view.rotation}rad` }],
       }}
-    >
-      {isBottle ? (
-        <>
-          <View
-            style={{
-              width: width * 0.34,
-              height: height * 0.36,
-              backgroundColor: missed ? THEME.accent : THEME.beerBottleNeck,
-              borderRadius: 6 * view.scale,
-            }}
-          />
-          <View
-            style={{
-              width,
-              height: height * 0.64,
-              backgroundColor: missed ? THEME.accent : THEME.beerBottle,
-              borderRadius: 12 * view.scale,
-            }}
-          />
-        </>
-      ) : (
-        <>
-          <View
-            style={{
-              width: width * 0.86,
-              height: height * 0.22,
-              backgroundColor: missed ? THEME.accent : THEME.beerMugFoam,
-              borderRadius: 10 * view.scale,
-            }}
-          />
-          <View
-            style={{
-              width: width * 0.86,
-              height: height * 0.78,
-              backgroundColor: missed ? THEME.accent : THEME.beerMug,
-              borderRadius: 10 * view.scale,
-            }}
-          />
-        </>
-      )}
-    </View>
+      resizeMode="contain"
+    />
   );
 }
 
-/**
- * Faint ring on the actual tap radius.
- *
- * A graybox affordance, not decoration: M5A widened the hitbox, and the
- * playtest cannot judge whether the widening is enough unless the observer can
- * see what they were aiming at. It draws the same number hit resolution uses.
- */
+/** Debug-only ring that draws the exact configured tap radius. */
 function HitHalo({ view }: { view: TargetView }) {
   const size = view.hitRadius * 2;
   return (
@@ -303,65 +271,65 @@ function Strike({ effect }: { effect: TimedEffect }) {
   const dy = effect.y - STICK_ORIGIN.y;
   const length = Math.hypot(dx, dy);
   const angle = Math.atan2(dy, dx);
-  // The stick snaps out and pulls straight back.
   const extend = progress < 0.45 ? progress / 0.45 : 1 - (progress - 0.45) / 0.55;
 
   return (
-    <View
+    <Image
+      source={DRUMSTICK_ART}
       style={{
         position: 'absolute',
         left: STICK_ORIGIN.x,
         top: STICK_ORIGIN.y,
         width: length * Math.max(0, extend),
-        height: 16,
-        marginTop: -8,
-        backgroundColor: THEME.strike,
-        borderRadius: 8,
-        opacity: 0.9 * (1 - progress * 0.4),
+        height: 28,
+        marginTop: -14,
+        opacity: 0.95 * (1 - progress * 0.45),
         transform: [{ rotate: `${angle}rad` }],
         transformOrigin: 'left center',
       }}
+      resizeMode="stretch"
     />
   );
 }
 
 function Burst({ effect }: { effect: TimedEffect }) {
   const progress = effectProgress(effect);
-  const size = 90 + progress * 190;
+  const size = 100 + progress * 190;
 
   return (
-    <View
+    <Image
+      source={HIT_BURST_ART}
       style={{
         position: 'absolute',
         left: effect.x - size / 2,
         top: effect.y - size / 2,
         width: size,
         height: size,
-        borderRadius: size / 2,
-        borderWidth: 10 * (1 - progress),
-        borderColor: THEME.burst,
         opacity: 1 - progress,
+        transform: [{ rotate: `${progress * 0.45}rad` }],
       }}
+      resizeMode="contain"
     />
   );
 }
 
-function Debris({ shards }: { shards: ShardsState }) {
+function Debris({ shards }: { shards: readonly Shard[] }) {
   return (
     <>
-      {shards.shards.map((shard) => (
-        <View
+      {shards.map((shard) => (
+        <Image
           key={shard.id}
+          source={GLASS_SHARD_ART[(shard.id - 1) % GLASS_SHARD_ART.length]}
           style={{
             position: 'absolute',
             left: shard.body.position.x - shard.size / 2,
             top: shard.body.position.y - shard.size / 2,
             width: shard.size,
             height: shard.size,
-            backgroundColor: THEME.shard,
             opacity: shardOpacity(shard),
             transform: [{ rotate: `${shard.body.angle}rad` }],
           }}
+          resizeMode="contain"
         />
       ))}
     </>
@@ -376,8 +344,7 @@ export function SceneRenderer({ round, effects, shards, stageMotion, viewport }:
       const { width, height } = event.nativeEvent.layout;
       viewport.width = width;
       viewport.height = height;
-      // Input arrives in window coordinates on both platforms (M5A), so the
-      // play surface's own window position is part of the mapping.
+      // Preserve M5A window/page-coordinate mapping exactly.
       rootRef.current?.measureInWindow?.((pageX, pageY) => {
         viewport.pageX = pageX;
         viewport.pageY = pageY;
@@ -387,16 +354,27 @@ export function SceneRenderer({ round, effects, shards, stageMotion, viewport }:
   );
 
   const fit = fitCanvas(viewport.width, viewport.height);
-  const views = targetViews(round);
-  const showHalos = round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT';
+  const showHalos =
+    SHOW_GRAYBOX_DEBUG && (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT');
+
+  // Everything in the impact zone passes between the drummer and their kit.
+  const targets = partitionByDepth(
+    targetViews(round).filter((view) => view.status !== 'hit'),
+    (view) => view.y,
+  );
+  const bursts = partitionByDepth(effects.bursts, (effect) => effect.y);
+  const debris = partitionByDepth(shards.shards, (shard) => shard.body.position.y);
+
+  const renderTarget = (view: TargetView) => (
+    <React.Fragment key={view.id}>
+      {showHalos && view.status === 'active' && <HitHalo view={view} />}
+      <TargetShape view={view} />
+    </React.Fragment>
+  );
 
   return (
     <View ref={rootRef} style={styles.root} onLayout={onLayout}>
-      {/*
-        Nothing inside the canvas is interactive: the engine listens on its own
-        container, and letting a nested view become the touch target is what
-        made native taps resolve at the wrong coordinates (M5A, Priority 1).
-      */}
+      {/** All visual descendants stay non-interactive; the engine owns input. */}
       <View
         pointerEvents="none"
         style={[
@@ -409,37 +387,27 @@ export function SceneRenderer({ round, effects, shards, stageMotion, viewport }:
         ]}
       >
         <Backdrop stageMotion={stageMotion} />
-        <BandMember
-          x={PERFORMER_ANCHORS.bassist.x - 120}
-          label="BASSIST"
-          pose={performerPose(stageMotion, 'bassist')}
-        />
-        <BandMember
-          x={PERFORMER_ANCHORS.guitarist.x - 120}
-          label="GUITARIST"
-          pose={performerPose(stageMotion, 'guitarist')}
-        />
+        {SHOW_GRAYBOX_DEBUG && <DangerLine />}
+        <BandMember id="bassist" pose={performerPose(stageMotion, 'bassist')} />
+        <BandMember id="guitarist" pose={performerPose(stageMotion, 'guitarist')} />
         <Vocalist round={round} pose={performerPose(stageMotion, 'vocalist')} />
-        <DangerLine />
 
-        {views.map((view) =>
-          view.status === 'hit' ? null : (
-            <React.Fragment key={view.id}>
-              {showHalos && view.status === 'active' && <HitHalo view={view} />}
-              <TargetShape view={view} />
-            </React.Fragment>
-          ),
-        )}
-
-        <Debris shards={shards} />
-        {effects.bursts.map((effect) => (
+        {targets.far.map(renderTarget)}
+        <Debris shards={debris.far} />
+        {bursts.far.map((effect) => (
           <Burst key={effect.id} effect={effect} />
         ))}
+
         <DrumKit />
+
+        {targets.near.map(renderTarget)}
+        <Debris shards={debris.near} />
+        {bursts.near.map((effect) => (
+          <Burst key={effect.id} effect={effect} />
+        ))}
         {effects.strikes.map((effect) => (
           <Strike key={effect.id} effect={effect} />
         ))}
-
         <Hud round={round} />
       </View>
     </View>
@@ -448,7 +416,16 @@ export function SceneRenderer({ round, effects, shards, stageMotion, viewport }:
 
 const styles = StyleSheet.create({
   root: {
-    flex: 1,
+    /**
+     * Filled explicitly rather than with `flex: 1`. The engine's web container
+     * is a plain block element, not a flex parent, so `flex: 1` resolved to
+     * zero height — and `overflow: hidden` then clipped the whole scene away,
+     * leaving nothing but the letterbox colour. It also fed a height of 0 into
+     * `fitCanvas`, which fell back to the reference height and offset the
+     * canvas by half a screen. Filling the parent means the same thing on both
+     * platforms and does not depend on the host being a flex container.
+     */
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.letterbox,
     overflow: 'hidden',
   },
@@ -462,131 +439,45 @@ const styles = StyleSheet.create({
   fill: {
     ...StyleSheet.absoluteFillObject,
   },
-  venueGlow: {
-    position: 'absolute',
-    left: 460,
-    top: -220,
-    width: 1000,
-    height: 700,
-    borderRadius: 500,
-    backgroundColor: THEME.venueGlow,
+  frameShown: {
+    opacity: 1,
   },
-  stageFloor: {
+  frameHidden: {
+    opacity: 0,
+  },
+  vocalistFrame: {
+    alignItems: 'center',
+  },
+  vocalistCue: {
     position: 'absolute',
     left: 0,
     right: 0,
-    top: 640,
-    bottom: 0,
-    backgroundColor: THEME.stageFloor,
-  },
-  crowdBand: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  bandMember: {
-    position: 'absolute',
-    top: 330,
-    width: 240,
-    alignItems: 'center',
-  },
-  bandHead: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: THEME.bandHead,
-  },
-  bandBody: {
-    width: 150,
-    height: 240,
-    borderRadius: 24,
-    backgroundColor: THEME.bandBody,
-    marginTop: 8,
-  },
-  vocalistHead: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
-  },
-  vocalistBody: {
-    height: 300,
-    borderRadius: 28,
-    marginTop: 10,
-  },
-  vocalistCue: {
-    marginTop: 12,
+    bottom: 10,
+    textAlign: 'center',
     color: THEME.hudText,
-    fontSize: 34,
-    fontWeight: '700',
+    fontSize: 32,
+    fontWeight: '800',
     letterSpacing: 2,
-  },
-  placeholderLabel: {
-    marginTop: 8,
-    color: THEME.hudDim,
-    fontSize: 20,
-    letterSpacing: 1,
+    textShadowColor: THEME.letterbox,
+    textShadowOffset: { width: 2, height: 2 },
+    textShadowRadius: 4,
   },
   dangerGlow: {
     position: 'absolute',
     left: 0,
     right: 0,
-    top: STAGE.dangerLineY - 60,
-    height: 60,
+    top: STAGE.dangerLineY - 32,
+    height: 32,
     backgroundColor: THEME.dangerLineSoft,
+    opacity: 0.35,
   },
   dangerLine: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: STAGE.dangerLineY,
-    height: 5,
+    height: 3,
     backgroundColor: THEME.dangerLine,
-  },
-  drumkit: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: STAGE.drumkitTopY,
-    bottom: 0,
-    backgroundColor: THEME.drumkit,
-    borderTopWidth: 4,
-    borderTopColor: THEME.drumShell,
-    alignItems: 'center',
-  },
-  snare: {
-    position: 'absolute',
-    left: 760,
-    top: 60,
-    width: 400,
-    height: 190,
-    borderRadius: 26,
-    backgroundColor: THEME.drumHead,
-    borderWidth: 12,
-    borderColor: THEME.drumShell,
-  },
-  tom: {
-    position: 'absolute',
-    top: 30,
-    width: 240,
-    height: 150,
-    borderRadius: 20,
-    backgroundColor: THEME.drumHead,
-    borderWidth: 10,
-    borderColor: THEME.drumShell,
-    opacity: 0.9,
-  },
-  cymbal: {
-    position: 'absolute',
-    top: -10,
-    width: 300,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: THEME.cymbal,
-    opacity: 0.85,
-  },
-  drumkitLabel: {
-    position: 'absolute',
-    bottom: 10,
-    color: THEME.hudDim,
-    fontSize: 20,
-    letterSpacing: 2,
+    opacity: 0.6,
   },
 });

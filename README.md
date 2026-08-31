@@ -7,8 +7,10 @@ sixty seconds, and try not to let the singer ruin your night.
 Working title. Built with Expo, React Native Game Engine, and Matter.js, using
 specification-driven development.
 
-> **Status:** M5A first tuning pass complete — a playable graybox slice with no
-> final art. See `project-status.md` for where the project actually is.
+> **Status:** M6B asset integration complete — the playable slice now runs on
+> the final Pack 1 art, verified running in a browser. The band and crowd hold
+> a single pose because the ambient loop art is not yet a loop; see
+> `project-status.md` and ADR 0009.
 
 ## Running it
 
@@ -59,7 +61,7 @@ game/
   state/       the round domain: clock, spawning, hit resolution, scoring, state machine
   systems/     approach and throw math, effects, debris, stage motion, the engine bridge
   entities/    the engine entity map
-  rendering/   graybox renderer, HUD, overlays, canvas fitting
+  rendering/   scene renderer, art registry, scene composition, HUD, overlays, canvas fitting
   audio/       audio service and asset registry
   utils/       seedable RNG
 tests/         node:test suites, one per module
