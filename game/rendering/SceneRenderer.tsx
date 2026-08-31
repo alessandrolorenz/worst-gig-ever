@@ -22,6 +22,7 @@ import {
   CROWD_BACK_RECT,
   CROWD_FRONT_RECT,
   DRUM_KIT_RECT,
+  TARGET_DRAW_SIZE,
   absolute,
   partitionByDepth,
   performerRect,
@@ -91,6 +92,9 @@ function ambientPoseArt(pose: PerformerPose): PerformerPose {
 }
 
 const STICK_ORIGIN = { x: REFERENCE_CANVAS.width / 2, y: REFERENCE_CANVAS.height + 60 };
+
+/** Drawn height of the drumstick band, padding included. See `Strike`. */
+const STICK_THICKNESS = 72;
 
 /**
  * How far the stage lights breathe either side of their resting brightness.
@@ -224,10 +228,10 @@ function DrumKit() {
 }
 
 function TargetShape({ view }: { view: TargetView }) {
-  const isBottle = view.kind === 'beerBottle';
-  // Keep M5A's apparent bounds; only the pixels inside them have changed.
-  const width = (isBottle ? 92 : 132) * view.scale;
-  const height = (isBottle ? 186 : 128) * view.scale;
+  // Drawn size is composition data, checked against the tap radius by test.
+  const size = TARGET_DRAW_SIZE[view.kind];
+  const width = size.width * view.scale;
+  const height = size.height * view.scale;
 
   return (
     <Image
@@ -281,9 +285,12 @@ function Strike({ effect }: { effect: TimedEffect }) {
         left: STICK_ORIGIN.x,
         top: STICK_ORIGIN.y,
         width: length * Math.max(0, extend),
-        height: 28,
-        marginTop: -14,
-        opacity: 0.95 * (1 - progress * 0.45),
+        // The stick art is mostly transparent padding: only 40 of its 96
+        // source rows are wood, so a 28 px band drew a 12 px sliver nobody
+        // could see land.
+        height: STICK_THICKNESS,
+        marginTop: -STICK_THICKNESS / 2,
+        opacity: 1 - progress * 0.35,
         transform: [{ rotate: `${angle}rad` }],
         transformOrigin: 'left center',
       }}

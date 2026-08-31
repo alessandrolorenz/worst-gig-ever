@@ -2,14 +2,14 @@
   "expo": {
     "name": "Worst Band Ever",
     "slug": "worst-band-ever",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#2A1B3D"
     },
     "updates": {
       "fallbackToCacheTimeout": 0
@@ -24,7 +24,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#FFFFFF"
+        "backgroundColor": "#5C2D82"
       },
       "package": "com.worstbandever.app",
       "permissions": [

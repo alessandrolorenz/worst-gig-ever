@@ -20,12 +20,20 @@ export const STAGE = {
   /** Screen line where an unhit target reaches the drummer. */
   dangerLineY: 880,
   /**
-   * Canvas line where the foreground drum kit's solid mass begins, measured
-   * off the Pack 1 kit art. Below it a target is nearer to the player than
-   * their own toms, so the renderer draws it in front of the kit rather than
-   * behind (M6B). Presentation only: no rule reads it.
+   * Canvas line below which a target is nearer to the player than their own
+   * toms, so the renderer draws it in front of the kit rather than behind
+   * (M6B). Presentation only: no rule reads it.
+   *
+   * It must sit at or above where the kit's solid mass begins, or an arriving
+   * object is hidden inside the drums. It must also sit high enough to be
+   * reached while the object is still in flight: `y` climbs very steeply at
+   * the end of an arc, so a line set flush with the drums is only crossed in
+   * the last one percent of the throw and the swap never reads.
+   *
+   * Moves with `DRUM_KIT_DROP` in `game/rendering/composition.ts`: the line is
+   * a property of where the kit is drawn, not of the canvas.
    */
-  drumkitNearY: 740,
+  drumkitNearY: 800,
   /**
    * Lane x positions at full approach. Targets diverge from the vanishing
    * point toward one of these as they come forward.

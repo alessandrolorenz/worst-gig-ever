@@ -78,7 +78,7 @@ Measured 2026-08-30 at commit `fb2170978eae4b3bb59e0232e7cc421741c78b32`.
 | `npm test` | `node --test` (native TypeScript type stripping) |
 | `npm run verify` | all three, in order |
 
-Last run 2026-08-30 (post-M6B): type-check clean, lint clean, 135/135 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
+Last run 2026-08-31 (post-playtest tweaks): type-check clean, lint clean, 141/141 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
 
 ## Current scope
 
@@ -93,6 +93,9 @@ One 60-second show with:
 - graybox first, art integration second.
 
 ## Immediate next action
+
+Build the tweaked `preview:device` APK and confirm the three adjustments on the
+phone. After that:
 
 **Regenerate the ambient loop art.** For each of the bassist, guitarist,
 vocalist, and front crowd, `idle`, `loopA`, and `loopB` must be one drawing in
@@ -121,7 +124,8 @@ Then continue to M7 (`prompts/08-m7-stage-chaos-interactions.md`).
 - M6 Art Direction Lock: **COMPLETE** (2026-08-30), commit `6506698` — Pack 1 frozen; no gameplay change
 - M6A Asset Pack 1 Production Contract: **COMPLETE** (2026-08-30) — gate outcome `PASS_CONTRACT_ART_MISSING`
 - Art Gate: **PASS_ART_READY** — 33/33 required files present, 0 missing, 0 invalid; the two optional files are intentionally absent
-- M6B Asset Integration: **AUTOMATED GATE GREEN** (2026-08-30) — device/emulator visual smoke outstanding
+- M6B Asset Integration: **GATE GREEN** (2026-08-30) — verified on the web build and the `Pixel_9` emulator
+- First phone playtest: **DONE** (2026-08-31) — owner approved the direction; three presentation tweaks requested and applied
 - M7 Stage Chaos Interactions: not started
 
 ## Device validation performed (2026-08-30)
@@ -187,6 +191,28 @@ scoring value, or timing value moved.
 | Flicker | `beatPulse` snapped from 0 back to 1 on every beat; on a full-canvas overlay that strobed the stage. It is now a continuous raised cosine, and the overlay swings 0.58–0.72 instead of 0.36–0.78 | `game/systems/stageMotion.ts` |
 | Flicker | Pose changes swapped an `Image`'s `source`, which blanks it while the new bitmap loads. Every frame is now mounted once and switched by opacity | `game/rendering/SceneRenderer.tsx` |
 | Flicker | The ambient loop holds one frame while the Pack 1 loop art is not a loop | `game/rendering/SceneRenderer.tsx` |
+
+## Playtest tweaks after the first phone build (2026-08-31)
+
+Owner played the `preview:device` APK and approved the direction. Three
+adjustments and the app identity, all presentation:
+
+| Change | Detail | Where |
+|---|---|---|
+| Drum kit lower | Dropped 120 px so the venue reads: the stage floor, the full crowd, and the band's whole bodies are visible. It also cut the kit's occlusion of an arriving target from 44% of its area to 13%, and cases hidden by more than 60% from 37.7% to 0.8% | `DRUM_KIT_DROP` in `game/rendering/composition.ts` |
+| Bottles and mugs larger | Bottle +18%, mug +41%. The mug is now drawn bigger than the bottle, which its 120 px tap radius against the bottle's 90 already said and the art contradicted | `TARGET_DRAW_SIZE` |
+| Drumstick clearer | 28 px to 72 px. The stick art is mostly padding — only 40 of 96 source rows are wood — so the old band drew a 12 px sliver | `STICK_THICKNESS` in `SceneRenderer.tsx` |
+| App identity | Icon, Android adaptive foreground, favicon, and splash composed from the Pack 1 bottle and drumstick over the venue purple. The Expo template placeholders are gone | `scripts/make-app-icon.mjs` |
+
+No hitbox, trajectory, scoring value, or timing value changed. The enlargement
+is bounded by a test: visible artwork must stay inside the tap circle, or the
+player aims at pixels that are not tappable.
+
+`STAGE.drumkitNearY` moved with the kit, from 740 to 800. It has to sit at or
+above where the kit's solid mass begins, or an arriving object is hidden inside
+the drums, and high enough to be crossed while the object is still in flight —
+`y` climbs steeply at the end of an arc, so a line flush with the drums is only
+reached in the last one percent of the throw and the swap never reads.
 
 ## Open items carried into the next playtest
 

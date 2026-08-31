@@ -9,6 +9,7 @@
  * here is ever consulted by hit resolution (AGENTS.md rule 17).
  */
 import { PERFORMER_ANCHORS, REFERENCE_CANVAS, STAGE } from '../config/stage.ts';
+import type { TargetKind } from '../state/gameState.ts';
 import type { PerformerId } from '../systems/stageMotion.ts';
 
 export interface Rect {
@@ -46,18 +47,85 @@ export const CROWD_BACK_RECT: Rect = { x: 0, y: 300, width: 1920, height: 520 };
 export const CROWD_FRONT_RECT: Rect = { x: 0, y: 430, width: 1920, height: 420 };
 
 /**
+ * How far the kit is dropped below a bottom-anchored placement, in canvas px.
+ *
+ * Sitting flush on the bottom edge, the kit ate most of the venue: cymbals
+ * crossed the band's torsos and the stage behind them barely read. Dropping it
+ * runs the nearest shells off the bottom of the canvas — which is where the
+ * closest part of a kit belongs from the drummer's seat — and gives the room
+ * back. `STAGE.drumkitNearY` moves with it.
+ */
+export const DRUM_KIT_DROP = 120;
+
+/**
  * Foreground drum kit.
  *
- * `drumkit_pov.png` is authored 1920x700 at canvas width and reads as sitting
- * on the bottom edge, so its native size is its placement. Stretching it to a
- * different box would bend the cymbals and shells out of shape.
+ * `drumkit_pov.png` is authored 1920x700 at canvas width, so its native size
+ * is its placement — stretching it to a different box would bend the cymbals
+ * and shells out of shape. Only the vertical offset is a composition choice;
+ * whatever falls past the bottom edge is clipped by the canvas.
  */
 export const DRUM_KIT_RECT: Rect = {
   x: 0,
-  y: REFERENCE_CANVAS.height - 700,
+  y: REFERENCE_CANVAS.height - 700 + DRUM_KIT_DROP,
   width: REFERENCE_CANVAS.width,
   height: 700,
 };
+
+/**
+ * Drawn size of a thrown target at full approach, in canvas px.
+ *
+ * Presentation only — hit resolution reads `effectiveHitRadius` and never
+ * this. The ceiling on these numbers is that the *visible* artwork must stay
+ * inside the tap circle, or the player aims at pixels that are not tappable;
+ * `tests/composition.test.ts` holds them to it.
+ *
+ * The mug is drawn larger than the bottle because the domain already says it
+ * is a bigger target (a 120 px tap radius against the bottle's 90). Until now
+ * the art said the opposite.
+ */
+export const TARGET_DRAW_SIZE: Readonly<Record<TargetKind, { width: number; height: number }>> = {
+  beerBottle: { width: 108, height: 220 },
+  beerMug: { width: 186, height: 180 },
+};
+
+/** Pack 1 prop frames, and the opaque artwork inside them, in source px. */
+const TARGET_ART_FRAME: Readonly<Record<TargetKind, { width: number; height: number }>> = {
+  beerBottle: { width: 256, height: 512 },
+  beerMug: { width: 384, height: 384 },
+};
+
+/**
+ * Measured opaque bounds inside those frames. A prop is mostly padding — the
+ * bottle covers 110x494 of its 256x512 frame — so the layout box overstates
+ * how much of the screen the object actually occupies. Regenerating a prop
+ * means re-measuring these.
+ */
+const TARGET_ART_CONTENT: Readonly<Record<TargetKind, { width: number; height: number }>> = {
+  beerBottle: { width: 110, height: 494 },
+  beerMug: { width: 307, height: 339 },
+};
+
+/**
+ * The artwork a player actually sees for a target, after `resizeMode="contain"`
+ * fits the frame into the drawn box and the transparent padding is discounted.
+ */
+export function targetVisibleSize(
+  kind: TargetKind,
+  scale: number,
+): { width: number; height: number } {
+  const box = TARGET_DRAW_SIZE[kind];
+  const frame = TARGET_ART_FRAME[kind];
+  const content = TARGET_ART_CONTENT[kind];
+  const fit = Math.min(box.width / frame.width, box.height / frame.height);
+  return { width: content.width * fit * scale, height: content.height * fit * scale };
+}
+
+/** Half-diagonal of the visible artwork: its furthest point from its centre. */
+export function targetVisibleReach(kind: TargetKind, scale: number): number {
+  const { width, height } = targetVisibleSize(kind, scale);
+  return Math.hypot(width / 2, height / 2);
+}
 
 /**
  * One frame for all three performers, matching the 640x900 authored aspect so

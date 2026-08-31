@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import {
   CROWD_BACK_RECT,
   CROWD_FRONT_RECT,
+  DRUM_KIT_DROP,
   DRUM_KIT_RECT,
   PERFORMER_BASELINE_Y,
   PERFORMER_FRAME,
@@ -23,6 +24,7 @@ import {
   isNearField,
   partitionByDepth,
   performerRect,
+  targetVisibleReach,
 } from '../game/rendering/composition.ts';
 import {
   PERFORMER_ANCHORS,
@@ -31,7 +33,13 @@ import {
   VOCALIST_BLOCKING_RECT,
 } from '../game/config/stage.ts';
 import { PERFORMER_IDS } from '../game/systems/stageMotion.ts';
-import { createRound, startRound, targetViews, tickRound } from '../game/state/roundState.ts';
+import {
+  createRound,
+  effectiveHitRadius,
+  startRound,
+  targetViews,
+  tickRound,
+} from '../game/state/roundState.ts';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -85,10 +93,10 @@ test('the blocking vocalist covers the tap region the domain owns', () => {
   assert.ok(VOCALIST_BLOCKING_RECT.height >= performerRect('vocalist').height);
 });
 
-test('the drum kit sits on the bottom edge at the size the art was authored at', () => {
+test('the drum kit spans the canvas at the size the art was authored at', () => {
   assert.equal(DRUM_KIT_RECT.x, 0);
   assert.equal(DRUM_KIT_RECT.width, REFERENCE_CANVAS.width);
-  assert.equal(DRUM_KIT_RECT.y + DRUM_KIT_RECT.height, REFERENCE_CANVAS.height);
+  assert.equal(DRUM_KIT_RECT.height, 700);
 });
 
 test('the crowd layers span the canvas and stay behind the drummer', () => {
@@ -98,6 +106,47 @@ test('the crowd layers span the canvas and stay behind the drummer', () => {
     assert.ok(rect.y < STAGE.dangerLineY);
   }
   assert.ok(CROWD_FRONT_RECT.y > CROWD_BACK_RECT.y, 'the front crowd should sit nearer');
+});
+
+test('a target is never drawn larger than the circle that can be tapped', () => {
+  // The rule this enforces: art may be enlarged for readability, but the
+  // moment visible pixels reach outside the tap radius the player is aiming
+  // at something that is not there. Hit radii stay in `game/config`; this only
+  // holds the drawing to them (M6B, "visual asset bounds must not silently
+  // alter difficulty").
+  for (const kind of ['beerBottle', 'beerMug'] as const) {
+    for (let scale = 0.2; scale <= 1.001; scale += 0.05) {
+      const reach = targetVisibleReach(kind, scale);
+      const radius = effectiveHitRadius(kind, scale);
+      assert.ok(
+        reach <= radius,
+        `${kind} at scale ${scale.toFixed(2)}: art reaches ${reach.toFixed(1)}px, ` +
+          `tap radius is ${radius.toFixed(1)}px`,
+      );
+    }
+  }
+});
+
+test('the mug is drawn bigger than the bottle, as its hit radius already says', () => {
+  assert.ok(
+    targetVisibleReach('beerMug', 1) > targetVisibleReach('beerBottle', 1),
+    'the bigger target should not be the smaller drawing',
+  );
+});
+
+test('the drum kit is dropped below the canvas and the near line follows it', () => {
+  assert.ok(DRUM_KIT_DROP > 0, 'the kit should sit lower than a flush bottom anchor');
+  assert.equal(DRUM_KIT_RECT.y, REFERENCE_CANVAS.height - 700 + DRUM_KIT_DROP);
+  assert.ok(
+    DRUM_KIT_RECT.y + DRUM_KIT_RECT.height > REFERENCE_CANVAS.height,
+    'the nearest shells should run off the bottom edge',
+  );
+  // The kit's solid mass begins ~362px into the art. The near line has to sit
+  // at or above it, or an arriving object is drawn inside the drums.
+  assert.ok(
+    STAGE.drumkitNearY <= DRUM_KIT_RECT.y + 360,
+    'the near line is below the drums, so an arriving target would be hidden',
+  );
 });
 
 test('the near line is between the throw origin and the danger line', () => {
@@ -111,28 +160,42 @@ test('a target arriving at the drummer is in front of the kit, a far one behind 
 });
 
 test('the split keeps every item exactly once and preserves order', () => {
-  const items = [{ y: 100 }, { y: 900 }, { y: 200 }, { y: 800 }];
-  const { far, near } = partitionByDepth(items, (item) => item.y);
-  assert.deepEqual(far, [{ y: 100 }, { y: 200 }]);
-  assert.deepEqual(near, [{ y: 900 }, { y: 800 }]);
-  assert.equal(far.length + near.length, items.length);
+  const far1 = { y: STAGE.drumkitNearY - 200 };
+  const far2 = { y: STAGE.drumkitNearY - 1 };
+  const near1 = { y: STAGE.drumkitNearY };
+  const near2 = { y: STAGE.drumkitNearY + 40 };
+  const { far, near } = partitionByDepth([far1, near1, far2, near2], (item) => item.y);
+  assert.deepEqual(far, [far1, far2]);
+  assert.deepEqual(near, [near1, near2]);
+  assert.equal(far.length + near.length, 4);
 });
 
-test('the last stretch of every flight is drawn in front of the kit', () => {
+test('every flight crosses into the near field before it reaches the drummer', () => {
   // The defect this rule exists for: with the whole projectile layer behind
   // the kit, the biggest, nearest, most urgent moment of a throw was hidden.
+  // What matters is that the swap has happened by the time the object arrives,
+  // so the decisive moment is drawn in front of the kit rather than inside it.
   const round = createRound();
   startRound(round);
-  const lateAndFar: string[] = [];
+  const deepestY = new Map<number, number>();
+  const landed = new Set<number>();
   for (let elapsed = 0; elapsed < 60_000; elapsed += 16) {
     tickRound(round, 16);
     round.integrity = round.level.startingIntegrity;
     if (round.state === 'SHOW_RUINED') round.state = 'PLAYING';
     for (const view of targetViews(round)) {
-      if (view.status === 'active' && view.progress > 0.95 && !isNearField(view.y)) {
-        lateAndFar.push(`${view.kind} at y=${view.y.toFixed(0)}`);
+      if (view.status === 'active') {
+        deepestY.set(view.id, Math.max(deepestY.get(view.id) ?? 0, view.y));
+      } else {
+        // Only completed flights can be judged; whatever is still in the air
+        // when the clock runs out simply never got there.
+        landed.add(view.id);
       }
     }
   }
-  assert.deepEqual(lateAndFar, [], 'an arriving target would still be hidden by the kit');
+  assert.ok(landed.size > 10, 'expected a round to land a useful number of targets');
+  const stranded = [...deepestY.entries()]
+    .filter(([id, y]) => landed.has(id) && !isNearField(y))
+    .map(([id, y]) => `target ${id} only reached y=${y.toFixed(0)}`);
+  assert.deepEqual(stranded, [], 'a target arrived while still drawn behind the kit');
 });
