@@ -12,13 +12,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 
-import { GROOVE_PULSE, isCountInBeat } from '../config/rhythm.ts';
+import { GROOVE_PULSE, isUnscoredLeadBeat } from '../config/rhythm.ts';
 import { REFERENCE_CANVAS } from '../config/stage.ts';
 import { GROOVE_PANEL, GROOVE_PANEL_ROWS, HUD_MARGIN } from './hudLayout.ts';
 import { THEME } from './theme.ts';
 import {
-  isBeatClockRunning,
+  isPadPulsing,
   judgementFreshness,
+  pulseClockMs,
   upcomingBeatIndex,
   type RhythmState,
 } from '../state/rhythmState.ts';
@@ -86,8 +87,9 @@ export function Hud({ round, rhythm }: { round: RoundState; rhythm: RhythmState 
  * targets arrive — see `hudLayout.ts`.
  */
 function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
-  const running = isBeatClockRunning(round.state);
-  const countingIn = running && isCountInBeat(upcomingBeatIndex(round.elapsedMs));
+  const clockMs = pulseClockMs(round.state, round.elapsedMs, round.countdownMs);
+  const leadIn =
+    isPadPulsing(round.state) && (clockMs < 0 || isUnscoredLeadBeat(upcomingBeatIndex(clockMs)));
   const labelAge = judgementFreshness(rhythm, round.elapsedMs, GROOVE_PULSE.judgementTextMs);
   const judgement = rhythm.lastJudgement;
 
@@ -104,12 +106,13 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
 
       {/*
        * PERFECT / GOOD as words, never as colour alone (M12 accessibility).
-       * The count-in shares the row, so the player is told the first two
-       * pulses do not count instead of wondering why they scored nothing.
+       * The pre-roll shares the row, so the player is told that the beats they
+       * are being counted in on do not score, instead of wondering why they
+       * scored nothing (M13.1).
        */}
       <View style={styles.grooveJudgementRow}>
-        {countingIn ? (
-          <Text style={styles.grooveCountIn}>COUNT IN</Text>
+        {leadIn ? (
+          <Text style={styles.grooveLeadIn}>GET READY</Text>
         ) : (
           labelAge > 0 &&
           judgement !== null && (
@@ -241,7 +244,7 @@ const styles = StyleSheet.create({
     letterSpacing: 3,
     ...shadow,
   },
-  grooveCountIn: {
+  grooveLeadIn: {
     color: THEME.hudDim,
     fontSize: 28,
     fontWeight: '800',

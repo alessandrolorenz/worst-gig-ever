@@ -23,12 +23,18 @@ export const HUD_MARGIN = { x: 56, top: 36 } as const;
 export const HUD_TOP_HEIGHT = 190;
 
 /**
- * The Groove readout, directly above the Groove Pad.
+ * The Groove readout, on the left rail.
  *
- * M12 asks for it "near Groove Pad but outside the hit area". Above rather
- * than beside, because beside means to the right, and to the right of the
- * hi-hat is where lane 430 and lane 700 targets arrive — text there would sit
- * in the corridor. Above the pad is drum-kit hardware, which nothing lands on.
+ * M12 asks for it "near Groove Pad but outside the hit area", and until M13.1
+ * it satisfied that by sitting directly above the pad on the hi-hat. The pad
+ * has since moved to the lower centre, and the readout deliberately did not
+ * follow it: above a centred pad is the target corridor, and M13.1 forbids
+ * Groove feedback there ("Groove feedback text must not cover the central
+ * target corridor"). So the box stays where the corridor allows text at all,
+ * and `tests/hudContract.test.ts` holds it out of the corridor and off the pad.
+ *
+ * Its height is now its own number rather than the gap up to the pad, because
+ * that gap no longer means anything: the two are not stacked any more.
  *
  * The box is fixed, and every line inside it is fixed-height, so a score
  * growing a digit or a PERFECT flashing on and off cannot move anything
@@ -44,7 +50,25 @@ export const GROOVE_PANEL: Rect = {
    * by the corridor, not chosen for the text.
    */
   width: 360,
-  height: GROOVE_PAD.centerY - GROOVE_PAD.radiusPx - 586,
+  /** Unchanged from M12's 778 - 586, so the readout itself did not move. */
+  height: 192,
+};
+
+/**
+ * Vertical band the `3 -> 2 -> 1 -> GO!` numerals occupy (M13.1).
+ *
+ * Above the pad and below the top HUD row, so the pre-roll never covers the
+ * pulse it exists to teach and never pushes a score sideways. Fixed rather
+ * than derived from the text, so a two-character `GO!` and a one-character `3`
+ * sit on exactly the same line.
+ *
+ * It lives here rather than in `Countdown.tsx` for the same reason every other
+ * rectangle does: this module is plain data and can be asserted without a
+ * renderer.
+ */
+export const COUNTDOWN_BOX: Pick<Rect, 'y' | 'height'> = {
+  y: 520,
+  height: 230,
 };
 
 /** Fixed line heights inside the Groove panel, top to bottom. */
@@ -94,12 +118,12 @@ export function withinCanvas(rect: Rect): boolean {
   );
 }
 
-/** The circle the Groove Pad occupies, as a rect, for overlap checks. */
+/** The ellipse the Groove Pad occupies, as a rect, for overlap checks. */
 export function padBoundingRect(): Rect {
   return {
-    x: GROOVE_PAD.centerX - GROOVE_PAD.radiusPx,
-    y: GROOVE_PAD.centerY - GROOVE_PAD.radiusPx,
-    width: GROOVE_PAD.radiusPx * 2,
-    height: GROOVE_PAD.radiusPx * 2,
+    x: GROOVE_PAD.centerX - GROOVE_PAD.halfWidthPx,
+    y: GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx,
+    width: GROOVE_PAD.halfWidthPx * 2,
+    height: GROOVE_PAD.halfHeightPx * 2,
   };
 }

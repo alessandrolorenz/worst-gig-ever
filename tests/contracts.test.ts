@@ -132,6 +132,8 @@ test('M1: the combo table is ordered and matches the specified multipliers', () 
 test('M1/M2: the declared state and target vocabularies are complete', () => {
   assert.deepEqual([...GAME_STATES], [
     'READY',
+    // The M13.1 pre-roll, between Start and the round itself.
+    'COUNTDOWN',
     'PLAYING',
     'PAUSED',
     'VOCALIST_EVENT',

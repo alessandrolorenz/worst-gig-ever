@@ -28,6 +28,7 @@ import {
 import { VOCALIST_BLOCKING_RECT } from '../game/config/stage.ts';
 import { TARGET_DEFINITIONS } from '../game/config/targets.ts';
 import { SCORING } from '../game/config/scoring.ts';
+import { countdownDurationMs } from '../game/config/rhythm.ts';
 import { level01 } from '../game/levels/level01.ts';
 
 /** Advances the round in frame-sized steps, collecting every event. */
@@ -42,9 +43,19 @@ function advance(state: RoundState, totalMs: number, stepMs = 16) {
   return events;
 }
 
+/**
+ * A round that has reached the first frame of actual play.
+ *
+ * Start now opens the M13.1 pre-roll rather than the round, so this runs the
+ * countdown out and hands back exactly what `startRound` used to: PLAYING, at
+ * elapsed zero, with nothing spawned.
+ */
 function playing(): RoundState {
   const state = createRound();
   startRound(state);
+  advance(state, countdownDurationMs());
+  assert.equal(state.state, 'PLAYING');
+  assert.equal(state.elapsedMs, 0);
   return state;
 }
 
@@ -105,10 +116,12 @@ test('the clock does not advance until the round starts', () => {
   assert.equal(state.state, 'READY');
 });
 
-test('READY -> PLAYING -> PAUSED -> PLAYING -> VOCALIST_EVENT -> SHOW_COMPLETE', () => {
+test('READY -> COUNTDOWN -> PLAYING -> PAUSED -> PLAYING -> VOCALIST_EVENT -> SHOW_COMPLETE', () => {
   const state = createRound();
   assert.equal(state.state, 'READY');
   startRound(state);
+  assert.equal(state.state, 'COUNTDOWN', 'Start opens the pre-roll, not the round');
+  advance(state, countdownDurationMs());
   assert.equal(state.state, 'PLAYING');
   pauseRound(state);
   assert.equal(state.state, 'PAUSED');

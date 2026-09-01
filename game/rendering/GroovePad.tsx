@@ -1,11 +1,17 @@
 /**
- * The Groove Pad: a code-drawn pulse over the hi-hat already in the drum-kit
- * art (M10).
+ * The Groove Pad: a code-drawn pulse over the lower-centre face of the drum
+ * kit (M10, moved to the centre by M13.1).
  *
- * No new art. The kit stays one bitmap and is not cropped; this draws rings
- * and a glow on top of it, positioned from `GROOVE_PAD` in
- * `game/config/rhythm.ts` — the same circle hit resolution uses, so what the
+ * No new art. The kit stays one bitmap and is not cropped; this draws an
+ * ellipse and a glow on top of it, positioned from `GROOVE_PAD` in
+ * `game/config/rhythm.ts` — the same ellipse hit resolution uses, so what the
  * player aims at and what the rules judge are one number.
+ *
+ * Drawn with `react-native-svg` rather than a scaled `View`, because the pad
+ * is now three times wider than it is tall: a circular `View` stretched into
+ * that shape stretches its border with it, and the sides of the ring would
+ * come out three times thicker than the top. The library is already in the
+ * bundle for the quit icon.
  *
  * Nothing here is interactive. There is no `Pressable`, no touch handler, and
  * no responder anywhere in this tree: the pad is hit-tested by the surface
@@ -14,142 +20,135 @@
  * re-introduce exactly the bubbling-touch coordinate bug M5A fixed.
  *
  * It owns no clock. Every value drawn is a pure function of the round's
- * gameplay elapsed time, so the pulse cannot drift away from the judgement.
+ * gameplay time — `pulseClockMs`, which runs negative through the pre-roll and
+ * hits zero on `GO` — so the pulse cannot drift away from the judgement, and
+ * the countdown beats animate on the same schedule as the scored ones.
  *
- * This draws the pad and nothing else. The Groove score, streak, count-in
- * notice, and PERFECT/GOOD text are the HUD's job and live in one column above
- * the pad (`Hud.tsx`, M12), so the readouts are in one place rather than
- * competing for the same corner.
+ * This draws the pad and nothing else. The Groove score, streak and
+ * PERFECT/GOOD text are the HUD's job (`Hud.tsx`, M12) and the countdown
+ * numerals are `Countdown.tsx`'s.
  */
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import Svg, { Ellipse } from 'react-native-svg';
 
-import { GROOVE_PAD, GROOVE_PULSE, isCountInBeat } from '../config/rhythm.ts';
+import { GROOVE_PAD, GROOVE_PULSE, isUnscoredLeadBeat } from '../config/rhythm.ts';
+import { REFERENCE_CANVAS } from '../config/stage.ts';
 import { THEME } from './theme.ts';
 import {
-  isBeatClockRunning,
+  isPadPulsing,
   judgementFreshness,
   padPulse,
+  pulseClockMs,
   upcomingBeatIndex,
   type RhythmState,
 } from '../state/rhythmState.ts';
 import type { RoundState } from '../state/roundState.ts';
 
 /**
- * Resting and peak sizes of the ring that marks the pad.
+ * Resting size of the drawn mark, as a fraction of the tappable ellipse.
  *
- * The ring sits a little inside the configured tap radius so the drawn mark
- * never promises more reach than the rule gives — the opposite mistake to the
- * one `tests/composition.test.ts` guards for targets.
+ * Chosen so that the swell reaches exactly the tap boundary at its peak:
+ * `RING_SCALE * (1 + peakScale) === 1`. That makes the drawn pad and the
+ * configured tap area one promise rather than two — nothing this component
+ * draws ever reaches past what a tap actually resolves, and nothing stops
+ * short of it on the beat. `tests/hudContract.test.ts` holds it there.
  */
-const RING_RADIUS = GROOVE_PAD.radiusPx * 0.82;
+const RING_SCALE = 1 / (1 + GROOVE_PULSE.peakScale);
 
 export interface GroovePadProps {
   round: RoundState;
   rhythm: RhythmState;
 }
 
-/**
- * A circle centred on the pad, scaled about its own centre.
- *
- * Sized from a fixed radius and scaled with a transform rather than by
- * animating width/height, so the pulse cannot shift the pad's centre by half a
- * pixel each frame and read as a wobble.
- */
-function PadRing({
-  radius,
+/** An ellipse concentric with the pad, sized as a fraction of its tap area. */
+function PadEllipse({
   scale,
   opacity,
   color,
-  borderWidth,
+  strokeWidth,
   filled = false,
 }: {
-  radius: number;
   scale: number;
   opacity: number;
   color: string;
-  borderWidth: number;
+  strokeWidth: number;
   filled?: boolean;
 }) {
   return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: GROOVE_PAD.centerX - radius,
-        top: GROOVE_PAD.centerY - radius,
-        width: radius * 2,
-        height: radius * 2,
-        borderRadius: radius,
-        borderWidth,
-        borderColor: color,
-        backgroundColor: filled ? color : 'transparent',
-        opacity,
-        transform: [{ scale }],
-      }}
+    <Ellipse
+      cx={GROOVE_PAD.centerX}
+      cy={GROOVE_PAD.centerY}
+      rx={GROOVE_PAD.halfWidthPx * scale}
+      ry={GROOVE_PAD.halfHeightPx * scale}
+      stroke={strokeWidth > 0 ? color : 'none'}
+      strokeWidth={strokeWidth}
+      fill={filled ? color : 'none'}
+      opacity={opacity}
     />
   );
 }
 
 export function GroovePad({ round, rhythm }: GroovePadProps) {
-  const running = isBeatClockRunning(round.state);
-  const elapsedMs = round.elapsedMs;
+  const clockMs = pulseClockMs(round.state, round.elapsedMs, round.countdownMs);
+  const pulsing = isPadPulsing(round.state);
 
-  // One clock, read three ways: the swell, the confirmation flash, and the
-  // judgement label all age off the same gameplay time.
-  const pulse = running ? padPulse(elapsedMs) : 0;
-  const flash = judgementFreshness(rhythm, elapsedMs, GROOVE_PULSE.hitFlashMs);
+  // One clock, read three ways: the swell, the confirmation flash, and which
+  // beat is being counted toward all come off the same gameplay time.
+  const pulse = pulsing ? padPulse(clockMs) : 0;
+  const flash = judgementFreshness(rhythm, round.elapsedMs, GROOVE_PULSE.hitFlashMs);
   const judgement = rhythm.lastJudgement;
 
-  const countingIn = running && isCountInBeat(upcomingBeatIndex(elapsedMs));
-  const pulseScale = 1 + pulse * GROOVE_PULSE.peakScale;
+  // The GO beat and the pre-roll beats are pulsed but never scored, and are
+  // marked dimmer so the player is not waiting for points that cannot come.
+  const leadIn = pulsing && (clockMs < 0 || isUnscoredLeadBeat(upcomingBeatIndex(clockMs)));
+  const swell = RING_SCALE * (1 + pulse * GROOVE_PULSE.peakScale);
 
   return (
     <View pointerEvents="none" style={styles.layer}>
-      {/**
-       * Resting mark. Always visible, so the pad is findable before the first
-       * beat and during a stage-light peak — the overlay above it swings only
-       * 0.58-0.72 opacity, but a mark drawn purely by the pulse would vanish
-       * between beats and the player would lose the pad.
-       */}
-      <PadRing
-        radius={RING_RADIUS}
-        scale={1}
-        opacity={0.4}
-        color={THEME.hudText}
-        borderWidth={4}
-      />
+      <Svg
+        pointerEvents="none"
+        width={REFERENCE_CANVAS.width}
+        height={REFERENCE_CANVAS.height}
+      >
+        {/**
+         * Resting mark. Always visible, so the pad is findable before the
+         * first beat and during a stage-light peak — the overlay above it
+         * swings only 0.58-0.72 opacity, but a mark drawn purely by the pulse
+         * would vanish between beats and the player would lose the pad.
+         */}
+        <PadEllipse scale={RING_SCALE} opacity={0.4} color={THEME.hudText} strokeWidth={4} />
 
-      {/** The swell. Scale *and* brightness, never colour alone (M12). */}
-      <PadRing
-        radius={RING_RADIUS}
-        scale={pulseScale}
-        opacity={0.25 + pulse * 0.75}
-        color={countingIn ? THEME.hudDim : THEME.cymbal}
-        borderWidth={10}
-      />
-
-      {/** Glow inside the ring, so the pad brightens rather than just growing. */}
-      <PadRing
-        radius={RING_RADIUS * 0.86}
-        scale={pulseScale}
-        opacity={pulse * 0.3}
-        color={THEME.cymbal}
-        borderWidth={0}
-        filled
-      />
-
-      {/** Confirmation that a tap actually landed on a beat. */}
-      {flash > 0 && judgement !== null && (
-        <PadRing
-          radius={RING_RADIUS}
-          scale={1 + (1 - flash) * 0.5}
-          opacity={flash * 0.85}
-          color={judgement.grade === 'perfect' ? THEME.integrityFull : THEME.burst}
-          borderWidth={8}
+        {/** The swell. Scale *and* brightness, never colour alone (M12). */}
+        <PadEllipse
+          scale={swell}
+          opacity={0.25 + pulse * 0.75}
+          color={leadIn ? THEME.hudDim : THEME.cymbal}
+          strokeWidth={10}
         />
-      )}
 
+        {/** Glow inside the ring, so the pad brightens rather than just growing. */}
+        <PadEllipse
+          scale={swell * 0.86}
+          opacity={pulse * 0.3}
+          color={THEME.cymbal}
+          strokeWidth={0}
+          filled
+        />
+
+        {/**
+         * Confirmation that a tap actually landed on a beat: a ring that
+         * expands out to the tap boundary as it fades, and never past it.
+         */}
+        {flash > 0 && judgement !== null && (
+          <PadEllipse
+            scale={RING_SCALE + (1 - flash) * (1 - RING_SCALE)}
+            opacity={flash * 0.85}
+            color={judgement.grade === 'perfect' ? THEME.integrityFull : THEME.burst}
+            strokeWidth={8}
+          />
+        )}
+      </Svg>
     </View>
   );
 }

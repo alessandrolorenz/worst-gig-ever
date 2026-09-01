@@ -27,6 +27,7 @@ import {
   partitionByDepth,
   performerRect,
 } from './composition.ts';
+import { Countdown } from './Countdown.tsx';
 import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
@@ -43,7 +44,7 @@ import {
   type PerformerPose,
   type StageMotionState,
 } from '../systems/stageMotion.ts';
-import { isBeatClockRunning, type RhythmState } from '../state/rhythmState.ts';
+import { isPadPulsing, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
 import { Hud } from './Hud.tsx';
 
@@ -426,6 +427,13 @@ export function SceneRenderer({
          */}
         <GroovePad round={round} rhythm={rhythm} />
 
+        {/**
+         * Drawn with the pad, not with the HUD, so the numerals and the swell
+         * they are counting read as one instruction. It sits above the pad and
+         * renders nothing at all once `GO!` has aged out (M13.1).
+         */}
+        <Countdown round={round} />
+
         {targets.near.map(renderTarget)}
         <Debris shards={debris.near} />
         {bursts.near.map((effect) => (
@@ -435,12 +443,16 @@ export function SceneRenderer({
           <Strike key={effect.id} effect={effect} />
         ))}
         {/**
-         * Only while the round is actually running. An overlay is always on
+         * Only from the pre-roll to the final whistle. An overlay is always on
          * screen otherwise, and its scrim is not opaque — leaving the HUD up
          * put a dimmed second copy of both scores behind the results summary,
          * which is noise at best and contradicts the summary at a glance.
+         *
+         * The countdown is included so the readouts are already in place when
+         * the round starts rather than appearing on the `GO` beat, which is the
+         * one moment the player's attention is committed elsewhere.
          */}
-        {isBeatClockRunning(round.state) && <Hud round={round} rhythm={rhythm} />}
+        {isPadPulsing(round.state) && <Hud round={round} rhythm={rhythm} />}
       </View>
     </View>
   );

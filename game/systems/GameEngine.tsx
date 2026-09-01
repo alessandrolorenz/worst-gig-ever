@@ -20,7 +20,13 @@ import { THEME } from '../rendering/theme.ts';
 import { level01 } from '../levels/level01.ts';
 import type { GameState } from '../state/gameState.ts';
 import { clearRhythm } from '../state/rhythmState.ts';
-import { createRound, pauseRound, resumeRound, startRound } from '../state/roundState.ts';
+import {
+  cancelCountdown,
+  createRound,
+  pauseRound,
+  resumeRound,
+  startRound,
+} from '../state/roundState.ts';
 import { clearEffects } from './effects.ts';
 import { clearShards } from './shards.ts';
 import { clearStageMotion } from './stageMotion.ts';
@@ -58,6 +64,12 @@ export default function GameEngine() {
   // Release players on unmount, so a quit or reload cannot leave music running.
   useEffect(() => () => audio.dispose(), [audio]);
 
+  /**
+   * Start opens the `3 -> 2 -> 1 -> GO` pre-roll rather than the round itself
+   * (M13.1). The music starts here rather than on `GO` because it was never
+   * the rhythm clock and is not being made into one — it simply plays under
+   * the count, exactly as it played under M10's count-in.
+   */
   const handleStart = useCallback(() => {
     startRound(entities.scene.round);
     audio.playMusic();
@@ -109,6 +121,18 @@ export default function GameEngine() {
         if (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT') {
           pauseRound(round);
           audio.pauseMusic();
+          setUiState(round.state);
+        } else if (round.state === 'COUNTDOWN') {
+          /*
+           * A pre-roll is not worth resuming: three seconds of preparation
+           * resumed from the middle teaches the player nothing and would drop
+           * them into the round on a beat they never heard counted. Nothing
+           * has happened yet, so going back to the title costs nothing — and
+           * the music has to stop with it, because the title's Start button
+           * plays it again from the top (M13.1, background during countdown).
+           */
+          cancelCountdown(round);
+          audio.stopMusic();
           setUiState(round.state);
         }
       }

@@ -10,12 +10,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  COUNTDOWN,
   GROOVE_PAD,
   GROOVE_PULSE,
   RHYTHM,
   beatIntervalMs,
   beatTimeMs,
-  isCountInBeat,
+  countdownDurationMs,
+  countdownStep,
+  isUnscoredLeadBeat,
+  padBounds,
   padContainsPoint,
   scheduledBeatCount,
 } from '../game/config/rhythm.ts';
@@ -23,10 +27,12 @@ import {
   createRhythm,
   clearRhythm,
   isBeatClockRunning,
+  isPadPulsing,
   judgedBeats,
   meanAbsTimingErrorMs,
   nearestBeatIndex,
   padPulse,
+  pulseClockMs,
   resolvePadTap,
   resolveRhythmTap,
   tickRhythm,
@@ -36,7 +42,7 @@ import {
 } from '../game/state/rhythmState.ts';
 import { VOCALIST_BLOCKING_RECT } from '../game/config/stage.ts';
 import { level01 } from '../game/levels/level01.ts';
-import type { GameState } from '../game/state/gameState.ts';
+import { GAME_STATES, type GameState } from '../game/state/gameState.ts';
 
 const DURATION = level01.durationMs;
 
@@ -53,7 +59,7 @@ function advance(rhythm: RhythmState, toMs: number, stepMs: number, state: GameS
 }
 
 /** The first beat that is actually scored. */
-const FIRST_SCORED = RHYTHM.countInBeats;
+const FIRST_SCORED = RHYTHM.unscoredLeadBeats;
 
 // ---------------------------------------------------------------------------
 // Beat clock
@@ -86,11 +92,16 @@ test('the GOOD window is narrower than half a beat, so no tap is ambiguous', () 
   assert.ok(RHYTHM.perfectWindowMs < RHYTHM.goodWindowMs);
 });
 
-test('the first two beats are count-in and the third is the first scored beat', () => {
-  assert.equal(RHYTHM.countInBeats, 2);
-  assert.ok(isCountInBeat(0));
-  assert.ok(isCountInBeat(1));
-  assert.ok(!isCountInBeat(2));
+test('beat 0 is the unscored GO beat and beat 1 is the first scored one', () => {
+  // M13.1 replaced M10's two-beat count-in with the 3 -> 2 -> 1 -> GO pre-roll.
+  // Exactly one beat at the head of the round is unscored, and it is GO.
+  assert.equal(RHYTHM.unscoredLeadBeats, 1);
+  assert.ok(isUnscoredLeadBeat(0));
+  assert.ok(!isUnscoredLeadBeat(1));
+
+  // The first scored beat is therefore exactly one beat interval after GO,
+  // which happens at round time zero.
+  assert.equal(beatTimeMs(RHYTHM.unscoredLeadBeats), beatIntervalMs());
 });
 
 // ---------------------------------------------------------------------------
@@ -163,7 +174,7 @@ test('count-in beats are never scored and never counted as misses', () => {
   const rhythm = createRhythm();
 
   // Tapping perfectly on both count-in beats scores nothing.
-  for (let index = 0; index < RHYTHM.countInBeats; index += 1) {
+  for (let index = 0; index < RHYTHM.unscoredLeadBeats; index += 1) {
     assert.equal(resolvePadTap(rhythm, context(beatTimeMs(index))).length, 0);
   }
   assert.equal(rhythm.score, 0);
@@ -377,7 +388,7 @@ test('a full silent round judges every scored beat as a miss', () => {
   const rhythm = createRhythm();
   advance(rhythm, DURATION, 16);
 
-  const scored = scheduledBeatCount(DURATION) - RHYTHM.countInBeats;
+  const scored = scheduledBeatCount(DURATION) - RHYTHM.unscoredLeadBeats;
   assert.equal(rhythm.misses, scored);
   assert.equal(rhythm.hits, 0);
   assert.equal(judgedBeats(rhythm), scored);
@@ -396,7 +407,7 @@ test('a perfect round scores every beat and nothing is left open', () => {
   }
   tickRhythm(rhythm, context(DURATION));
 
-  const scored = total - RHYTHM.countInBeats;
+  const scored = total - RHYTHM.unscoredLeadBeats;
   assert.equal(rhythm.hits, scored);
   assert.equal(rhythm.misses, 0);
   assert.equal(rhythm.perfects, scored);
@@ -410,29 +421,59 @@ test('a perfect round scores every beat and nothing is left open', () => {
 // Pad geometry
 // ---------------------------------------------------------------------------
 
-test('the pad is a circle at its configured centre and radius', () => {
-  assert.ok(padContainsPoint(GROOVE_PAD.centerX, GROOVE_PAD.centerY));
-  assert.ok(padContainsPoint(GROOVE_PAD.centerX + GROOVE_PAD.radiusPx, GROOVE_PAD.centerY));
-  assert.ok(!padContainsPoint(GROOVE_PAD.centerX + GROOVE_PAD.radiusPx + 1, GROOVE_PAD.centerY));
+test('the pad is an ellipse at its configured centre and half-extents', () => {
+  const { centerX, centerY, halfWidthPx, halfHeightPx } = GROOVE_PAD;
+  assert.ok(padContainsPoint(centerX, centerY));
+
+  // Both axes are inclusive at the boundary and exclusive one pixel past it.
+  assert.ok(padContainsPoint(centerX + halfWidthPx, centerY));
+  assert.ok(!padContainsPoint(centerX + halfWidthPx + 1, centerY));
+  assert.ok(padContainsPoint(centerX, centerY + halfHeightPx));
+  assert.ok(!padContainsPoint(centerX, centerY + halfHeightPx + 1));
+
+  // A true ellipse, not its bounding box: the corners are outside it.
+  assert.ok(!padContainsPoint(centerX + halfWidthPx, centerY + halfHeightPx));
+
+  // Somewhere else entirely on the canvas is not the pad.
   assert.ok(!padContainsPoint(960, 540));
 });
 
-test('the pad sits on the drawn hi-hat, inside the canvas, clear of the singer', () => {
-  // Measured gold bounds of the hi-hat in drumkit_pov.png, mapped through
-  // DRUM_KIT_RECT: canvas x 0-431, y 885-962. The pad centre must be on it.
-  assert.ok(GROOVE_PAD.centerX >= 0 && GROOVE_PAD.centerX <= 431);
-  assert.ok(GROOVE_PAD.centerY >= 885 && GROOVE_PAD.centerY <= 962);
+test('the pad is meaningfully larger than the M10 pad it replaced', () => {
+  // M13.1 asks for roughly 30-50% more tappable footprint, and for none of it
+  // to come from a timing window. The old pad was a 150 px circle.
+  const before = Math.PI * 150 * 150;
+  const after = Math.PI * GROOVE_PAD.halfWidthPx * GROOVE_PAD.halfHeightPx;
+  const growth = after / before - 1;
+  assert.ok(growth >= 0.3, `pad grew only ${(growth * 100).toFixed(1)}%`);
+  assert.ok(growth <= 0.5, `pad grew ${(growth * 100).toFixed(1)}%, beyond the M13.1 guidance`);
+});
+
+test('the pad sits low and centred, inside the canvas, clear of the singer', () => {
+  const bounds = padBounds();
+
+  // Lower centre: horizontally on the canvas centre line, and below the
+  // midline where the kit is drawn (M13.1).
+  assert.equal(GROOVE_PAD.centerX, bounds.canvasWidth / 2);
+  assert.ok(GROOVE_PAD.centerY > bounds.canvasHeight / 2);
 
   // Fully on screen, so no part of the pad is unreachable.
-  assert.ok(GROOVE_PAD.centerY + GROOVE_PAD.radiusPx <= 1080);
-  assert.ok(GROOVE_PAD.centerX - GROOVE_PAD.radiusPx >= -GROOVE_PAD.radiusPx);
+  assert.ok(bounds.left >= 0 && bounds.right <= bounds.canvasWidth);
+  assert.ok(bounds.top >= 0 && bounds.bottom <= bounds.canvasHeight);
 
-  // The blocking vocalist must never be able to cover the pad (M11).
+  // On the drawn kit rather than beside it. Measured in drumkit_pov.png and
+  // mapped through DRUM_KIT_RECT: the kick's black head covers canvas x
+  // 780-1140 from y 940, and the snare head x 620-1300 from y 1004.
+  assert.ok(padContainsPoint(960, 1000), 'the pad centre line must be on the kick head');
+
+  // The blocking vocalist must never be able to cover the pad (M11). The rect
+  // is checked against the pad's bounding box, which contains the ellipse.
   const r = VOCALIST_BLOCKING_RECT;
-  const nearestX = Math.max(r.x, Math.min(GROOVE_PAD.centerX, r.x + r.width));
-  const nearestY = Math.max(r.y, Math.min(GROOVE_PAD.centerY, r.y + r.height));
-  const gap = Math.hypot(GROOVE_PAD.centerX - nearestX, GROOVE_PAD.centerY - nearestY);
-  assert.ok(gap > GROOVE_PAD.radiusPx, 'the singer must not overlap the Groove Pad');
+  const overlaps =
+    bounds.left < r.x + r.width &&
+    r.x < bounds.right &&
+    bounds.top < r.y + r.height &&
+    r.y < bounds.bottom;
+  assert.ok(!overlaps, 'the singer must not overlap the Groove Pad');
 });
 
 test('a tap off the pad is not judged at all', () => {
@@ -506,10 +547,51 @@ test('the pulse stays inside 0..1 and never depends on wall-clock time', () => {
   assert.equal(padPulse(12_345), padPulse(12_345));
 });
 
-test('the count-in is identifiable from the clock alone', () => {
-  assert.ok(isCountInBeat(upcomingBeatIndex(0)));
-  assert.ok(isCountInBeat(upcomingBeatIndex(beatTimeMs(1) - 1)));
-  assert.ok(!isCountInBeat(upcomingBeatIndex(beatTimeMs(2) - 1)));
+test('the pulse crosses the GO boundary without a seam', () => {
+  /*
+   * The pre-roll and the round are one beat schedule read through one pure
+   * function, so the swell into GO must be continuous: the last frame of the
+   * countdown and the first frame of the round are a millisecond apart on the
+   * same clock, and the pad must not jump between them.
+   */
+  const before = padPulse(pulseClockMs('COUNTDOWN', 0, countdownDurationMs() - 1));
+  const after = padPulse(pulseClockMs('PLAYING', 0, 0));
+  assert.ok(Math.abs(after - before) < 0.02, `pulse jumped at GO: ${before} -> ${after}`);
+  assert.ok(after > 0.95, 'GO itself is a peak');
+
+  // Walking the whole pre-roll: in range everywhere, and smooth throughout.
+  // The per-beat peaks themselves are asserted in tests/countdown.test.ts.
+  let previous = padPulse(pulseClockMs('COUNTDOWN', 0, 0));
+  let swells = 0;
+  for (let t = 1; t <= countdownDurationMs(); t += 1) {
+    const value = padPulse(pulseClockMs('COUNTDOWN', 0, t));
+    assert.ok(value >= 0 && value <= 1, `pulse out of range at ${t}`);
+    assert.ok(Math.abs(value - previous) < 0.05, `pulse jumped at ${t}`);
+    // Each swell crosses up through 0.99 exactly once. The pre-roll opens
+    // already at the peak of "3", so the crossings counted are "2", "1", GO.
+    if (previous < 0.99 && value >= 0.99) swells += 1;
+    previous = value;
+  }
+  assert.equal(swells, COUNTDOWN.leadBeats, 'the pad swells into every counted beat');
+});
+
+test('the pad animates through the pre-roll but the beat clock does not run', () => {
+  // The two predicates differ on exactly one state, which is the whole of the
+  // M13.1 boundary: the player sees the beat, and nothing is judged.
+  for (const state of GAME_STATES) {
+    const expected = state === 'COUNTDOWN' ? true : isBeatClockRunning(state);
+    assert.equal(isPadPulsing(state), expected, state);
+  }
+  assert.ok(isPadPulsing('COUNTDOWN'));
+  assert.ok(!isBeatClockRunning('COUNTDOWN'));
+  // And the numerals it draws come off the same schedule.
+  assert.equal(countdownStep(0), COUNTDOWN.leadBeats);
+});
+
+test('the unscored GO beat is identifiable from the clock alone', () => {
+  assert.ok(isUnscoredLeadBeat(upcomingBeatIndex(0)));
+  assert.ok(!isUnscoredLeadBeat(upcomingBeatIndex(beatTimeMs(1) - 1)));
+  assert.ok(!isUnscoredLeadBeat(upcomingBeatIndex(beatTimeMs(2) - 1)));
 });
 
 // ---------------------------------------------------------------------------

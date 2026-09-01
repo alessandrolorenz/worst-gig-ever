@@ -79,9 +79,41 @@ Initial MVP settings:
 
 - BPM: `90`
 - beat interval: `60000 / 90 = 666.666... ms`
-- count-in: `2` visual beats
-- scored beats start after the count-in
+- unscored lead beats: `1` — the `GO` beat (M13.1; was a 2-beat count-in at M10)
+- scored beats start one beat interval after `GO`
 - the clock remains fixed for the entire 60-second round
+
+### Pre-roll (M13.1)
+
+Start no longer begins the round. It enters a `COUNTDOWN` state that runs a
+`3 -> 2 -> 1 -> GO` pre-roll on this same beat clock, and the round begins on
+the `GO` beat.
+
+```text
+READY --start--> COUNTDOWN --GO--> PLAYING <-> PAUSED
+                     |
+                     +-- app backgrounded --> READY
+```
+
+The pre-roll has a clock of its own, `RoundState.countdownMs`, running
+`0 -> 2000 ms` while `elapsedMs` stays at zero. It is a separate field rather
+than a negative `elapsedMs` because spawning, target flight, the vocalist
+timeline, and the results screen all read the round clock and are entitled to
+assume it starts at zero and only moves forward.
+
+Presentation reads both through one function, `pulseClockMs`, which is negative
+through the pre-roll and zero at `GO`. That is what makes the four steps four
+consecutive beats of one schedule: at 90 BPM they land on -2000, -1333, -667
+and 0. `padPulse` is a pure function of time modulo the beat interval, so it
+swells into each of them without knowing the pre-roll exists.
+
+Nothing else runs before `GO`: no spawn, no target resolution, no Show
+Integrity, no vocalist progression, no Groove score, miss or streak. `GO`
+itself is round beat 0 and is not scored — the first scored beat is beat 1.
+
+Backgrounding during the pre-roll cancels it back to `READY` rather than
+pausing. Three seconds of preparation resumed from the middle teaches nothing
+and would drop the player into the round on a beat they never heard counted.
 
 This BPM is deliberately easier than a typical rock hi-hat pattern. Difficulty in the first pivot comes from doing two tasks at once, not from fast tapping.
 
@@ -143,7 +175,10 @@ If two distinct fingers arrive in one frame, they remain two distinct taps unles
 
 The current drum kit can remain a single image.
 
-The groove pad is a configured rectangle/circle aligned over one visible cymbal.
+The groove pad is a configured region aligned over the drawn kit. M10 put it on
+the hi-hat as a circle; M13.1 moved it to the lower centre, on the kick and
+snare faces, as a **wide ellipse** — see `GROOVE_PAD` in
+`game/config/rhythm.ts` for why the shape changed as well as the position.
 
 Do not crop the drum kit or require new art for M10.
 
@@ -161,7 +196,7 @@ The visual pulse should anticipate the beat, peak at the beat, then decay.
 Suggested pure function inputs:
 - elapsed gameplay ms;
 - BPM;
-- beat offset/count-in;
+- beat offset;
 - pulse lead-in duration;
 - pulse decay duration.
 

@@ -24,11 +24,21 @@ export const RHYTHM = {
    */
   bpm: 90,
   /**
-   * Pulses the player watches before scoring starts. They animate exactly like
-   * every other beat, so the tap moment can be learned without instructions,
-   * but they are never scored and never counted as misses.
+   * Beats at the start of the round that pulse but are never scored and never
+   * counted as misses.
+   *
+   * Exactly one, and it is the `GO` beat. M13.1 replaced M10's two-beat
+   * count-in with an explicit `3 -> 2 -> 1 -> GO` pre-roll (`COUNTDOWN` below):
+   * the three numerals are beats of their own phase before the round clock
+   * starts, and `GO` is round beat 0. Scoring the beat the player is being told
+   * to start on would judge them for a pulse that is still an instruction, so
+   * beat 0 is silent and the first scored beat is beat 1 — exactly one interval
+   * after `GO`, which is the M13.1 contract.
+   *
+   * This is the whole of the preparation sequence. There is deliberately no
+   * second count-in behind it (M13.1, "one coherent preparation sequence").
    */
-  countInBeats: 2,
+  unscoredLeadBeats: 1,
   /** Absolute timing error at or under this is PERFECT. */
   perfectWindowMs: 90,
   /**
@@ -52,38 +62,70 @@ export const RHYTHM = {
 } as const;
 
 /**
- * The Groove Pad: one existing cymbal, promoted to the timekeeping pad.
+ * The Groove Pad: the lower-centre face of the kit, where the player is
+ * already looking (M13.1).
  *
- * Measured off `assets/art/drums/drumkit_pov.png` rather than guessed. The
- * hi-hat's gold pixels occupy x 0-431, y 385-462 in that 1920x700 bitmap,
- * which `DRUM_KIT_RECT` places at canvas y 885-962 — so this centre sits on
- * the drawn cymbal, not beside it. Re-measure if the kit art or
+ * ## Why it moved
+ *
+ * M10 put the pad on the hi-hat at (218, 928) because that is the cymbal a
+ * drummer keeps time on and it is where a thumb rests in landscape. The first
+ * physical playtest found the real cost of that: bottles converge on the
+ * centre of the screen, so keeping the groove meant looking away from the
+ * corridor twice a second. The dual-task challenge is supposed to come from
+ * coordinating two jobs, not from the eye travel between them.
+ *
+ * ## Why an ellipse, and why this one
+ *
+ * The vertical band available in the centre is fixed at both ends:
+ * `VOCALIST_BLOCKING_RECT` reaches y 860 and the canvas ends at y 1080, and
+ * the pad must clear the first (M11 requires the singer never to interfere
+ * with the pad) and stay inside the second. That is 220 px, so a *circle*
+ * centred at x 960 could have a radius of at most 110 — smaller than the 150
+ * it already had. A wide ellipse is what makes the pad bigger rather than
+ * smaller in that band, and it is also the honest shape: a drum head seen from
+ * the drummer's seat is a wide ellipse, not a circle.
+ *
+ * Measured against `assets/art/drums/drumkit_pov.png` through `DRUM_KIT_RECT`,
+ * not guessed. In canvas coordinates the kick's black head covers x 780-1140
+ * from y 940 down past the canvas edge, its red rim sits at y 954-1004, and
+ * the snare head runs x 620-1300 from y 1004. So this ellipse lands on the
+ * drum faces directly in front of the player: 67.8% of its area is on drawn
+ * kit art, against 64.8% for the old hi-hat pad. Re-measure if the kit art or
  * `DRUM_KIT_DROP` moves.
  *
- * Why the hi-hat and not one of the three crashes:
- *
- *  - it is the cymbal a drummer actually keeps time on, so the mechanic reads
- *    without being explained;
- *  - it is bottom-left, which is where a thumb already rests in landscape,
- *    and far from the pause button in the opposite corner — a pad under that
- *    button would eat taps that never reach the game at all;
- *  - it is outside `VOCALIST_BLOCKING_RECT` (x 700-1220), so the singer
- *    stepping into the drummer's face can never cover the pad. M11 requires
- *    the pad to stay tappable during the vocalist event.
- *
- * The radius is a little larger than the biggest target hitbox (a mug's
- * 120 x 1.25 = 150), because this is a mark that gets hit on every beat for a
- * minute rather than one aimed swing.
+ * Footprint: 320 x 105 gives 105,558 px2 against the old circle's 70,686 —
+ * 49% larger, at the top of the 30-50% M13.1 asks for. The tap area grew; no
+ * timing window did.
  *
  * It is a tap region owned by configuration, exactly like
  * `VOCALIST_BLOCKING_RECT`. No art dimension defines it (AGENTS.md rule 17)
- * and no `Pressable` implements it — the pad is hit-tested against this circle
- * by the same surface input pipeline that resolves every other tap.
+ * and no `Pressable` implements it — the pad is hit-tested against this
+ * ellipse by the same surface input pipeline that resolves every other tap.
  */
 export const GROOVE_PAD = {
-  centerX: 218,
-  centerY: 928,
-  radiusPx: 150,
+  centerX: 960,
+  centerY: 970,
+  /** Half-extent along x. */
+  halfWidthPx: 320,
+  /** Half-extent along y, bounded by the singer above and the canvas below. */
+  halfHeightPx: 105,
+} as const;
+
+/**
+ * The `3 -> 2 -> 1 -> GO` pre-roll between Start and the round (M13.1).
+ *
+ * Three numerals, then `GO` on the fourth beat — and that fourth beat is round
+ * beat 0, not a fourth countdown tick, which is what makes the round start
+ * *on* the beat the player was counted into rather than after an awkward gap.
+ *
+ * `leadBeats` beats at 90 BPM is exactly 2000 ms, so the pre-roll is a whole
+ * number of milliseconds and `beatTimeMs` returns it without rounding error.
+ */
+export const COUNTDOWN = {
+  /** Numerals shown before the round clock starts: 3, 2, 1. */
+  leadBeats: 3,
+  /** How long `GO!` stays up once the round has actually begun. */
+  goTextMs: 600,
 } as const;
 
 /**
@@ -139,24 +181,55 @@ export function scheduledBeatCount(roundDurationMs: number): number {
   return Math.ceil((roundDurationMs * RHYTHM.bpm) / 60_000);
 }
 
-/** True for the unscored beats the player watches before scoring begins. */
-export function isCountInBeat(beatIndex: number): boolean {
-  return beatIndex < RHYTHM.countInBeats;
+/**
+ * True for a beat at the head of the round that pulses but is never scored.
+ *
+ * Only beat 0, the `GO` beat. Named for what it is rather than for a count-in,
+ * because M13.1 removed the count-in it used to describe.
+ */
+export function isUnscoredLeadBeat(beatIndex: number): boolean {
+  return beatIndex < RHYTHM.unscoredLeadBeats;
 }
 
-/** True if the tap point falls on the Groove Pad. */
+/**
+ * True if the tap point falls on the Groove Pad.
+ *
+ * The pad is an axis-aligned ellipse, so the test is the unit-circle one on
+ * normalized offsets. `<= 1` keeps the boundary inclusive, exactly as the
+ * circle it replaced was.
+ */
 export function padContainsPoint(x: number, y: number): boolean {
-  return Math.hypot(x - GROOVE_PAD.centerX, y - GROOVE_PAD.centerY) <= GROOVE_PAD.radiusPx;
+  const dx = (x - GROOVE_PAD.centerX) / GROOVE_PAD.halfWidthPx;
+  const dy = (y - GROOVE_PAD.centerY) / GROOVE_PAD.halfHeightPx;
+  return dx * dx + dy * dy <= 1;
 }
 
 /** The pad's bounding box on the reference canvas, for layout and tests. */
 export function padBounds() {
   return {
-    left: GROOVE_PAD.centerX - GROOVE_PAD.radiusPx,
-    top: GROOVE_PAD.centerY - GROOVE_PAD.radiusPx,
-    right: GROOVE_PAD.centerX + GROOVE_PAD.radiusPx,
-    bottom: GROOVE_PAD.centerY + GROOVE_PAD.radiusPx,
+    left: GROOVE_PAD.centerX - GROOVE_PAD.halfWidthPx,
+    top: GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx,
+    right: GROOVE_PAD.centerX + GROOVE_PAD.halfWidthPx,
+    bottom: GROOVE_PAD.centerY + GROOVE_PAD.halfHeightPx,
     canvasWidth: REFERENCE_CANVAS.width,
     canvasHeight: REFERENCE_CANVAS.height,
   };
+}
+
+/** How long the pre-roll lasts, in gameplay milliseconds. Exactly 2000 at 90 BPM. */
+export function countdownDurationMs(): number {
+  return beatTimeMs(COUNTDOWN.leadBeats);
+}
+
+/**
+ * The numeral the countdown is showing, from 3 down to 1.
+ *
+ * Derived by multiplying by the BPM rather than dividing by the beat interval,
+ * for the same reason `scheduledBeatCount` is: `2000 / (60000 / 90)` is
+ * 3.0000000000000004 in floating point, and a `ceil` on that reads a fourth
+ * numeral that does not exist.
+ */
+export function countdownStep(countdownMs: number): number {
+  const beatsElapsed = Math.floor((Math.max(0, countdownMs) * RHYTHM.bpm) / 60_000);
+  return Math.max(1, COUNTDOWN.leadBeats - beatsElapsed);
 }

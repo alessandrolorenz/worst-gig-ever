@@ -10,6 +10,14 @@
 
 export const GAME_STATES = [
   'READY',
+  /**
+   * The beat-aligned `3 -> 2 -> 1 -> GO` pre-roll between pressing Start and
+   * the round actually beginning (M13.1). It is a preparation phase, not a
+   * playing one: the round clock is still at zero, nothing spawns, and neither
+   * performance can score. Only the Groove Pad moves, so the player arrives at
+   * GO already holding the tempo.
+   */
+  'COUNTDOWN',
   'PLAYING',
   'PAUSED',
   'VOCALIST_EVENT',

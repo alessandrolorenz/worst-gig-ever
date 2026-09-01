@@ -35,7 +35,8 @@ import {
   RHYTHM,
   beatIntervalMs,
   beatTimeMs,
-  isCountInBeat,
+  countdownDurationMs,
+  isUnscoredLeadBeat,
   padContainsPoint,
   scheduledBeatCount,
 } from '../config/rhythm.ts';
@@ -133,6 +134,38 @@ export function isBeatClockRunning(state: GameState): boolean {
   return state === 'PLAYING' || state === 'VOCALIST_EVENT';
 }
 
+/**
+ * True while the pad is animating, which is a wider set of states than the
+ * ones that score (M13.1).
+ *
+ * The pre-roll exists to hand the player the tempo before anything is at
+ * stake, so the pad has to pulse through it — but COUNTDOWN is deliberately
+ * absent from `isBeatClockRunning`, so nothing in this module can score, miss,
+ * or judge during it.
+ */
+export function isPadPulsing(state: GameState): boolean {
+  return state === 'COUNTDOWN' || isBeatClockRunning(state);
+}
+
+/**
+ * The single clock the pad pulse and the countdown numerals are both drawn
+ * from, in milliseconds relative to `GO` (M13.1).
+ *
+ * Negative through the pre-roll and zero at `GO`, which is what makes
+ * `3 -> 2 -> 1 -> GO` four consecutive beats of one schedule rather than a
+ * separate animation bolted onto the front of the round: at 90 BPM the
+ * numerals land on -2000, -1333, -667 and `GO` on 0, and `padPulse` — being a
+ * pure function of time modulo the beat interval — swells into each of them
+ * without knowing the countdown exists.
+ *
+ * It is not a second clock. Both inputs are gameplay time owned by the round,
+ * and neither is advanced here.
+ */
+export function pulseClockMs(state: GameState, elapsedMs: number, countdownMs: number): number {
+  if (state === 'COUNTDOWN') return countdownMs - countdownDurationMs();
+  return elapsedMs;
+}
+
 /** Scored beats resolved so far — the denominator of "hits / judged". */
 export function judgedBeats(state: RhythmState): number {
   return state.hits + state.misses;
@@ -180,9 +213,9 @@ export function tickRhythm(state: RhythmState, context: BeatContext): RhythmEven
   return events;
 }
 
-/** Closes one beat out as a miss. Count-in beats are closed but never counted. */
+/** Closes one beat out as a miss. The unscored GO beat is closed but never counted. */
 function missBeat(state: RhythmState, beatIndex: number, events: RhythmEvent[]): void {
-  if (isCountInBeat(beatIndex)) return;
+  if (isUnscoredLeadBeat(beatIndex)) return;
   state.misses += 1;
   state.streak = 0;
   events.push({ type: 'BEAT_MISSED', beatIndex });
@@ -207,9 +240,9 @@ export function resolvePadTap(state: RhythmState, context: BeatContext): RhythmE
 
   const beatIndex = nearestBeatIndex(context.elapsedMs);
 
-  // Outside the round, in the count-in, already scored, or already closed out.
+  // Outside the round, the unscored GO beat, already scored, or already closed out.
   if (beatIndex < 0 || beatIndex >= scheduledBeatCount(context.durationMs)) return [];
-  if (isCountInBeat(beatIndex)) return [];
+  if (isUnscoredLeadBeat(beatIndex)) return [];
   if (beatIndex <= state.lastHitBeatIndex) return [];
   if (beatIndex < state.nextBeatToFinalize) return [];
 
@@ -326,7 +359,7 @@ export function padPulse(elapsedMs: number): number {
 
 /**
  * The beat index the pulse is currently counting toward, so a renderer can
- * mark the count-in differently from a scored beat.
+ * mark the unscored GO beat differently from a scored one.
  */
 export function upcomingBeatIndex(elapsedMs: number): number {
   return Math.ceil(elapsedMs / beatIntervalMs());

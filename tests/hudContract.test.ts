@@ -14,9 +14,10 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { GROOVE_PAD } from '../game/config/rhythm.ts';
+import { GROOVE_PAD, GROOVE_PULSE } from '../game/config/rhythm.ts';
 import { REFERENCE_CANVAS, STAGE } from '../game/config/stage.ts';
 import {
+  COUNTDOWN_BOX,
   GROOVE_PANEL,
   GROOVE_PANEL_ROWS,
   HUD_MARGIN,
@@ -87,9 +88,56 @@ test('the Groove readout never covers the Groove Pad', () => {
     !rectsOverlap(GROOVE_PANEL, padBoundingRect()),
     'feedback must not cover the mark the player is aiming at',
   );
-  // It sits directly above it, so the two read as one control.
-  assert.equal(GROOVE_PANEL.y + GROOVE_PANEL.height, GROOVE_PAD.centerY - GROOVE_PAD.radiusPx);
-  assert.ok(GROOVE_PANEL.height > 0, 'the panel must have room above the pad');
+  assert.ok(GROOVE_PANEL.height > 0, 'the panel must have room for its rows');
+
+  /*
+   * The readout no longer sits directly above the pad, and must not: M13.1
+   * moved the pad to the lower centre, and the space above a centred pad is
+   * the target corridor, where Groove feedback is forbidden. It stays on the
+   * left rail instead — checked against the corridor by the test above.
+   */
+  assert.ok(
+    GROOVE_PANEL.x + GROOVE_PANEL.width < GROOVE_PAD.centerX - GROOVE_PAD.halfWidthPx,
+    'the readout must sit clear of the pad, not stacked on it',
+  );
+});
+
+test('the countdown numerals clear both the pad and the top HUD row', () => {
+  // The pre-roll teaches the pulse, so it must never cover it (M13.1).
+  assert.ok(
+    COUNTDOWN_BOX.y + COUNTDOWN_BOX.height <= GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx,
+    'the numerals must not reach the pad',
+  );
+  assert.ok(COUNTDOWN_BOX.y >= HUD_TOP_HEIGHT, 'the numerals must not sit under the score row');
+  assert.ok(
+    COUNTDOWN_BOX.y + COUNTDOWN_BOX.height <= REFERENCE_CANVAS.height,
+    'the numerals must be on the canvas',
+  );
+});
+
+test('the pad never draws outside the area a tap actually resolves', () => {
+  /*
+   * The drawn mark and the configured tap ellipse are one promise. The swell
+   * peaks at exactly the tap boundary, and the hit flash expands out to it and
+   * stops — neither may overreach, or the player aims at pixels that are not
+   * tappable.
+   */
+  const ringScale = 1 / (1 + GROOVE_PULSE.peakScale);
+  assert.ok(ringScale < 1, 'the resting mark must sit inside the tap area');
+  assert.equal(ringScale * (1 + GROOVE_PULSE.peakScale), 1);
+  // The flash runs from the resting ring out to the boundary as it fades.
+  const flashAtEnd = ringScale + (1 - 0) * (1 - ringScale);
+  assert.equal(flashAtEnd, 1);
+});
+
+test('the pad is drawn without a Pressable and without a hard-coded geometry', () => {
+  // The pad must be hit-tested by the surface pipeline, never by a nested
+  // touch target (M5A), and its shape must come from config (M13.1).
+  assert.ok(!padSource.includes('Pressable'), 'the pad must not nest a Pressable');
+  assert.ok(!padSource.includes('onPress'), 'the pad must not handle presses');
+  assert.ok(padSource.includes('GROOVE_PAD.halfWidthPx'), 'geometry must come from config');
+  assert.ok(padSource.includes('GROOVE_PAD.centerX'), 'geometry must come from config');
+  assert.ok(padSource.includes('pointerEvents="none"'), 'the pad layer must not take touches');
 });
 
 test('every HUD box is on the canvas at two landscape aspect ratios', () => {
@@ -113,12 +161,30 @@ test('the Groove panel has room for all four of its fixed rows', () => {
   );
 });
 
-test('the pad stays clear of the pause control in the opposite corner', () => {
-  // The pause button is an overlay outside the scaled canvas, anchored to the
-  // bottom-right of the screen. A pad there would eat taps that never reach
-  // the game at all.
-  assert.ok(GROOVE_PAD.centerX < REFERENCE_CANVAS.width / 2, 'pad is on the left');
-  assert.ok(GROOVE_PAD.centerY > REFERENCE_CANVAS.height / 2, 'pad is low, where a thumb rests');
+test('the pad stays clear of the pause control in the bottom-right corner', () => {
+  /*
+   * The pause button is an overlay outside the scaled canvas, anchored to the
+   * bottom-right of the screen. A pad reaching under it would eat taps that
+   * never arrive at the game at all.
+   *
+   * Its 62 + 18 dp corner is widened generously here and expressed as a
+   * fraction of the canvas, because the overlay is laid out in device points
+   * and the canvas is letterboxed inside them — the exact canvas coordinate
+   * moves with the viewport, but the corner it occupies does not.
+   */
+  const pad = padBoundingRect();
+  const corner: Rect = {
+    x: REFERENCE_CANVAS.width * 0.85,
+    y: REFERENCE_CANVAS.height * 0.75,
+    width: REFERENCE_CANVAS.width * 0.15,
+    height: REFERENCE_CANVAS.height * 0.25,
+  };
+  assert.ok(!rectsOverlap(pad, corner), 'the pad must not reach the pause corner');
+
+  // Lower centre, which is the whole point of the M13.1 move: the pulse and
+  // the corridor the bottles arrive down share one visual field.
+  assert.equal(GROOVE_PAD.centerX, REFERENCE_CANVAS.width / 2, 'pad is horizontally centred');
+  assert.ok(GROOVE_PAD.centerY > REFERENCE_CANVAS.height / 2, 'pad is low, on the near kit');
 });
 
 test('the corridor definition tracks the lane table', () => {
@@ -161,7 +227,7 @@ test('no combined total is presented anywhere', () => {
 test('the READY screen carries the renamed identity and both instructions', () => {
   assert.ok(overlaysSource.includes('WORST GIG EVER'));
   assert.ok(overlaysSource.includes('Keep the beat. Survive the gig.'));
-  assert.ok(overlaysSource.includes('Tap the pulsing cymbal on the beat.'));
+  assert.ok(overlaysSource.includes('Tap the pulsing pad on the beat.'));
   assert.ok(overlaysSource.includes('Break bottles before they hit your kit.'));
   assert.ok(!overlaysSource.includes('WORST BAND EVER'));
 });
@@ -210,11 +276,12 @@ test('every summary figure is derivable from the Groove state alone', () => {
     state: 'PLAYING',
   });
 
-  // Two perfects, one good, then two beats let go.
-  resolvePadTap(rhythm, context(beatTimeMs(2)));
-  resolvePadTap(rhythm, context(beatTimeMs(3) + 20));
-  resolvePadTap(rhythm, context(beatTimeMs(4) + 150));
-  tickRhythm(rhythm, context(beatTimeMs(6) + RHYTHM.goodWindowMs + 1));
+  // Two perfects, one good, then two beats let go. Beat 1 is the first that
+  // scores at all: beat 0 is GO (M13.1).
+  resolvePadTap(rhythm, context(beatTimeMs(1)));
+  resolvePadTap(rhythm, context(beatTimeMs(2) + 20));
+  resolvePadTap(rhythm, context(beatTimeMs(3) + 150));
+  tickRhythm(rhythm, context(beatTimeMs(5) + RHYTHM.goodWindowMs + 1));
 
   assert.equal(rhythm.perfects, 2);
   assert.equal(rhythm.goods, 1);

@@ -132,13 +132,22 @@ export function Overlays(props: OverlayProps) {
     );
   }
 
+  /*
+   * The pre-roll shows the scene and nothing else (M13.1). No scrim, because
+   * the point of the countdown is to let the player read the stage before it
+   * fills up, and deliberately no pause control: there is nothing yet to
+   * pause, and a button appearing for three seconds and then moving would be
+   * worse than not having one.
+   */
+  if (state === 'COUNTDOWN') return null;
+
   if (state === 'READY') {
     return (
       <View style={styles.scrim}>
         <Text style={styles.title}>WORST GIG EVER</Text>
         <Text style={styles.tagline}>Keep the beat. Survive the gig.</Text>
         <Text style={styles.body}>
-          Tap the pulsing cymbal on the beat.{'\n'}
+          Tap the pulsing pad on the beat.{'\n'}
           Break bottles before they hit your kit.
         </Text>
         <Button label="Start the show" onPress={props.onStart} />

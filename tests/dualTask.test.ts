@@ -61,7 +61,22 @@ function setup() {
   entities.scene.viewport.pageX = SURFACE_OFFSET.pageX;
   entities.scene.viewport.pageY = SURFACE_OFFSET.pageY;
   startRound(entities.scene.round);
+  runCountdown(entities);
   return { audio, entities };
+}
+
+/**
+ * Drives the M13.1 pre-roll through the real system loop until the round
+ * begins, so every case below starts where it always did: PLAYING, at elapsed
+ * zero, with nothing spawned.
+ */
+function runCountdown(entities: GameEntities): void {
+  for (let guard = 0; guard < 1000; guard += 1) {
+    if (entities.scene.round.state !== 'COUNTDOWN') break;
+    step(entities);
+  }
+  assert.equal(entities.scene.round.state, 'PLAYING', 'the countdown never reached GO');
+  assert.equal(entities.scene.round.elapsedMs, 0, 'the round must begin at elapsed zero');
 }
 
 function surfacePoint(entities: GameEntities, x: number, y: number) {
@@ -345,7 +360,8 @@ test('one finger alternating between the two jobs works on its own', () => {
 
   // Keep every scored beat from the first one, breaking whatever is in the air
   // in between — never two fingers at once, and never two in the same frame.
-  const beats = [2, 3, 4, 5, 6, 7];
+  // Beat 1 is the first that scores: beat 0 is GO (M13.1).
+  const beats = [1, 2, 3, 4, 5, 6];
   for (const beat of beats) {
     advanceToBeat(entities, beat);
     step(entities, 16, [touch(entities, PAD_POINT.x, PAD_POINT.y)]);
@@ -410,7 +426,7 @@ test('a missed bottle does not touch the Groove streak', () => {
   const { round, rhythm } = entities.scene;
 
   // Keep every scored beat from the very first one, so the streak is unbroken.
-  const beats = [2, 3, 4, 5, 6, 7, 8, 9, 10];
+  const beats = [1, 2, 3, 4, 5, 6, 7, 8, 9];
   const integrityBefore = round.integrity;
   for (const beat of beats) {
     advanceToBeat(entities, beat);
@@ -546,7 +562,7 @@ test('a seeded round replays identically with the Groove running', () => {
 
     // Tap the pad on every beat and never touch a bottle, so the input
     // schedule is a pure function of the clock.
-    let nextBeat = RHYTHM.countInBeats;
+    let nextBeat = RHYTHM.unscoredLeadBeats;
     while (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT') {
       const beatAt = beatTimeMs(nextBeat);
       const touches =

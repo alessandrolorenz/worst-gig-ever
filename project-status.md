@@ -12,13 +12,92 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M13 rhythm MVP candidate ready for physical playtest (2026-08-31).**
-Outcome: `READY_FOR_RHYTHM_PLAYTEST`. Automated gate green, native validation
-done on the `Pixel_9` emulator, and the session instrument is
-`docs/specs/M13-rhythm-playtest-checklist.md`.
+**M13.1 Groove readability and entry tuning ready for owner re-test
+(2026-09-01).** Outcome: `READY_FOR_M13_1_RETEST`. Automated gate green, native
+smoke done on the `Pixel_9` emulator, and the session instrument is
+`docs/specs/M13.1-physical-retest-checklist.md`.
+
+M13.1 answers the first physical playtest, which found the dual-task loop fun
+and hard and the difficulty worth keeping — but found two things that were
+friction rather than challenge. **No difficulty value was changed**, and that
+is checked below.
+
+**The Groove Pad moved to the lower centre and got bigger.** It was a 150 px
+circle on the hi-hat at (218, 928); it is now an ellipse at (960, 970) with
+half-extents 320 x 105 — 49% more tappable area, sitting on the kick and snare
+faces the player is already looking past. The pulse and the corridor the
+bottles arrive down are now one visual field.
+
+The shape changed because the position did. The band available in the centre
+is pinned by `VOCALIST_BLOCKING_RECT` at y 860 above and the canvas at y 1080
+below, and M11 requires the singer never to interfere with the pad — so a
+*circle* centred at x 960 could have had a radius of at most 110, smaller than
+the 150 it already had. A wide ellipse is the only way that band holds a bigger
+pad, and it is also what a drum head looks like from the drummer's seat. Drawn
+with `react-native-svg`, already in the bundle, because a circular `View`
+stretched 3:1 stretches its border with it.
+
+The drawn mark and the tap area are now one promise: the ring rests at
+`1 / (1 + peakScale)` of the tap ellipse, so the swell peaks exactly on the tap
+boundary and the hit flash expands out to it and stops. Nothing the pad draws
+reaches past what a tap resolves.
+
+**A `3 -> 2 -> 1 -> GO` pre-roll replaces the two-beat count-in.** Start now
+enters a new `COUNTDOWN` state; the round begins on the `GO` beat. It runs on
+the existing visual beat clock — no timer, no wall clock, no audio position —
+through `pulseClockMs`, which is negative through the pre-roll and zero at
+`GO`, so the four steps are four consecutive beats of the round's own schedule
+rather than an animation bolted onto the front.
+
+Before `GO` nothing happens at all: no spawn, no target resolution, no Show
+Integrity, no vocalist progression, no Groove score, miss or streak.
+Backgrounding during the pre-roll cancels it back to `READY` rather than
+pausing — three seconds of preparation resumed from the middle teaches nothing.
+
+**One consequence worth naming: a 60-second round now has 89 scored beats
+rather than 88.** M10 held beats 0 and 1 unscored so the player could find the
+tempo; the pre-roll does that job now, and keeping the old count-in would have
+stacked a fourth silent beat behind `GO`, which M13.1 forbids. So
+`RHYTHM.countInBeats: 2` became `RHYTHM.unscoredLeadBeats: 1` — beat 0 is `GO`,
+it pulses, it does not score, and the first scored beat is beat 1. Groove
+scores are therefore **not comparable across the M13/M13.1 boundary**.
+
+One defect was found by running the build and fixed: **the countdown numerals
+were barely legible.** Drawn straight onto the scene they sat over the singer,
+the crowd and the lights — the busiest, brightest part of the canvas — and read
+as part of the artwork. They now ride on a dark plate that breathes and fades
+with the pulse.
+
+Difficulty freeze, read from source after the change: BPM 90, PERFECT +/-90 ms,
+GOOD +/-180 ms, Groove 100/70/0, bottle approach 1450-1950 (fast 1050-1250),
+mug 1800-2350 (fast 1350-1550), fastball chance 0.2, hit radii 104/120,
+forgiveness 1.25x / 64 / 110 / 28, integrity 3, round 60 s, vocalist at 41 s,
+bonus 500, spawn cadence 1800/1300/850. All `UNCHANGED`, and
+`game/config/targets.ts`, `game/config/scoring.ts`, `game/config/stage.ts`,
+`game/levels/level01.ts` and `game/systems/approach.ts` have **no diff** in this
+milestone.
+
+There is still **one** Groove Pad. A second is a future difficulty idea and is
+documented, not built.
+
+Full reasoning in `docs/decisions/0012-m13-1-pre-roll-and-centred-groove-pad.md`.
+
+**M13 rhythm MVP candidate played on a physical phone (2026-08-31).**
+Owner decision: the rhythm pivot is **promising and worth continuing** —
+Groove + Defense is challenging but fun, keeping the beat while breaking
+bottles is meaningfully difficult, and *that difficulty is not the problem*.
+What the owner asked for instead was readability and entry: a larger
+lower-centre pad, and a visible countdown before the round. A second Groove
+area was named as a good future difficulty idea and explicitly deferred. That
+is the brief M13.1 above implements.
+
+The candidate itself reached `READY_FOR_RHYTHM_PLAYTEST` with the automated
+gate green and native validation done on the `Pixel_9` emulator; the session
+instrument was `docs/specs/M13-rhythm-playtest-checklist.md`.
 
 The candidate is one 60-second round of Worst Gig Ever: visual Groove Pad at
-90 BPM with a two-beat count-in, PERFECT/GOOD windows, Groove score and
+90 BPM with a two-beat count-in — replaced by the M13.1 pre-roll — PERFECT/GOOD
+windows, Groove score and
 streak, the existing bottles, mugs, throw arcs, Defense score and combo, Show
 Integrity, the vocalist event, the existing music and SFX, and a two-column
 end summary. No subjective value was chosen by Claude.
@@ -74,7 +153,8 @@ Full reasoning for M10 and M11 in ADR 0011.
 
 The hi-hat in the existing kit art is now a Groove Pad: a code-drawn ring that
 swells into each beat, peaks on it, and falls away, at 90 BPM with a two-beat
-count-in. Tapping it inside +/-90 ms is PERFECT, inside +/-180 ms is GOOD, and
+count-in. (Both the hi-hat placement and the count-in were superseded by M13.1
+— see the current phase above.) Tapping it inside +/-90 ms is PERFECT, inside +/-180 ms is GOOD, and
 a beat can be scored once. Missed beats cost nothing but the streak.
 
 The Groove domain (`game/state/rhythmState.ts`) imports no React, no React
@@ -199,11 +279,18 @@ One 60-second show with:
 
 ## Immediate next action
 
-**Play the candidate on a physical phone**, using
-`docs/specs/M13-rhythm-playtest-checklist.md` — at least ten rounds before any
-tuning, then choose one of `RHYTHM_VALIDATED`, `TUNE_RHYTHM`, `TUNE_DEFENSE`,
-`TUNE_BOTH`, `PIVOT_AGAIN`, or `STOP`. That decision is the owner's; Claude
-must not make it.
+**Re-test M13.1 on a physical phone**, using
+`docs/specs/M13.1-physical-retest-checklist.md` — at least six rounds (two
+one-finger, two two-finger, one Groove-focused, one free) before any tuning,
+then choose one of `M13_1_VALIDATED`, `PAD_TOO_LARGE`, `PAD_STILL_TOO_SMALL`,
+`PAD_POSITION_NEEDS_TUNING`, `COUNTDOWN_NEEDS_TUNING`,
+`RHYTHM_DIFFICULTY_NEEDS_TUNING`, `DEFENSE_DIFFICULTY_NEEDS_TUNING`, or
+`DUAL_TASK_NEEDS_TUNING`. That decision is the owner's; Claude must not make it.
+
+The question M13.1 exists to answer is whether the *same* challenge is now
+easier to read and control. If it plays too easily, that is a new playtest
+finding — not licence to change the frozen values, which is why none of them
+moved.
 
 M14 (`prompts/16-m14-visual-refresh-planning.md`) is prepared but **must not
 run** until the owner has played the candidate and explicitly asks for it.
@@ -247,8 +334,43 @@ adding more stage chaos. They are not cancelled, just not next.
 - M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
 - M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
 - M12 Dual Score, HUD & Results: **GATE GREEN** (2026-08-31) — two metrics, no combined total; 15 presentation contract tests
-- M13 Rhythm MVP Candidate: **GATE GREEN** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; installed and confirmed working on the Galaxy S23 FE; awaiting the owner's 10-round playtest and decision
-- M14 Visual Refresh V2: **PREPARED, NOT STARTED** — blocked on the M13 playtest decision
+- M13 Rhythm MVP Candidate: **PLAYED** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; confirmed working on the Galaxy S23 FE; owner's verdict was promising, keep the difficulty, fix readability and entry
+- M13.1 Groove Readability & Entry Tuning: **GATE GREEN** (2026-09-01) — `READY_FOR_M13_1_RETEST`; ADR 0012; 22 new pre-roll and geometry tests; no difficulty value changed; one Groove Pad
+- M14 Visual Refresh V2: **PREPARED, NOT STARTED** — blocked on the M13.1 re-test decision
+
+## M13.1 native smoke (2026-09-01)
+
+Run on the `Pixel_9` emulator against the local dev server — no EAS, no
+release build. The app was already installed and M13.1 changes nothing native
+(`react-native-svg` was already linked for the quit icon), so this was a JS
+reload rather than a rebuild.
+
+Objectively confirmed on the device:
+
+| Check | Result |
+|---|---|
+| Launches landscape, title screen reads "Tap the pulsing pad on the beat." | pass |
+| Start opens the pre-roll rather than the round | pass |
+| `3`, `2`, `1`, `GO!` each observed on screen, in order | pass |
+| Pad renders as a wide ellipse on the kick/snare faces and pulses through the count | pass |
+| No bottle or mug appears before `GO` | pass |
+| Targets spawn after `GO` — an untouched round ruined the show with 3 misses | pass |
+| Groove clock runs after `GO` — 10 judged beats in ~7 s, none of them beat 0 | pass |
+| Rapid alternating taps: no crash, no ANR, no exception in logcat | pass |
+| Backgrounding during the pre-roll returns to the title screen | pass |
+| Restart runs a fresh countdown from `3` | pass |
+
+**Not confirmed, and not claimed: pad and target *tap resolution*.** This is
+the pre-existing emulator limitation recorded as open item 12 — no adb input
+method reaches the game engine's bubbling touch handler, though overlay
+`Pressable`s receive them, which is why the buttons above could be driven at
+all. Dual-task touch behaviour rests on `tests/dualTask.test.ts`, and the pad's
+new geometry on the cases added to `tests/rhythm.test.ts`. Whether the bigger
+pad is *comfortable* is an owner question by definition.
+
+One defect found here and fixed: the countdown numerals were drawn straight
+onto the scene and were barely legible over the singer and the crowd. They now
+sit on a dark plate that scales and fades with the pulse.
 
 ## M13 native validation (2026-08-31)
 
@@ -524,4 +646,17 @@ what caught the bottle's enlargement in the first place.
     building if the visual mechanic proves fun.
 14. The Groove `GROOVE` panel sits over the left crash cymbal, which is gold
     on gold. It carries a text shadow and read clearly on the emulator, but a
-    phone at real size is the judge.
+    phone at real size is the judge. M13.1 did **not** move it: the pad went to
+    the lower centre, and the space above a centred pad is the target corridor,
+    where M13.1 forbids Groove feedback. The readout therefore stays on the left
+    rail and is no longer stacked above the pad.
+15. **The bottom of the canvas runs under the system navigation bar.** On the
+    `Pixel_9` emulator the gesture pill covers roughly canvas y 1020-1080, so
+    the lowest ~5% of the Groove Pad is behind it. This is not new — the M10
+    pad reached y 1078 and the owner played a full round on hardware — and the
+    pad's centre band sits well clear. Worth watching in the re-test: if taps
+    near the bottom edge feel swallowed, this is why.
+16. **Groove scores are not comparable across the M13/M13.1 boundary.** A
+    60-second round now has 89 scored beats rather than 88, because the two-beat
+    count-in became the single unscored `GO` beat (ADR 0012). Do not read the
+    M13 playtest's 14/39 against an M13.1 figure.

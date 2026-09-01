@@ -10,6 +10,7 @@
  * Time is milliseconds of gameplay-elapsed time. It advances only in PLAYING
  * and VOCALIST_EVENT, which is what makes pause free of special cases.
  */
+import { countdownDurationMs } from '../config/rhythm.ts';
 import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
 import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
 import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
@@ -68,6 +69,16 @@ export interface RoundState {
   /** State to return to when resuming; only meaningful while PAUSED. */
   stateBeforePause: GameState | null;
   elapsedMs: number;
+  /**
+   * Pre-roll clock, in gameplay ms, running 0 -> `countdownDurationMs()` while
+   * the state is COUNTDOWN and holding at 0 everywhere else (M13.1).
+   *
+   * Deliberately a second field rather than a negative `elapsedMs`: the round
+   * clock is read by spawning, target flight, the vocalist timeline, and the
+   * results screen, and every one of them is entitled to assume it starts at
+   * zero and only goes forward.
+   */
+  countdownMs: number;
   score: number;
   combo: number;
   bestCombo: number;
@@ -92,6 +103,7 @@ export function createRound(level: LevelDefinition = level01): RoundState {
     state: 'READY',
     stateBeforePause: null,
     elapsedMs: 0,
+    countdownMs: 0,
     score: SCORING.startingScore,
     combo: SCORING.startingCombo,
     bestCombo: 0,
@@ -132,11 +144,47 @@ export function activeTargets(state: RoundState): ActiveTarget[] {
   return state.targets.filter((target) => target.status === 'active');
 }
 
+/**
+ * Start begins the pre-roll, not the round (M13.1).
+ *
+ * There is no second confirmation after the countdown: the player pressed
+ * Start once and the show begins on `GO` by itself.
+ */
 export function startRound(state: RoundState): RoundEvent[] {
   if (state.state !== 'READY') return [];
+  state.state = 'COUNTDOWN';
+  state.countdownMs = 0;
+  return [];
+}
+
+/**
+ * The `GO` boundary: the pre-roll ends and the round actually begins.
+ *
+ * Everything the round owns starts here and not before — the clock is still at
+ * zero, so this is where spawning becomes eligible, and the vocalist timeline
+ * and the beat schedule both measure from this instant. `GO` is therefore
+ * round beat 0, which is why that beat is not scored
+ * (`RHYTHM.unscoredLeadBeats`).
+ */
+function beginPlaying(state: RoundState): void {
   state.state = 'PLAYING';
+  state.countdownMs = 0;
   const phase = phaseAt(state.level, 0);
   state.nextSpawnAtMs = phase ? phase.spawnEveryMs : null;
+}
+
+/**
+ * Abandons an in-progress pre-roll and returns to the title (M13.1).
+ *
+ * Backgrounding the app halfway through a three-second preparation sequence
+ * has nothing worth resuming, and resuming into the middle of it would start
+ * the round on a beat the player never heard counted. Nothing has happened yet
+ * — no clock, no spawn, no score — so there is nothing to unwind.
+ */
+export function cancelCountdown(state: RoundState): RoundEvent[] {
+  if (state.state !== 'COUNTDOWN') return [];
+  state.state = 'READY';
+  state.countdownMs = 0;
   return [];
 }
 
@@ -227,6 +275,24 @@ function endVocalistEvent(state: RoundState, wasHit: boolean, events: RoundEvent
 }
 
 /**
+ * Advances the pre-roll, and crosses the `GO` boundary when it runs out.
+ *
+ * The clock is clamped to the pre-roll length rather than allowed to overshoot,
+ * so `GO` happens at exactly `countdownDurationMs()` of countdown time however
+ * the ticks were sliced. Whatever fraction of a tick is left over is discarded
+ * on purpose: the round's zero point is `GO` itself, and carrying a remainder
+ * into `elapsedMs` would make the beat schedule — and therefore every
+ * judgement in the round — depend on the frame rate the pre-roll happened to
+ * run at (AGENTS.md rule 5).
+ */
+function tickCountdown(state: RoundState, rawDeltaMs: number): void {
+  const delta = Math.min(rawDeltaMs, MAX_TICK_DELTA_MS);
+  const total = countdownDurationMs();
+  state.countdownMs = Math.min(state.countdownMs + delta, total);
+  if (state.countdownMs >= total) beginPlaying(state);
+}
+
+/**
  * Advances the round by a time step and returns everything that happened.
  *
  * Ticking in READY, PAUSED, or a terminal state is a no-op, so the round
@@ -234,6 +300,16 @@ function endVocalistEvent(state: RoundState, wasHit: boolean, events: RoundEvent
  */
 export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
   const events: RoundEvent[] = [];
+  if (state.state === 'COUNTDOWN') {
+    if (rawDeltaMs > 0) tickCountdown(state, rawDeltaMs);
+    /*
+     * Nothing else runs during the pre-roll, which is the M13.1 gameplay
+     * boundary stated once rather than as a condition repeated down the
+     * function: no spawn, no target resolution, no Show Integrity, no vocalist
+     * progression. The round is entered on the *next* tick, at elapsed 0.
+     */
+    return events;
+  }
   if (state.state !== 'PLAYING' && state.state !== 'VOCALIST_EVENT') return events;
   if (!(rawDeltaMs > 0)) return events;
 
