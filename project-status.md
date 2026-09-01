@@ -247,7 +247,7 @@ adding more stage chaos. They are not cancelled, just not next.
 - M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
 - M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
 - M12 Dual Score, HUD & Results: **GATE GREEN** (2026-08-31) — two metrics, no combined total; 15 presentation contract tests
-- M13 Rhythm MVP Candidate: **GATE GREEN** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; awaiting the owner's physical playtest
+- M13 Rhythm MVP Candidate: **GATE GREEN** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; installed and confirmed working on the Galaxy S23 FE; awaiting the owner's 10-round playtest and decision
 - M14 Visual Refresh V2: **PREPARED, NOT STARTED** — blocked on the M13 playtest decision
 
 ## M13 native validation (2026-08-31)
@@ -278,6 +278,50 @@ Build facts, exactly as run:
 | Pause / resume | Yes — overlay shows both columns; resume continues the round |
 | Background auto-pause | Yes — HOME then return comes back PAUSED |
 | Restart | Yes — Play again begins a fresh round with both metrics reset |
+
+### Physical device validation (2026-08-31) — the touch gap is closed
+
+Ran on the owner's **Galaxy S23 FE (`SM-S711B`)**, Android 16, arm64-v8a,
+1080x2340 @ 450 dpi — **832 x 384 dp in landscape**, a *shorter* viewport than
+the emulator's 411 dp. Installed over USB with `npx expo run:android` plus
+`adb install` (local debug dev client; **no EAS**).
+
+A full round was played by a human. Result:
+
+| Groove | | Defense | |
+|---|---|---|---|
+| Groove score | 1220 | Defense score | 1400 |
+| Beats hit | 14 / 39 | Objects destroyed | 13 |
+| Perfect / Good | 8 / 6 | Objects missed | 3 |
+| Beats missed | 25 | Best hit combo | 5 |
+| Best beat streak | 6 | Integrity left | 0 of 3 |
+| Mean timing error | 88 ms | Outcome | SHOW RUINED |
+
+What this establishes, which no emulator run could:
+
+- **Groove Pad taps work on real hardware** — 14 beats scored, 8 of them PERFECT.
+- **Target taps work concurrently** — 13 objects destroyed, best combo 5, in the
+  same round as the beats.
+- **The dual-task loop runs on device**, both dimensions scoring independently.
+- **The results overlay is not clipped at 384 dp** — title, both columns, the
+  mean-timing detail line, and both buttons are all on screen. The M13 overlay
+  fix holds on a shorter viewport than the one it was measured against.
+- Landscape correct (`cur=2340x1080`), zero fatal exceptions.
+
+Two build facts worth keeping:
+
+- The old EAS-signed `preview:device` APK (v1.0.2) could not be upgraded in
+  place — `INSTALL_FAILED_UPDATE_INCOMPATIBLE`, because the local debug build
+  is signed with the debug key. It was uninstalled first, with the owner's
+  agreement. Any future local install over an EAS build hits the same wall.
+- **`android/` was stale and still carried the old launcher label.** `app.json`
+  said Worst Gig Ever but `android/app/src/main/res/values/strings.xml` said
+  `Worst Band Ever`, so the home-screen name was still the old one;
+  `versionName` was also pinned at 1.0.1 against app.json's 1.0.3. `npx expo
+  prebuild --platform android` regenerated both. The directory is gitignored
+  and generated on demand (ADR 0006), so there is nothing to commit — but
+  **anyone with an existing `android/` must re-run prebuild after an app.json
+  identity change or they will keep shipping the old name.**
 
 **Not validated on the emulator: play-surface touch.** `adb input tap`,
 `input motionevent`, and `input swipe` all reach React Native `Pressable`
@@ -468,10 +512,11 @@ what caught the bottle's enlargement in the first place.
 9. **The M6B scene has been inspected running in a browser, but not on a device.** Frame pacing, touch, and readability at phone size are all still unverified.
 10. **The Pack 1 ambient loop art must be regenerated** as one drawing in three poses per set. Until then `AMBIENT_LOOP_ART_READY` is `false` and the band and crowd hold a single frame. `loopA`, `loopB`, `crowd_front_02` and `crowd_front_03` are bundled but unused; they are the frames to replace.
 11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. A frame-to-frame continuity check belongs in that script and does not exist yet.
-12. **Play-surface touch cannot be exercised on the emulator.** No adb input
+12. **Play-surface touch cannot be exercised on the emulator** — no adb input
     method reaches the game engine's bubbling touch handler, though Pressables
-    receive them. The Groove Pad and target taps are covered by integration
-    tests only until someone plays the build on a phone.
+    receive them. **Closed on hardware:** a round on the Galaxy S23 FE scored
+    14 beats and destroyed 13 objects, so both resolvers work on a real
+    device. The emulator limitation remains for future automated runs.
 13. **The Groove Pad is not synchronized to the music, on purpose.** The pulse
     runs at 90 BPM off gameplay time; the track loops on its own clock. They
     drift. The playtest checklist says so up front so the mismatch is not

@@ -1,5 +1,15 @@
 # Running the game
 
+> **After changing app identity in `app.json`, re-run
+> `npx expo prebuild --platform android`.** The generated `android/` directory
+> caches the launcher label and version, so a stale one keeps installing the
+> old app name even though `app.json` is correct. This bit the M13 phone
+> install: the home screen still said "Worst Band Ever".
+>
+> **Installing a local debug build over an EAS-signed APK fails** with
+> `INSTALL_FAILED_UPDATE_INCOMPATIBLE` — different signing keys. Uninstall the
+> old one first (`adb uninstall com.worstbandever.app`).
+
 > The deep-link scheme below is `exp+worst-band-ever://` and the Android
 > package is `com.worstbandever.app`. Those are **correct**: the product was
 > renamed to Worst Gig Ever at M9 but the Expo slug and the native application
