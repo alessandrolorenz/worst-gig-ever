@@ -36,14 +36,17 @@ interface EngineTouch {
   event: { locationX?: number; locationY?: number; pageX?: number; pageY?: number };
 }
 
-/** Web input as delivered by react-game-engine. */
+/** Web input as delivered by react-game-engine (the React synthetic event). */
+interface WebPoint {
+  clientX?: number;
+  clientY?: number;
+}
+
 interface EngineInput {
   name: string;
-  payload: {
-    clientX?: number;
-    clientY?: number;
-    touches?: ArrayLike<{ clientX: number; clientY: number }>;
-    changedTouches?: ArrayLike<{ clientX: number; clientY: number }>;
+  payload: WebPoint & {
+    touches?: ArrayLike<WebPoint>;
+    changedTouches?: ArrayLike<WebPoint>;
   };
 }
 
@@ -103,6 +106,30 @@ function isDuplicate(points: readonly Point2D[], candidate: Point2D): boolean {
   );
 }
 
+/**
+ * Every finger a browser touch event actually reports as new (M11).
+ *
+ * `changedTouches` is the set that changed in *this* event; `touches` is every
+ * finger currently down. Reading `touches[0]` — as this did before M11 — is
+ * wrong twice over: two fingers landing in one frame collapse to one tap, and
+ * a second finger landing while the first is held re-reports the *held*
+ * finger's position, which is a phantom tap where nobody just tapped. Both are
+ * exactly what M11 forbids ("do not globally collapse a multi-touch frame to
+ * one point", "rapid taps must not create phantom double hits").
+ *
+ * A mouse event carries no touch list and is its own single point.
+ *
+ * Native is unaffected: react-native-game-engine already delivers one `start`
+ * entry per finger, each carrying its own page coordinates.
+ */
+function webTapSources(event: EngineInput): readonly WebPoint[] {
+  const changed = event.payload.changedTouches;
+  if (changed && changed.length > 0) return Array.from(changed);
+  const current = event.payload.touches;
+  if (current && current.length > 0) return Array.from(current);
+  return [event.payload];
+}
+
 function collectTapPoints(args: RoundSystemArgs, viewport: Viewport): Point2D[] {
   const fit = fitCanvas(viewport.width, viewport.height);
   const points: Point2D[] = [];
@@ -118,12 +145,12 @@ function collectTapPoints(args: RoundSystemArgs, viewport: Viewport): Point2D[] 
 
   for (const event of args.input ?? []) {
     if (!WEB_TAP_EVENTS.has(event.name)) continue;
-    const source =
-      event.payload.touches?.[0] ?? event.payload.changedTouches?.[0] ?? event.payload;
-    const { clientX, clientY } = source as { clientX?: number; clientY?: number };
-    if (typeof clientX !== 'number' || typeof clientY !== 'number') continue;
-    // Browser events are window-relative; the play surface may be inset.
-    add(screenToCanvas(fit, clientX - viewport.pageX, clientY - viewport.pageY));
+    for (const source of webTapSources(event)) {
+      const { clientX, clientY } = source;
+      if (typeof clientX !== 'number' || typeof clientY !== 'number') continue;
+      // Browser events are window-relative; the play surface may be inset.
+      add(screenToCanvas(fit, clientX - viewport.pageX, clientY - viewport.pageY));
+    }
   }
 
   return points;

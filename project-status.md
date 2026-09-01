@@ -12,6 +12,27 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
+**M11 dual-task gameplay integration complete (2026-08-31).**
+
+Groove and Defense now run at the same time. Every unique tap is offered to
+both resolvers with no priority between them, so a tap that legitimately lands
+on both the pad and a bottle scores the beat *and* breaks the bottle — once
+each. One finger and two fingers both work; multitouch is never required.
+
+The two systems cannot corrupt each other: a missed beat costs no Show
+Integrity and does not reset the Defense combo, and a bottle getting through
+does not touch the Groove streak. `tests/dualTask.test.ts` asserts each row of
+that table through the real input pipeline, including a full round in which
+every bottle is broken and every beat ignored.
+
+One input defect was fixed on the way: the **web** path read `touches[0]`, so
+two fingers in one frame collapsed to one tap and a second finger landing while
+the first was held re-reported the held finger — a phantom tap. It now reads
+`changedTouches`. Native was already correct and is untouched, as is the M5A
+page-coordinate mapping.
+
+Full reasoning for M10 and M11 in ADR 0011.
+
 **M10 visual beat clock and Groove Pad foundation complete (2026-08-31).**
 
 The hi-hat in the existing kit art is now a Groove Pad: a code-drawn ring that
@@ -141,8 +162,7 @@ One 60-second show with:
 
 ## Immediate next action
 
-Execute M11 (`prompts/13-m11-dual-task-integration.md`) — dual-task gameplay
-integration.
+Execute M12 (`prompts/14-m12-dual-score-ui.md`) — dual score, HUD, and results.
 
 Still outstanding from before the pivot, and deliberately not blocking it:
 
@@ -181,6 +201,7 @@ adding more stage chaos. They are not cancelled, just not next.
 - M8 Visual MVP Candidate: **DEFERRED** — same
 - M9 Product Rename & Rhythm Pivot Freeze: **COMPLETE** (2026-08-31) — ADR 0010; no gameplay change
 - M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
+- M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
 
 ## Device validation performed (2026-08-30)
 
