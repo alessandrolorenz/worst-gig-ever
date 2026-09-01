@@ -15,9 +15,14 @@
  *
  * It owns no clock. Every value drawn is a pure function of the round's
  * gameplay elapsed time, so the pulse cannot drift away from the judgement.
+ *
+ * This draws the pad and nothing else. The Groove score, streak, count-in
+ * notice, and PERFECT/GOOD text are the HUD's job and live in one column above
+ * the pad (`Hud.tsx`, M12), so the readouts are in one place rather than
+ * competing for the same corner.
  */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 
 import { GROOVE_PAD, GROOVE_PULSE, isCountInBeat } from '../config/rhythm.ts';
 import { THEME } from './theme.ts';
@@ -94,7 +99,6 @@ export function GroovePad({ round, rhythm }: GroovePadProps) {
   // judgement label all age off the same gameplay time.
   const pulse = running ? padPulse(elapsedMs) : 0;
   const flash = judgementFreshness(rhythm, elapsedMs, GROOVE_PULSE.hitFlashMs);
-  const labelAge = judgementFreshness(rhythm, elapsedMs, GROOVE_PULSE.judgementTextMs);
   const judgement = rhythm.lastJudgement;
 
   const countingIn = running && isCountInBeat(upcomingBeatIndex(elapsedMs));
@@ -146,28 +150,6 @@ export function GroovePad({ round, rhythm }: GroovePadProps) {
         />
       )}
 
-      {countingIn && (
-        <Text style={[styles.countIn, { opacity: 0.35 + pulse * 0.65 }]}>COUNT IN</Text>
-      )}
-
-      {/**
-       * PERFECT / GOOD as words, not only as a colour (M12 accessibility), and
-       * placed above the pad so it never covers the mark the player is aiming
-       * at while they are still tapping it.
-       */}
-      {labelAge > 0 && judgement !== null && (
-        <Text
-          style={[
-            styles.judgement,
-            {
-              opacity: labelAge,
-              color: judgement.grade === 'perfect' ? THEME.integrityFull : THEME.burst,
-            },
-          ]}
-        >
-          {judgement.grade === 'perfect' ? 'PERFECT' : 'GOOD'}
-        </Text>
-      )}
     </View>
   );
 }
@@ -175,32 +157,5 @@ export function GroovePad({ round, rhythm }: GroovePadProps) {
 const styles = StyleSheet.create({
   layer: {
     ...StyleSheet.absoluteFillObject,
-  },
-  judgement: {
-    position: 'absolute',
-    left: GROOVE_PAD.centerX - 200,
-    top: GROOVE_PAD.centerY - GROOVE_PAD.radiusPx - 62,
-    width: 400,
-    textAlign: 'center',
-    fontSize: 40,
-    fontWeight: '900',
-    letterSpacing: 3,
-    textShadowColor: THEME.letterbox,
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
-  },
-  countIn: {
-    position: 'absolute',
-    left: GROOVE_PAD.centerX - 200,
-    top: GROOVE_PAD.centerY - GROOVE_PAD.radiusPx - 62,
-    width: 400,
-    textAlign: 'center',
-    color: THEME.hudText,
-    fontSize: 34,
-    fontWeight: '800',
-    letterSpacing: 4,
-    textShadowColor: THEME.letterbox,
-    textShadowOffset: { width: 2, height: 2 },
-    textShadowRadius: 6,
   },
 });

@@ -12,6 +12,24 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
+**M12 dual score, HUD and results complete (2026-08-31).**
+
+The game now reads as two challenges. `DEFENSE` keeps the top-left corner with
+its score and combo, the timer stays centred, Show Integrity stays top-right,
+and a new `GROOVE` column sits directly above the pad with the Groove score,
+the beat streak, and a transient PERFECT/GOOD — above rather than beside,
+because to the right of the hi-hat is where lane 430 and lane 700 targets
+arrive. The end-of-round summary reports both performances in two columns,
+including beats hit over beats judged and the average timing error.
+
+**There is no combined total and no overall grade**, by design: the pivot
+exists to find out whether the player is good at one job, the other, or both,
+and a blended number would hide exactly that.
+
+`game/rendering/hudLayout.ts` holds the geometry as pure data, so
+`tests/hudContract.test.ts` can assert it without a renderer. It immediately
+caught the Groove panel overlapping the projectile corridor by six pixels.
+
 **M11 dual-task gameplay integration complete (2026-08-31).**
 
 Groove and Defense now run at the same time. Every unique tap is offered to
@@ -162,7 +180,8 @@ One 60-second show with:
 
 ## Immediate next action
 
-Execute M12 (`prompts/14-m12-dual-score-ui.md`) — dual score, HUD, and results.
+Execute M13 (`prompts/15-m13-rhythm-playtest-candidate.md`) — the rhythm MVP
+candidate and the physical playtest gate.
 
 Still outstanding from before the pivot, and deliberately not blocking it:
 
@@ -202,6 +221,7 @@ adding more stage chaos. They are not cancelled, just not next.
 - M9 Product Rename & Rhythm Pivot Freeze: **COMPLETE** (2026-08-31) — ADR 0010; no gameplay change
 - M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
 - M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
+- M12 Dual Score, HUD & Results: **GATE GREEN** (2026-08-31) — two metrics, no combined total; 15 presentation contract tests
 
 ## Device validation performed (2026-08-30)
 

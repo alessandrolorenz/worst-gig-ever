@@ -434,7 +434,7 @@ export function SceneRenderer({
         {effects.strikes.map((effect) => (
           <Strike key={effect.id} effect={effect} />
         ))}
-        <Hud round={round} />
+        <Hud round={round} rhythm={rhythm} />
       </View>
     </View>
   );

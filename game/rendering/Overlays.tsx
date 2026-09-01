@@ -12,7 +12,11 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
 import { THEME } from './theme.ts';
 import type { GameState } from '../state/gameState.ts';
-import type { RhythmState } from '../state/rhythmState.ts';
+import {
+  judgedBeats,
+  meanAbsTimingErrorMs,
+  type RhythmState,
+} from '../state/rhythmState.ts';
 import type { RoundState } from '../state/roundState.ts';
 
 interface OverlayProps {
@@ -63,13 +67,45 @@ function Button({
   );
 }
 
-function Summary({ round }: { round: RoundState }) {
+/**
+ * The two performances, side by side and never added together (M12).
+ *
+ * Both columns read straight off the domain, so a number here cannot disagree
+ * with the number the rules used. There is no combined score and no overall
+ * grade: hiding one dimension behind a blend would defeat the point of the
+ * pivot, which is to see whether the player is good at one job, the other, or
+ * both.
+ */
+function Summary({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
+  const meanError = meanAbsTimingErrorMs(rhythm);
+
   return (
     <View style={styles.summary}>
-      <SummaryRow label="Score" value={String(round.score)} />
-      <SummaryRow label="Best combo" value={String(round.bestCombo)} />
-      <SummaryRow label="Objects destroyed" value={String(round.targetsDestroyed)} />
-      <SummaryRow label="Misses" value={String(round.misses)} />
+      <View style={styles.summaryColumn}>
+        <Text style={[styles.summaryHeading, { color: THEME.cymbal }]}>GROOVE</Text>
+        <SummaryRow label="Groove score" value={String(rhythm.score)} />
+        <SummaryRow label="Beats hit" value={`${rhythm.hits} / ${judgedBeats(rhythm)}`} />
+        <SummaryRow label="Perfect" value={String(rhythm.perfects)} />
+        <SummaryRow label="Good" value={String(rhythm.goods)} />
+        <SummaryRow label="Beats missed" value={String(rhythm.misses)} />
+        <SummaryRow label="Best beat streak" value={String(rhythm.bestStreak)} />
+        <Text style={styles.summaryDetail}>
+          {meanError === null
+            ? 'No beats landed this round.'
+            : `Average timing ${Math.round(meanError)} ms off the beat.`}
+        </Text>
+      </View>
+
+      <View style={styles.summaryColumn}>
+        <Text style={[styles.summaryHeading, { color: THEME.accent }]}>DEFENSE</Text>
+        <SummaryRow label="Defense score" value={String(round.score)} />
+        <SummaryRow label="Objects destroyed" value={String(round.targetsDestroyed)} />
+        <SummaryRow label="Objects missed" value={String(round.misses)} />
+        <SummaryRow label="Best hit combo" value={String(round.bestCombo)} />
+        <Text style={styles.summaryDetail}>
+          Show Integrity left: {round.integrity} of {round.level.startingIntegrity}.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -84,7 +120,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 export function Overlays(props: OverlayProps) {
-  const { state, round, audioAvailable } = props;
+  const { state, round, rhythm, audioAvailable } = props;
 
   if (state === 'PLAYING' || state === 'VOCALIST_EVENT') {
     return (
@@ -99,8 +135,8 @@ export function Overlays(props: OverlayProps) {
   if (state === 'READY') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.kicker}>WORST GIG EVER</Text>
-        <Text style={styles.title}>Keep the beat. Survive the gig.</Text>
+        <Text style={styles.title}>WORST GIG EVER</Text>
+        <Text style={styles.tagline}>Keep the beat. Survive the gig.</Text>
         <Text style={styles.body}>
           Tap the pulsing cymbal on the beat.{'\n'}
           Break bottles before they hit your kit.
@@ -119,7 +155,7 @@ export function Overlays(props: OverlayProps) {
     return (
       <View style={styles.scrim}>
         <Text style={styles.title}>Paused</Text>
-        <Summary round={round} />
+        <Summary round={round} rhythm={rhythm} />
         <Button label="Resume" onPress={props.onResume} />
         <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
       </View>
@@ -130,14 +166,14 @@ export function Overlays(props: OverlayProps) {
   return (
     <View style={styles.scrim}>
       <Text style={[styles.title, { color: complete ? THEME.integrityFull : THEME.accent }]}>
-        {complete ? 'Show Complete' : 'Show Ruined'}
+        {complete ? 'SHOW COMPLETE' : 'SHOW RUINED'}
       </Text>
       <Text style={styles.body}>
         {complete
-          ? 'You survived the whole song. Barely.'
-          : 'The kit took too many hits. The crowd noticed.'}
+          ? 'You kept the groove alive. Somehow.'
+          : 'The gig fell apart. Try to keep the beat while you defend the kit.'}
       </Text>
-      <Summary round={round} />
+      <Summary round={round} rhythm={rhythm} />
       <Button label="Play again" onPress={props.onRestart} />
       <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
     </View>
@@ -174,19 +210,21 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
-  kicker: {
-    color: THEME.accent,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 6,
-    marginBottom: 6,
-  },
   title: {
     color: THEME.hudText,
     fontSize: 40,
     fontWeight: '800',
+    letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 6,
+  },
+  tagline: {
+    color: THEME.accent,
+    fontSize: 19,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: 14,
   },
   body: {
     color: THEME.hudDim,
@@ -202,19 +240,45 @@ const styles = StyleSheet.create({
     marginTop: 18,
     maxWidth: 460,
   },
+  /**
+   * Two columns rather than one list. In landscape the width is there, and
+   * side by side is what makes the two dimensions read as two performances
+   * instead of one long tally. It wraps on a narrow viewport rather than
+   * clipping.
+   */
   summary: {
-    minWidth: 320,
-    marginBottom: 22,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 18,
+  },
+  summaryColumn: {
+    minWidth: 300,
+    maxWidth: 360,
+    marginHorizontal: 18,
+    marginBottom: 8,
+  },
+  summaryHeading: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 5,
+    marginBottom: 4,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 5,
+    paddingVertical: 4,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 236, 216, 0.12)',
   },
-  summaryLabel: { color: THEME.hudDim, fontSize: 16 },
-  summaryValue: { color: THEME.hudText, fontSize: 16, fontWeight: '700' },
+  summaryLabel: { color: THEME.hudDim, fontSize: 15 },
+  summaryValue: { color: THEME.hudText, fontSize: 15, fontWeight: '700' },
+  summaryDetail: {
+    color: THEME.hudDim,
+    fontSize: 12,
+    marginTop: 6,
+    lineHeight: 17,
+  },
   button: {
     backgroundColor: THEME.accent,
     paddingVertical: 14,
