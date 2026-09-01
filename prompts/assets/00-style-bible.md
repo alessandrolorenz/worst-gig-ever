@@ -2,7 +2,7 @@
 
 Apply this style consistently to every Pack 1 generation request.
 
-Game: **Worst Band Ever** — humorous drummer-POV arcade game about surviving a chaotic rock show.
+Game: **Worst Gig Ever** — humorous drummer-POV arcade game about surviving a chaotic rock show.
 
 Visual language:
 - simple 2D vector-like cartoon clip art;

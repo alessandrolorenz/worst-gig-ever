@@ -97,8 +97,8 @@ export function Overlays(props: OverlayProps) {
   if (state === 'READY') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.kicker}>WORST BAND EVER</Text>
-        <Text style={styles.title}>Survive the worst gig ever.</Text>
+        <Text style={styles.kicker}>WORST GIG EVER</Text>
+        <Text style={styles.title}>Keep the beat. Survive the gig.</Text>
         <Text style={styles.body}>
           Tap the bottles and mugs before they reach your kit.{'\n'}
           Three get through and the show is over.

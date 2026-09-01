@@ -1,16 +1,26 @@
-# Worst Band Ever
+# Worst Gig Ever
 
-A small mobile arcade game: you are the drummer at a chaotic rock show, and the
-crowd is throwing things at your kit. Smash them before they land, survive
-sixty seconds, and try not to let the singer ruin your night.
+**Keep the beat. Survive the gig.**
 
-Working title. Built with Expo, React Native Game Engine, and Matter.js, using
+A small mobile arcade game: you are the drummer at a chaotic rock show. Keep a
+simple groove on the pulsing hi-hat while the crowd throws things at your kit.
+Smash them before they land, survive sixty seconds, and try not to let the
+singer ruin your night.
+
+Built with Expo, React Native Game Engine, and Matter.js, using
 specification-driven development.
 
-> **Status:** M6B asset integration complete — the playable slice now runs on
-> the final Pack 1 art, verified running in a browser. The band and crowd hold
-> a single pose because the ambient loop art is not yet a loop; see
-> `project-status.md` and ADR 0009.
+> **Renamed at M9** (2026-08-31), from the working title *Worst Band Ever*. The
+> joke is the gig, not the band. The GitHub repository, the Expo slug
+> (`worst-band-ever`), the EAS project, and the native application identifiers
+> (`com.worstbandever.app`) deliberately still carry the old name — they are
+> technical identifiers with remote state attached, and migrating them is a
+> pre-release task tracked in ADR 0010.
+
+> **Status:** M9 rename and rhythm-pivot freeze. The playable slice is the
+> bottle-defense round on final Pack 1 art; the visual Groove Pad lands in
+> M10–M13. The band and crowd hold a single pose because the ambient loop art
+> is not yet a loop; see `project-status.md` and ADR 0009.
 
 ## Running it
 

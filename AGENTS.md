@@ -2,7 +2,7 @@
 
 ## Mission
 
-Build **Worst Band Ever**, a small mobile arcade game, through specification-driven development. Optimize for a fast playable proof of fun before expanding scope.
+Build **Worst Gig Ever**, a small mobile arcade game, through specification-driven development. Optimize for a fast playable proof of fun before expanding scope.
 
 ## Core working rules
 

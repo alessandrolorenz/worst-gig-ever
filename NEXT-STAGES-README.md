@@ -1,5 +1,8 @@
 # Worst Band Ever — Next Stages Package
 
+> **Historical document.** Kept as delivered. The product was renamed to
+> **Worst Gig Ever** at M9 (2026-08-31); see `RHYTHM-PIVOT-README.md`.
+
 This package continues the SDD sequence **after M5A**.
 
 ## Incoming baseline

@@ -1,18 +1,24 @@
 # M0 — Product Brief
 
-## Working title
+## Product name
 
-**Worst Band Ever**
+**Worst Gig Ever**
 
-### Playtest tagline
+> Renamed at M9 (2026-08-31). This brief was written under the working title
+> *Worst Band Ever*; the rest of the document is kept as authored, so the
+> original name still appears below in its historical sentences. The joke is
+> the gig, not the band — see `docs/specs/M9-product-rename-and-rhythm-pivot.md`
+> and ADR 0010.
 
-**Survive the worst gig ever.**
+### Tagline
 
-The title is provisional. Branding is deliberately excluded from the MVP gate.
+**Keep the beat. Survive the gig.**
+
+The M0 playtest tagline was *Survive the worst gig ever.*
 
 ## Product statement
 
-Worst Band Ever is a casual mobile arcade game seen from the drummer's point of view during a catastrophically chaotic rock concert. The player must survive the song by hitting incoming objects and reacting to absurd interruptions while the band keeps playing.
+Worst Gig Ever is a casual mobile arcade game seen from the drummer's point of view during a catastrophically chaotic rock concert. The player must survive the song by hitting incoming objects and reacting to absurd interruptions while the band keeps playing.
 
 ## Player fantasy
 

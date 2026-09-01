@@ -2,11 +2,35 @@
 
 ## Project
 
-Worst Band Ever — working title
+**Worst Gig Ever** — *Keep the beat. Survive the gig.*
+
+Renamed from the working title *Worst Band Ever* at M9 (2026-08-31). The
+GitHub repository, the Expo slug (`worst-band-ever`), the EAS project, and the
+native application identifiers (`com.worstbandever.app`) deliberately still
+carry the old name; they are technical identifiers with remote state attached
+and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M6B asset integration complete (2026-08-30). Art gate is `PASS_ART_READY`; the automated M6B gate is green.**
+**M9 product rename and rhythm-pivot freeze complete (2026-08-31).** The
+product is Worst Gig Ever, the pivot contract is frozen, and no gameplay
+behavior changed. The rhythm mechanic itself starts at M10.
+
+The core loop is being pivoted from *break incoming objects and survive the
+song* to:
+
+> Keep a simple visual groove while breaking incoming objects and surviving
+> the gig.
+
+The player gets two independent jobs — **Groove** (tap the pulsing hi-hat on
+the visual beat) and **Defense** (break bottles and mugs before they reach the
+kit) — scored as two separate dimensions, with no combined total. The beat
+clock is visual and deterministic; it is deliberately **not** synchronized to
+the music (`docs/architecture/rhythm-pivot-architecture.md`).
+
+### Previously: M6B asset integration (2026-08-30)
+
+Art gate is `PASS_ART_READY`; the automated M6B gate is green.
 
 All 33 required Pack 1 PNGs are produced and integrated. The scene runs
 entirely on final art: background, light overlay, rear crowd, three-frame front
@@ -45,6 +69,13 @@ not apply yet.
 ## Product hypothesis
 
 A compact, absurd drummer-POV arcade game can be fun with very little content if object impacts, music, visual reactions, and escalating stage chaos feel satisfying.
+
+**Rhythm pivot hypothesis (M9):** doing two simple things at once — keeping a
+slow visual groove while defending the kit — is more fun than doing either
+alone. The difficulty is meant to come from switching attention, not from fast
+tapping, which is why the first Groove system is deliberately easy (90 BPM,
+one pad, generous windows) and why neither side is retuned before the
+combination has been played.
 
 ## Selected prototype base
 
@@ -94,8 +125,10 @@ One 60-second show with:
 
 ## Immediate next action
 
-Build the tweaked `preview:device` APK and confirm the three adjustments on the
-phone. After that:
+Execute M10 (`prompts/12-m10-groove-pad-foundation.md`) — the visual beat clock
+and Groove Pad foundation.
+
+Still outstanding from before the pivot, and deliberately not blocking it:
 
 **Regenerate the ambient loop art.** For each of the bassist, guitarist,
 vocalist, and front crowd, `idle`, `loopA`, and `loopB` must be one drawing in
@@ -112,7 +145,9 @@ animation rather than as cuts, reaction frames anchored, no clipping. Everything
 automated in `docs/verification/M6B-gate.md` already passes, and the web build
 has been inspected running.
 
-Then continue to M7 (`prompts/08-m7-stage-chaos-interactions.md`).
+M7 and M8 (`prompts/08`, `prompts/09`) are **superseded for now** by the
+rhythm pivot: the owner chose to test whether Groove + Defense is fun before
+adding more stage chaos. They are not cancelled, just not next.
 
 ## Gates
 
@@ -126,7 +161,9 @@ Then continue to M7 (`prompts/08-m7-stage-chaos-interactions.md`).
 - Art Gate: **PASS_ART_READY** — 33/33 required files present, 0 missing, 0 invalid; the two optional files are intentionally absent
 - M6B Asset Integration: **GATE GREEN** (2026-08-30) — verified on the web build and the `Pixel_9` emulator
 - First phone playtest: **DONE** (2026-08-31) — owner approved the direction; three presentation tweaks requested and applied
-- M7 Stage Chaos Interactions: not started
+- M7 Stage Chaos Interactions: **DEFERRED** — superseded in sequence by the rhythm pivot
+- M8 Visual MVP Candidate: **DEFERRED** — same
+- M9 Product Rename & Rhythm Pivot Freeze: **COMPLETE** (2026-08-31) — ADR 0010; no gameplay change
 
 ## Device validation performed (2026-08-30)
 
@@ -283,6 +320,14 @@ what caught the bottle's enlargement in the first place.
 5. The development client is a **debug** build and `jsEngine` is still `jsc`, not Hermes. Both add overhead; do not judge frame pacing without re-checking a release build (ADR 0006).
 6. The generated manifest requests `RECORD_AUDIO`, pulled in by expo-audio's config plugin even though the game never records. Harmless for a playtest; must be removed before any store submission.
 7. `com.worstbandever.app` is a provisional application identifier (ADR 0004). Confirm before any store submission.
+   - **Technical identifiers still carry the old product name** (ADR 0010).
+     The launcher says Worst Gig Ever; the Expo slug (`worst-band-ever`), the
+     linked EAS project, the GitHub repository, and `com.worstbandever.app` do
+     not. Harmless for a playtest, not acceptable for a release. A dedicated
+     identity milestone must migrate the slug and the remote EAS project
+     together, rename the repository, and re-create signing credentials against
+     the final package name — while there is still no installed base, because
+     that last step invalidates every installed build.
 8. `package-lock.json` is git-ignored by the template, so dependency resolution is not reproducible across machines — this directly caused the autolinking failure documented in ADR 0006.
 9. **The M6B scene has been inspected running in a browser, but not on a device.** Frame pacing, touch, and readability at phone size are all still unverified.
 10. **The Pack 1 ambient loop art must be regenerated** as one drawing in three poses per set. Until then `AMBIENT_LOOP_ART_READY` is `false` and the band and crowd hold a single frame. `loopA`, `loopB`, `crowd_front_02` and `crowd_front_03` are bundled but unused; they are the frames to replace.

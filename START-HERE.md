@@ -1,5 +1,12 @@
 # Worst Band Ever — SDD Bootstrap Package
 
+> **Historical document.** This is the original bootstrap package, kept as
+> delivered. The product was renamed to **Worst Gig Ever** at M9 (2026-08-31)
+> with the tagline *Keep the beat. Survive the gig.*, and the core loop pivoted
+> to Groove + Defense. For the current identity and plan start from
+> `RHYTHM-PIVOT-README.md` and `project-status.md`. The names below record what
+> was decided at bootstrap; they are not the current product name.
+
 ## Working identity
 
 - **Working title:** Worst Band Ever
@@ -7,6 +14,7 @@
 - **Naming status:** Provisional. Naming must not block the MVP.
 - **Alternative candidate:** Crazy Gigs
 - **Hold for later review:** Punk Stock Concert
+- **Resolved at M9:** Worst Gig Ever.
 
 ## Goal
 

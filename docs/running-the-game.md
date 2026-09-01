@@ -1,5 +1,11 @@
 # Running the game
 
+> The deep-link scheme below is `exp+worst-band-ever://` and the Android
+> package is `com.worstbandever.app`. Those are **correct**: the product was
+> renamed to Worst Gig Ever at M9 but the Expo slug and the native application
+> identifiers were deliberately retained, because they carry remote EAS and
+> installed-app state. See ADR 0010.
+
 Three ways to run the slice, in increasing order of fidelity and setup cost.
 Pick by what you are trying to learn:
 

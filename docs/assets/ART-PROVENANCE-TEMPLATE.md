@@ -1,6 +1,6 @@
 # Art Provenance
 
-Record every production visual asset used by Worst Band Ever.
+Record every production visual asset used by Worst Gig Ever.
 
 | Asset key | Local path | Source type | Tool/provider | Prompt file | Reference used | Generated/created date | Manual edits | Rights/licensing note |
 |---|---|---|---|---|---|---|---|---|
