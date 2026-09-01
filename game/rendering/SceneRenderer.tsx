@@ -27,6 +27,7 @@ import {
   partitionByDepth,
   performerRect,
 } from './composition.ts';
+import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
 import { effectProgress, type EffectsState, type TimedEffect } from '../systems/effects.ts';
@@ -42,11 +43,13 @@ import {
   type PerformerPose,
   type StageMotionState,
 } from '../systems/stageMotion.ts';
+import type { RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
 import { Hud } from './Hud.tsx';
 
 export interface SceneRendererProps {
   round: RoundState;
+  rhythm: RhythmState;
   effects: EffectsState;
   shards: ShardsState;
   stageMotion: StageMotionState;
@@ -343,7 +346,14 @@ function Debris({ shards }: { shards: readonly Shard[] }) {
   );
 }
 
-export function SceneRenderer({ round, effects, shards, stageMotion, viewport }: SceneRendererProps) {
+export function SceneRenderer({
+  round,
+  rhythm,
+  effects,
+  shards,
+  stageMotion,
+  viewport,
+}: SceneRendererProps) {
   const rootRef = useRef<View>(null);
 
   const onLayout = useCallback(
@@ -406,6 +416,15 @@ export function SceneRenderer({ round, effects, shards, stageMotion, viewport }:
         ))}
 
         <DrumKit />
+
+        {/**
+         * Drawn over the kit, because the pad marks a cymbal in that very
+         * bitmap and would otherwise be hidden by it. It stays *under* the
+         * near-field projectiles and the strike, so a bottle arriving at the
+         * player's face is never obscured by a UI ring — the Defense read
+         * still wins the foreground.
+         */}
+        <GroovePad round={round} rhythm={rhythm} />
 
         {targets.near.map(renderTarget)}
         <Debris shards={debris.near} />

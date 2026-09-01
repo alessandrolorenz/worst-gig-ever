@@ -12,9 +12,25 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
+**M10 visual beat clock and Groove Pad foundation complete (2026-08-31).**
+
+The hi-hat in the existing kit art is now a Groove Pad: a code-drawn ring that
+swells into each beat, peaks on it, and falls away, at 90 BPM with a two-beat
+count-in. Tapping it inside +/-90 ms is PERFECT, inside +/-180 ms is GOOD, and
+a beat can be scored once. Missed beats cost nothing but the streak.
+
+The Groove domain (`game/state/rhythmState.ts`) imports no React, no React
+Native, no audio, and not even the round state — it is handed gameplay elapsed
+time and judges against it. That is what makes pause free: the round clock
+already freezes in READY, PAUSED, and terminal states and already runs through
+`VOCALIST_EVENT`, so the beat clock inherits the exact semantics M10 specifies
+without a rule of its own.
+
+No new art. No bottle, arc, hitbox, spawn, integrity, or scoring value moved.
+
 **M9 product rename and rhythm-pivot freeze complete (2026-08-31).** The
 product is Worst Gig Ever, the pivot contract is frozen, and no gameplay
-behavior changed. The rhythm mechanic itself starts at M10.
+behavior changed.
 
 The core loop is being pivoted from *break incoming objects and survive the
 song* to:
@@ -125,8 +141,8 @@ One 60-second show with:
 
 ## Immediate next action
 
-Execute M10 (`prompts/12-m10-groove-pad-foundation.md`) — the visual beat clock
-and Groove Pad foundation.
+Execute M11 (`prompts/13-m11-dual-task-integration.md`) — dual-task gameplay
+integration.
 
 Still outstanding from before the pivot, and deliberately not blocking it:
 
@@ -164,6 +180,7 @@ adding more stage chaos. They are not cancelled, just not next.
 - M7 Stage Chaos Interactions: **DEFERRED** — superseded in sequence by the rhythm pivot
 - M8 Visual MVP Candidate: **DEFERRED** — same
 - M9 Product Rename & Rhythm Pivot Freeze: **COMPLETE** (2026-08-31) — ADR 0010; no gameplay change
+- M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
 
 ## Device validation performed (2026-08-30)
 

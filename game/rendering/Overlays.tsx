@@ -12,11 +12,13 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
 import { THEME } from './theme.ts';
 import type { GameState } from '../state/gameState.ts';
+import type { RhythmState } from '../state/rhythmState.ts';
 import type { RoundState } from '../state/roundState.ts';
 
 interface OverlayProps {
   state: GameState;
   round: RoundState;
+  rhythm: RhythmState;
   audioAvailable: boolean;
   onStart(): void;
   onPause(): void;
@@ -100,8 +102,8 @@ export function Overlays(props: OverlayProps) {
         <Text style={styles.kicker}>WORST GIG EVER</Text>
         <Text style={styles.title}>Keep the beat. Survive the gig.</Text>
         <Text style={styles.body}>
-          Tap the bottles and mugs before they reach your kit.{'\n'}
-          Three get through and the show is over.
+          Tap the pulsing cymbal on the beat.{'\n'}
+          Break bottles before they hit your kit.
         </Text>
         <Button label="Start the show" onPress={props.onStart} />
         {!audioAvailable && (

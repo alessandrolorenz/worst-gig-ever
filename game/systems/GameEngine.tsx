@@ -19,6 +19,7 @@ import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
 import { level01 } from '../levels/level01.ts';
 import type { GameState } from '../state/gameState.ts';
+import { clearRhythm } from '../state/rhythmState.ts';
 import { createRound, pauseRound, resumeRound, startRound } from '../state/roundState.ts';
 import { clearEffects } from './effects.ts';
 import { clearShards } from './shards.ts';
@@ -78,6 +79,10 @@ export default function GameEngine() {
   const resetScene = useCallback(() => {
     const scene = entities.scene;
     scene.round = createRound(level01);
+    // Restart resets both dimensions. The Groove is cleared in place rather
+    // than replaced, because the entity map is built once per mount and the
+    // renderer holds this exact object (ADR 0001).
+    clearRhythm(scene.rhythm);
     clearEffects(scene.effects);
     clearShards(scene.shards);
     clearStageMotion(scene.stageMotion);
@@ -122,6 +127,7 @@ export default function GameEngine() {
         <Overlays
           state={uiState}
           round={entities.scene.round}
+          rhythm={entities.scene.rhythm}
           audioAvailable={audio.available}
           onStart={handleStart}
           onPause={handlePause}

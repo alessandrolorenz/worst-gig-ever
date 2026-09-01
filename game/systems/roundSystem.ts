@@ -10,7 +10,15 @@ import { VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { HIT_FORGIVENESS } from '../config/targets.ts';
 import type { GameEntities } from '../entities/sceneEntities.ts';
 import { fitCanvas, screenToCanvas, type CanvasFit, type Viewport } from '../rendering/layout.ts';
+import type { GameState } from '../state/gameState.ts';
 import type { RoundEvent } from '../state/roundEvents.ts';
+import {
+  resolveRhythmTap,
+  tickRhythm,
+  type BeatContext,
+  type RhythmEvent,
+  type RhythmState,
+} from '../state/rhythmState.ts';
 import {
   resolveTap,
   targetViews,
@@ -168,21 +176,101 @@ function applyEvents(entities: GameEntities, round: RoundState, events: RoundEve
   void round;
 }
 
+/**
+ * Turns Groove judgements into feedback.
+ *
+ * A scored beat plays the existing drumstick whoosh — the same one a target
+ * hit already uses, so no new asset is introduced (AGENTS.md rules 13 and 14)
+ * — because a cymbal that makes no sound when it is struck reads as broken.
+ * This is a one-shot answering a tap the player just made. It is **not** audio
+ * synchronization: nothing seeks, schedules, or corrects against the music's
+ * playback position, and the beat clock never consults it.
+ *
+ * A missed beat is deliberately silent. It already costs the streak, and a
+ * failure noise twice a second while the player is learning the pad would be
+ * punishing out of all proportion to what a missed beat actually costs, which
+ * is nothing (M11, "Rhythm miss behavior").
+ */
+function applyRhythmEvents(entities: GameEntities, events: RhythmEvent[]): void {
+  const { audio } = entities.scene;
+  for (const event of events) {
+    if (event.type === 'BEAT_HIT') audio.playSfx('stickWhoosh');
+  }
+}
+
+/**
+ * What the Groove needs to know about the round at a given instant.
+ *
+ * `state` is passed rather than read off the round, because the state that
+ * governs a frame is the one the frame *started* in. `tickRound` advances the
+ * clock only when it was PLAYING or VOCALIST_EVENT on entry, and it may end
+ * the round on the way out — so reading `round.state` after the tick would
+ * make the Groove skip the last beat windows of a completed round, because
+ * SHOW_COMPLETE stops the beat clock.
+ */
+function beatContext(round: RoundState, state: GameState): BeatContext {
+  return {
+    elapsedMs: round.elapsedMs,
+    durationMs: round.level.durationMs,
+    state,
+  };
+}
+
+/**
+ * Routes one tap point to both resolvers (M11).
+ *
+ * Every unique tap is offered to the Groove and to the Defense, and each
+ * decides for itself whether the point was any of its business. There is
+ * deliberately **no priority between them**: if a bottle happens to be over
+ * the Groove Pad and one tap legitimately falls inside both regions, the
+ * player gets the beat and the break. That is a reward for timing and
+ * positioning, not a double-processing bug (rhythm-pivot architecture), and
+ * forcing an artificial winner would make one of the two mechanics silently
+ * fail exactly when the player did something good.
+ *
+ * Neither resolver can be triggered twice by one point: a beat is consumed by
+ * its own index and a target by its `active` status, so idempotency is a
+ * property of the domains rather than of this routing.
+ */
+function resolvePoint(
+  round: RoundState,
+  rhythm: RhythmState,
+  point: Point2D,
+  context: BeatContext,
+  roundEvents: RoundEvent[],
+  rhythmEvents: RhythmEvent[],
+): void {
+  // The Groove is judged against the same instant as the Defense, so the two
+  // readings of one tap can never disagree about when it happened.
+  rhythmEvents.push(...resolveRhythmTap(rhythm, point, context));
+  roundEvents.push(...resolveTap(round, point));
+}
+
 export function roundSystem(entities: GameEntities, args: RoundSystemArgs): GameEntities {
   const scene = entities.scene;
   const round = scene.round;
+  const rhythm = scene.rhythm;
   const previousState = round.state;
   const delta = args.time?.delta ?? 0;
 
   // Taps are resolved against the frame the player actually saw, before the
   // world moves on.
   const events: RoundEvent[] = [];
+  const rhythmEvents: RhythmEvent[] = [];
+  const tapContext = beatContext(round, previousState);
   for (const point of collectTapPoints(args, scene.viewport)) {
-    events.push(...resolveTap(round, point));
+    resolvePoint(round, rhythm, point, tapContext, events, rhythmEvents);
   }
   events.push(...tickRound(round, delta));
+  // Ticked after the round so beat windows close against the clock the round
+  // just advanced, but judged under the state the frame started in — a round
+  // that ends on this very tick must still close out the beats it contained.
+  // The clock does not move in READY, PAUSED, or a terminal state, so this is
+  // inert there without a rule of its own.
+  rhythmEvents.push(...tickRhythm(rhythm, beatContext(round, previousState)));
 
   applyEvents(entities, round, events);
+  applyRhythmEvents(entities, rhythmEvents);
 
   tickEffects(scene.effects, delta);
   tickShards(scene.shards, delta);

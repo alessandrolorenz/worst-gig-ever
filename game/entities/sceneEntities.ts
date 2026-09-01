@@ -14,12 +14,15 @@ import { createEffects, type EffectsState } from '../systems/effects.ts';
 import { createShards, type ShardsState } from '../systems/shards.ts';
 import { createStageMotion, type StageMotionState } from '../systems/stageMotion.ts';
 import { createViewport, type Viewport } from '../rendering/layout.ts';
+import { createRhythm, type RhythmState } from '../state/rhythmState.ts';
 import { createRound, type RoundState } from '../state/roundState.ts';
 import type { GameState } from '../state/gameState.ts';
 import { level01 } from '../levels/level01.ts';
 
 export interface SceneEntity {
   round: RoundState;
+  /** Groove truth: beat judgements, Groove score, streak (M10). */
+  rhythm: RhythmState;
   effects: EffectsState;
   shards: ShardsState;
   /** Ambient band/crowd motion and performer reactions. Presentation only. */
@@ -43,6 +46,7 @@ export function createSceneEntities(
   return {
     scene: {
       round: createRound(level01),
+      rhythm: createRhythm(),
       effects: createEffects(),
       shards: createShards(),
       stageMotion: createStageMotion(),
