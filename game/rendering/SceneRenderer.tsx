@@ -43,7 +43,7 @@ import {
   type PerformerPose,
   type StageMotionState,
 } from '../systems/stageMotion.ts';
-import type { RhythmState } from '../state/rhythmState.ts';
+import { isBeatClockRunning, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
 import { Hud } from './Hud.tsx';
 
@@ -434,7 +434,13 @@ export function SceneRenderer({
         {effects.strikes.map((effect) => (
           <Strike key={effect.id} effect={effect} />
         ))}
-        <Hud round={round} rhythm={rhythm} />
+        {/**
+         * Only while the round is actually running. An overlay is always on
+         * screen otherwise, and its scrim is not opaque — leaving the HUD up
+         * put a dimmed second copy of both scores behind the results summary,
+         * which is noise at best and contradicts the summary at a glance.
+         */}
+        {isBeatClockRunning(round.state) && <Hud round={round} rhythm={rhythm} />}
       </View>
     </View>
   );

@@ -156,8 +156,10 @@ export function Overlays(props: OverlayProps) {
       <View style={styles.scrim}>
         <Text style={styles.title}>Paused</Text>
         <Summary round={round} rhythm={rhythm} />
-        <Button label="Resume" onPress={props.onResume} />
-        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+        <View style={styles.buttonRowLayout}>
+          <Button label="Resume" onPress={props.onResume} />
+          <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+        </View>
       </View>
     );
   }
@@ -174,19 +176,30 @@ export function Overlays(props: OverlayProps) {
           : 'The gig fell apart. Try to keep the beat while you defend the kit.'}
       </Text>
       <Summary round={round} rhythm={rhythm} />
-      <Button label="Play again" onPress={props.onRestart} />
-      <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+      <View style={styles.buttonRowLayout}>
+        <Button label="Play again" onPress={props.onRestart} />
+        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  /*
+   * Sized for the shortest viewport this actually runs on. A 1080p phone in
+   * landscape at 420 dpi is 923 x 411 *dp*, not pixels — so the whole results
+   * screen has 411 dp of height to work with. The M12 summary overflowed it
+   * and clipped the outcome title off the top and the quit button off the
+   * bottom, which is how the emulator run for M13 found it. Everything below
+   * is measured against that budget.
+   */
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.overlayScrim,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
+    paddingVertical: 10,
   },
   hudControls: {
     ...StyleSheet.absoluteFillObject,
@@ -212,32 +225,32 @@ const styles = StyleSheet.create({
   },
   title: {
     color: THEME.hudText,
-    fontSize: 40,
+    fontSize: 30,
     fontWeight: '800',
     letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 2,
   },
   tagline: {
     color: THEME.accent,
-    fontSize: 19,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 2,
     textAlign: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   body: {
     color: THEME.hudDim,
-    fontSize: 17,
-    lineHeight: 25,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   warning: {
     color: THEME.burst,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
-    marginTop: 18,
+    marginTop: 10,
     maxWidth: 460,
   },
   /**
@@ -250,42 +263,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    marginBottom: 18,
+    marginBottom: 10,
   },
   summaryColumn: {
-    minWidth: 300,
-    maxWidth: 360,
-    marginHorizontal: 18,
-    marginBottom: 8,
+    minWidth: 280,
+    maxWidth: 330,
+    marginHorizontal: 14,
   },
   summaryHeading: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '900',
     letterSpacing: 5,
-    marginBottom: 4,
+    marginBottom: 2,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 4,
+    paddingVertical: 1,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 236, 216, 0.12)',
   },
-  summaryLabel: { color: THEME.hudDim, fontSize: 15 },
-  summaryValue: { color: THEME.hudText, fontSize: 15, fontWeight: '700' },
+  summaryLabel: { color: THEME.hudDim, fontSize: 13 },
+  summaryValue: { color: THEME.hudText, fontSize: 13, fontWeight: '700' },
   summaryDetail: {
     color: THEME.hudDim,
-    fontSize: 12,
-    marginTop: 6,
-    lineHeight: 17,
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  buttonRowLayout: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   button: {
     backgroundColor: THEME.accent,
-    paddingVertical: 14,
-    paddingHorizontal: 42,
-    borderRadius: 28,
-    marginTop: 10,
-    minWidth: 260,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 24,
+    marginTop: 6,
+    marginHorizontal: 6,
+    minWidth: 200,
   },
   buttonSecondary: {
     backgroundColor: 'transparent',
@@ -301,7 +319,7 @@ const styles = StyleSheet.create({
   buttonTextWithIcon: { marginLeft: 10 },
   buttonText: {
     color: THEME.hudText,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 1,

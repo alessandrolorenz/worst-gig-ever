@@ -12,6 +12,25 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
+**M13 rhythm MVP candidate ready for physical playtest (2026-08-31).**
+Outcome: `READY_FOR_RHYTHM_PLAYTEST`. Automated gate green, native validation
+done on the `Pixel_9` emulator, and the session instrument is
+`docs/specs/M13-rhythm-playtest-checklist.md`.
+
+The candidate is one 60-second round of Worst Gig Ever: visual Groove Pad at
+90 BPM with a two-beat count-in, PERFECT/GOOD windows, Groove score and
+streak, the existing bottles, mugs, throw arcs, Defense score and combo, Show
+Integrity, the vocalist event, the existing music and SFX, and a two-column
+end summary. No subjective value was chosen by Claude.
+
+One objective defect was found by running it and fixed: **the results overlay
+was clipped**. A 1080p phone in landscape at 420 dpi is 923 x 411 *dp*, and
+M12's richer summary overflowed that, cutting the outcome title off the top
+and the Quit button off the bottom — the player could not see whether they had
+won. The overlay is now sized against that budget and the buttons sit side by
+side. The in-canvas HUD is also hidden while an overlay is up, where it had
+been showing a dimmed second copy of both scores behind the summary.
+
 **M12 dual score, HUD and results complete (2026-08-31).**
 
 The game now reads as two challenges. `DEFENSE` keeps the top-left corner with
@@ -180,8 +199,14 @@ One 60-second show with:
 
 ## Immediate next action
 
-Execute M13 (`prompts/15-m13-rhythm-playtest-candidate.md`) — the rhythm MVP
-candidate and the physical playtest gate.
+**Play the candidate on a physical phone**, using
+`docs/specs/M13-rhythm-playtest-checklist.md` — at least ten rounds before any
+tuning, then choose one of `RHYTHM_VALIDATED`, `TUNE_RHYTHM`, `TUNE_DEFENSE`,
+`TUNE_BOTH`, `PIVOT_AGAIN`, or `STOP`. That decision is the owner's; Claude
+must not make it.
+
+M14 (`prompts/16-m14-visual-refresh-planning.md`) is prepared but **must not
+run** until the owner has played the candidate and explicitly asks for it.
 
 Still outstanding from before the pivot, and deliberately not blocking it:
 
@@ -222,6 +247,59 @@ adding more stage chaos. They are not cancelled, just not next.
 - M10 Visual Beat Clock & Groove Pad Foundation: **GATE GREEN** (2026-08-31) — 34 new rhythm tests; no defense value changed
 - M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
 - M12 Dual Score, HUD & Results: **GATE GREEN** (2026-08-31) — two metrics, no combined total; 15 presentation contract tests
+- M13 Rhythm MVP Candidate: **GATE GREEN** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; awaiting the owner's physical playtest
+- M14 Visual Refresh V2: **PREPARED, NOT STARTED** — blocked on the M13 playtest decision
+
+## M13 native validation (2026-08-31)
+
+Build facts, exactly as run:
+
+| | |
+|---|---|
+| Workflow | `npx expo run:android` (local; **no EAS**) |
+| Emulator | `Pixel_9` AVD, Android 16 (API 36), arm64 |
+| Screen | 2424 x 1080 physical, 420 dpi — **923 x 411 dp** in landscape |
+| Gradle | `BUILD SUCCESSFUL`, `app-debug.apk`, 354 tasks |
+| Autolinking | `expo-modules-autolinking resolve -p android` reports **15** modules (ADR 0006 threshold) |
+| Package | `com.worstbandever.app` (retained; ADR 0010) |
+| Launcher label | **Worst Gig Ever** — confirmed in the dev-client header |
+
+| Check | Result |
+|---|---|
+| Builds, installs, launches | Yes |
+| Landscape | Yes — display reported `cur=2424x1080`, rotation 1 |
+| No fatal exception | Yes — zero `FATAL EXCEPTION` in logcat across the whole session |
+| Audio native module loads | Yes — `expo.modules.audio.AudioModule` active; `AudioTrack`/`AudioFlinger` traffic once a round starts |
+| Round starts and runs | Yes — timer counts down, bottles fly, Show Integrity decrements |
+| READY copy | Yes — WORST GIG EVER, tagline, both instructions, nothing clipped |
+| Groove Pad renders on the hi-hat | Yes — the ring is legible over the art and through the stage-light pulse |
+| Dual HUD | Yes — `DEFENSE` top-left, timer centre, `SHOW INTEGRITY` top-right, `GROOVE` above the pad |
+| Dual end summary | Yes — both columns, unclipped, after the fix above |
+| Pause / resume | Yes — overlay shows both columns; resume continues the round |
+| Background auto-pause | Yes — HOME then return comes back PAUSED |
+| Restart | Yes — Play again begins a fresh round with both metrics reset |
+
+**Not validated on the emulator: play-surface touch.** `adb input tap`,
+`input motionevent`, and `input swipe` all reach React Native `Pressable`
+overlays (Start, Pause, Resume, Play again all work) but produce **nothing** in
+the game's touch handler — taps aimed directly at a bottle's arrival point
+destroyed zero objects, so this is not specific to the Groove Pad. The engine
+listens with a bubbling `onTouchStart` on a plain view rather than through the
+responder system, and adb-injected events do not reach it. This is a harness
+limitation, not a product defect, and it is the same gap the M6B emulator pass
+hit: that run was also "one tap to start and no further input".
+
+What covers it instead: `tests/dualTask.test.ts` drives the real
+`roundSystem` with touches shaped exactly as the engine delivers them
+(`pageX`/`pageY` minus the surface offset) and asserts pad-only, target-only,
+overlapping, one-finger, and two-finger cases. **Touch on a real phone is the
+first thing the playtest must confirm**, and the checklist asks for it.
+
+Also observed: under `adb` input load the emulator's frame rate drops far
+enough that `MAX_TICK_DELTA_MS` clamping makes the round clock run at roughly
+a quarter of wall time (19 s of tapping advanced the round 5 s). That is an
+emulator artifact of a debug build with `jsEngine: jsc`, not a gameplay bug —
+and it is exactly why ADR 0006 says not to judge pacing without a real device.
 
 ## Device validation performed (2026-08-30)
 
@@ -390,3 +468,15 @@ what caught the bottle's enlargement in the first place.
 9. **The M6B scene has been inspected running in a browser, but not on a device.** Frame pacing, touch, and readability at phone size are all still unverified.
 10. **The Pack 1 ambient loop art must be regenerated** as one drawing in three poses per set. Until then `AMBIENT_LOOP_ART_READY` is `false` and the band and crowd hold a single frame. `loopA`, `loopB`, `crowd_front_02` and `crowd_front_03` are bundled but unused; they are the frames to replace.
 11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. A frame-to-frame continuity check belongs in that script and does not exist yet.
+12. **Play-surface touch cannot be exercised on the emulator.** No adb input
+    method reaches the game engine's bubbling touch handler, though Pressables
+    receive them. The Groove Pad and target taps are covered by integration
+    tests only until someone plays the build on a phone.
+13. **The Groove Pad is not synchronized to the music, on purpose.** The pulse
+    runs at 90 BPM off gameplay time; the track loops on its own clock. They
+    drift. The playtest checklist says so up front so the mismatch is not
+    reported as a bug — syncing them is a later milestone and only worth
+    building if the visual mechanic proves fun.
+14. The Groove `GROOVE` panel sits over the left crash cymbal, which is gold
+    on gold. It carries a text shadow and read clearly on the emulator, but a
+    phone at real size is the judge.
