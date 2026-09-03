@@ -16,13 +16,28 @@ import { createStageMotion, type StageMotionState } from '../systems/stageMotion
 import { createViewport, type Viewport } from '../rendering/layout.ts';
 import { createRhythm, type RhythmState } from '../state/rhythmState.ts';
 import { createRound, type RoundState } from '../state/roundState.ts';
+import { createAppFlow, type AppFlowState } from '../state/appFlow.ts';
+import { createStory, type StoryState } from '../state/storyState.ts';
 import type { GameState } from '../state/gameState.ts';
-import { level01 } from '../levels/level01.ts';
+import { stageAt, FIRST_STAGE_INDEX, type StageDefinition } from '../levels/stages.ts';
 
 export interface SceneEntity {
   round: RoundState;
   /** Groove truth: beat judgements, Groove score, streak (M10). */
   rhythm: RhythmState;
+  /**
+   * The stage the mounted round belongs to (M15).
+   *
+   * Held next to the round rather than looked up from `flow` on demand, so the
+   * systems that drive a round never have to know an app flow exists: a round
+   * and the stage it came from are set together, and `roundSystem` reads
+   * `stage.groove` without importing a screen.
+   */
+  stage: StageDefinition;
+  /** Which screen the player is on: story, title, briefing, or round (M15). */
+  flow: AppFlowState;
+  /** The opening story's own clock, ticked by `flowSystem` (M15). */
+  story: StoryState;
   effects: EffectsState;
   shards: ShardsState;
   /** Ambient band/crowd motion and performer reactions. Presentation only. */
@@ -31,6 +46,14 @@ export interface SceneEntity {
   viewport: Viewport;
   /** Notified when the domain state changes, so React can swap overlays. */
   onStateChange: ((state: GameState) => void) | null;
+  /**
+   * Notified when the app flow or the story panel changes.
+   *
+   * Deliberately argument-free. React re-reads the flow off the entity when it
+   * fires, so there is exactly one copy of the flow and a notification cannot
+   * carry a stale one.
+   */
+  onFlowChange: (() => void) | null;
   renderer: React.ComponentType<never>;
 }
 
@@ -43,16 +66,21 @@ export function createSceneEntities(
   audio: AudioService,
   renderer: React.ComponentType<never>,
 ): GameEntities {
+  const stage = stageAt(FIRST_STAGE_INDEX);
   return {
     scene: {
-      round: createRound(level01),
+      round: createRound(stage.level),
       rhythm: createRhythm(),
+      stage,
+      flow: createAppFlow(),
+      story: createStory(),
       effects: createEffects(),
       shards: createShards(),
       stageMotion: createStageMotion(),
       audio,
       viewport: createViewport(),
       onStateChange: null,
+      onFlowChange: null,
       renderer,
     },
   };

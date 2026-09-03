@@ -12,16 +12,51 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M14.1 performance correction — `PERFORMANCE_DEVICE_RETEST`.** The owner
-approved the M14 APK visually but reported slow taps on the Galaxy S23 FE.
-The fix preserves every art file and gameplay setting. It reduces the pad SVG
-surface from 1920x1080 to 664x234, memoizes unchanged scenery/poses, uses fixed
-sprite layout with transforms, and prevents a slow tick from consuming newly
-created hit feedback. The controlled browser comparison reduced JavaScript
-time by 36.3%; this is not a measured Galaxy FPS improvement. See
-`docs/verification/M14.1-gate.md`. Changes remain uncommitted; the owner
-requested EAS build `9d1dd65c-8c08-411b-80d4-aa89098df279`, confirmed queued
-on 2026-09-03 (Android `preview:device`, app 1.0.3).
+**M15 story, briefings, and two stages — `M15_DEVICE_REVIEW`.** The owner
+supplied five new narrative illustrations on 2026-09-03 and asked for three
+things: a story shown before the game starts, a screen explaining how to play,
+and two stages beginning with a defense-only one. All three are implemented on
+`feat/m15-story-and-stages`; the automated gate is green and physical review is
+pending. See `docs/verification/M15-gate.md`.
+
+The game now opens on a five-panel story — the poster, the arrival in the
+storm, the load-in, the show working, and the beer that hits the mixing desk —
+which is the only place the game ever explains why a crowd is throwing glass at
+the drummer. It auto-advances, takes a tap to skip ahead, has a Skip button,
+runs once per launch, and is replayable from the title.
+
+**Stage 1 "Hold the line"** is 40 seconds of defense only: no Groove Pad, no
+Groove readout, no beat scheduled, scored, or missed, and one summary column.
+Its first two spawn phases are identical to the show's, so it teaches the round
+the player is about to play rather than an easier variant of it; only the final
+phase is gentler, at 950 ms against the show's 850 ms. **Stage 2 "Keep the
+beat"** is `level01`, the validated round, unchanged. Each stage opens with its
+own briefing card, which is where the how-to-play copy now lives.
+
+No gameplay value moved. `game/config/rhythm.ts`, `scoring.ts`, `stage.ts`,
+`targets.ts` and `game/systems/approach.ts` have no diff, and `level01.ts`
+keeps every number it had — `tests/stageFlow.test.ts` asserts the whole
+schedule field by field. Nothing is locked: session-only progress must not be
+able to gate a cold start.
+
+`npm run verify` passes 299 tests plus both art gates; web and Android exports
+succeed; three headless browser runs at 923x411 completed with zero page
+errors. The five stills add 2.3 MB rather than the sources' 11.5 MB.
+
+### M14.1 performance correction — retest still open
+
+`PERFORMANCE_DEVICE_RETEST`. The owner approved the M14 APK visually but
+reported slow taps on the Galaxy S23 FE. The fix preserves every art file and
+gameplay setting. It reduces the pad SVG surface from 1920x1080 to 664x234,
+memoizes unchanged scenery/poses, uses fixed sprite layout with transforms, and
+prevents a slow tick from consuming newly created hit feedback. The controlled
+browser comparison reduced JavaScript time by 36.3%; this is not a measured
+Galaxy FPS improvement. See `docs/verification/M14.1-gate.md`. It is now
+committed as `4571f30`, which is M15's baseline. The owner requested EAS build
+`9d1dd65c-8c08-411b-80d4-aa89098df279`, confirmed queued on 2026-09-03 (Android
+`preview:device`, app 1.0.3); that build predates this branch and does not
+contain M15. The retest is unaffected by M15 — Stage 2 is the same round on the
+same art.
 
 ### M14 integration baseline
 

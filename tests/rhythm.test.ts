@@ -47,7 +47,7 @@ import { GAME_STATES, type GameState } from '../game/state/gameState.ts';
 const DURATION = level01.durationMs;
 
 function context(elapsedMs: number, state: GameState = 'PLAYING'): BeatContext {
-  return { elapsedMs, durationMs: DURATION, state };
+  return { elapsedMs, durationMs: DURATION, state, grooveEnabled: true };
 }
 
 /** Runs the clock to `toMs` in fixed steps, judging nothing. */

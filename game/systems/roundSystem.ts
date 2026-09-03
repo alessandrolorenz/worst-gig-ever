@@ -235,11 +235,16 @@ function applyRhythmEvents(entities: GameEntities, events: RhythmEvent[]): void 
  * make the Groove skip the last beat windows of a completed round, because
  * SHOW_COMPLETE stops the beat clock.
  */
-function beatContext(round: RoundState, state: GameState): BeatContext {
+function beatContext(
+  round: RoundState,
+  state: GameState,
+  grooveEnabled: boolean,
+): BeatContext {
   return {
     elapsedMs: round.elapsedMs,
     durationMs: round.level.durationMs,
     state,
+    grooveEnabled,
   };
 }
 
@@ -279,12 +284,16 @@ export function roundSystem(entities: GameEntities, args: RoundSystemArgs): Game
   const rhythm = scene.rhythm;
   const previousState = round.state;
   const delta = args.time?.delta ?? 0;
+  // Stage 1 is defense only, so the Groove is switched off for the whole round
+  // rather than merely hidden (M15). The stage is read once per frame and
+  // handed to the rhythm domain, which decides what to do about it.
+  const grooveEnabled = scene.stage.groove;
 
   // Taps are resolved against the frame the player actually saw, before the
   // world moves on.
   const events: RoundEvent[] = [];
   const rhythmEvents: RhythmEvent[] = [];
-  const tapContext = beatContext(round, previousState);
+  const tapContext = beatContext(round, previousState, grooveEnabled);
   for (const point of collectTapPoints(args, scene.viewport)) {
     resolvePoint(round, rhythm, point, tapContext, events, rhythmEvents);
   }
@@ -294,7 +303,7 @@ export function roundSystem(entities: GameEntities, args: RoundSystemArgs): Game
   // that ends on this very tick must still close out the beats it contained.
   // The clock does not move in READY, PAUSED, or a terminal state, so this is
   // inert there without a rule of its own.
-  rhythmEvents.push(...tickRhythm(rhythm, beatContext(round, previousState)));
+  rhythmEvents.push(...tickRhythm(rhythm, beatContext(round, previousState, grooveEnabled)));
 
   // Age only feedback that already existed. A slow preceding frame must not
   // consume a newly created strike/burst before it can be displayed once.

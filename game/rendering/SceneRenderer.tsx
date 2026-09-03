@@ -46,12 +46,23 @@ import {
 } from '../systems/stageMotion.ts';
 import { isPadPulsing, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
+import type { StageDefinition } from '../levels/stages.ts';
 import { Hud } from './Hud.tsx';
 import { spriteTransform } from './spriteTransform.ts';
 
 export interface SceneRendererProps {
   round: RoundState;
   rhythm: RhythmState;
+  /**
+   * The stage the round belongs to (M15). Read for one thing only —
+   * `stage.groove`, which decides whether the pad and the Groove readout are
+   * drawn at all.
+   *
+   * It arrives as a prop because the engine's default renderer spreads the
+   * whole scene entity onto this component; every prop in this interface is a
+   * field of `SceneEntity` for that reason.
+   */
+  stage: StageDefinition;
   effects: EffectsState;
   shards: ShardsState;
   stageMotion: StageMotionState;
@@ -362,6 +373,7 @@ function Debris({ shards }: { shards: readonly Shard[] }) {
 export function SceneRenderer({
   round,
   rhythm,
+  stage,
   effects,
   shards,
   stageMotion,
@@ -384,6 +396,7 @@ export function SceneRenderer({
   );
 
   const fit = fitCanvas(viewport.width, viewport.height);
+  const grooveEnabled = stage.groove;
   const showHalos =
     SHOW_GRAYBOX_DEBUG && (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT');
 
@@ -437,12 +450,21 @@ export function SceneRenderer({
          * player's face is never obscured by a UI ring — the Defense read
          * still wins the foreground.
          */}
-        <GroovePad round={round} rhythm={rhythm} />
+        {/**
+         * Absent, not disabled, on a defense-only stage (M15). A pad drawn but
+         * dead is worse than no pad: it pulses like a thing to tap, and every
+         * tap on it does nothing.
+         */}
+        {grooveEnabled && <GroovePad round={round} rhythm={rhythm} />}
 
         {/**
          * Drawn with the pad, not with the HUD, so the numerals and the swell
          * they are counting read as one instruction. It sits above the pad and
          * renders nothing at all once `GO!` has aged out (M13.1).
+         *
+         * It runs on both stages. The pre-roll is the entry ritual for a
+         * *round*, not for the Groove — Stage 1 needs the same three beats of
+         * warning before bottles start arriving.
          */}
         <Countdown round={round} />
 
@@ -464,7 +486,9 @@ export function SceneRenderer({
          * the round starts rather than appearing on the `GO` beat, which is the
          * one moment the player's attention is committed elsewhere.
          */}
-        {isPadPulsing(round.state) && <Hud round={round} rhythm={rhythm} />}
+        {isPadPulsing(round.state) && (
+          <Hud round={round} rhythm={rhythm} grooveEnabled={grooveEnabled} />
+        )}
       </View>
     </View>
   );

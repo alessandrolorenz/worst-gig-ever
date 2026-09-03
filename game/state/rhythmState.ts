@@ -100,6 +100,21 @@ export interface BeatContext {
   /** Round length, which decides how many beats exist at all. */
   readonly durationMs: number;
   readonly state: GameState;
+  /**
+   * Whether this stage asks for the Groove at all (M15).
+   *
+   * Stage 1 is defense only, and "defense only" has to mean the beat clock
+   * genuinely does not run — not merely that the pad is hidden. A hidden pad
+   * over a live clock would still finalize a missed beat every 667 ms, and the
+   * player would reach the results screen having lost a streak in a job they
+   * were never shown.
+   *
+   * It arrives per frame in the context rather than being stored on
+   * `RhythmState`, for the same reason `elapsedMs` does: this module owns
+   * judgements, not configuration, and the stage that is running is something
+   * the caller knows and it does not.
+   */
+  readonly grooveEnabled: boolean;
 }
 
 export function createRhythm(): RhythmState {
@@ -196,6 +211,9 @@ export function nearestBeatIndex(elapsedMs: number): number {
  */
 export function tickRhythm(state: RhythmState, context: BeatContext): RhythmEvent[] {
   const events: RhythmEvent[] = [];
+  // A stage without the Groove has no beats to close out, so nothing here can
+  // record a miss (M15).
+  if (!context.grooveEnabled) return events;
   if (!isBeatClockRunning(context.state)) return events;
 
   const total = scheduledBeatCount(context.durationMs);
@@ -236,6 +254,7 @@ function missBeat(state: RhythmState, beatIndex: number, events: RhythmEvent[]):
  * the frame it was aimed at rather than the one after it.
  */
 export function resolvePadTap(state: RhythmState, context: BeatContext): RhythmEvent[] {
+  if (!context.grooveEnabled) return [];
   if (!isBeatClockRunning(context.state)) return [];
 
   const beatIndex = nearestBeatIndex(context.elapsedMs);

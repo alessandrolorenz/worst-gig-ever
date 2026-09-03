@@ -1,19 +1,36 @@
 # Current Continuation State
 
 - Last reconciled: 2026-09-03
-- Branch: `main`; M14 merge: `f277e0430ece4bcd7f429e3529fd33e801bdb61f`
-- Pre-M14 implementation baseline: `7aa058b799e29e646dbba6442226d679d38d5de3`
-- Active stage: **M14.1 render performance — device retest pending**
-- Gate outcome: `PERFORMANCE_DEVICE_RETEST`
+- Branch: `feat/m15-story-and-stages`, **not yet merged to `main`**
+- M15 baseline: `4571f30` (M14.1), which sits on `main`
+- M14 merge: `f277e0430ece4bcd7f429e3529fd33e801bdb61f`
+- Active stage: **M15 story, briefings, and two stages — device review pending**
+- Gate outcome: `M15_DEVICE_REVIEW`
 
-The owner approved the M14 APK visually but reported delayed taps on the
-Galaxy S23 FE and authorized investigation/correction. M14.1 keeps all art
-unchanged, crops the pad's SVG drawing surface, avoids unchanged pose-tree
-renders, uses fixed-layout sprite transforms, and preserves new hit feedback
-through a slow frame. See `docs/verification/M14.1-gate.md` for measurements.
-The changes remain uncommitted. At the owner's request, the working tree was
-uploaded to Android EAS `preview:device` build
-`9d1dd65c-8c08-411b-80d4-aa89098df279` (confirmed queued on 2026-09-03).
+The owner supplied five narrative illustrations on 2026-09-03 and asked for a
+story before the game starts, a how-to-play screen, and two stages beginning
+with a defense-only one. All three are implemented and the automated gate is
+green: 299 tests, both art gates, web and Android exports, and three headless
+browser runs at 923x411 with zero page errors. See
+`docs/verification/M15-gate.md` and
+`docs/specs/M15-story-briefings-and-two-stages.md`.
+
+Four design decisions were taken with the owner before implementation: the
+story auto-plays and is skippable and replayable; the stages are two separate
+rounds rather than one continuous one; how-to-play is a briefing card per stage
+rather than a single rulebook; and M14.1 was committed first so this is a
+separate diff.
+
+**M14.1 is now committed as `4571f30` on `main`.** The owner approved the M14
+APK visually but reported delayed taps on the Galaxy S23 FE and authorized
+investigation/correction. M14.1 keeps all art unchanged, crops the pad's SVG
+drawing surface, avoids unchanged pose-tree renders, uses fixed-layout sprite
+transforms, and preserves new hit feedback through a slow frame. See
+`docs/verification/M14.1-gate.md` for measurements. At the owner's request, the
+then-working tree was uploaded to Android EAS `preview:device` build
+`9d1dd65c-8c08-411b-80d4-aa89098df279` (confirmed queued on 2026-09-03). **That
+build predates this branch and does not contain M15**; the performance retest
+is unaffected by M15, because Stage 2 is the same round on the same art.
 
 M13.1 is closed. The owner tested the build on a physical phone on 2026-09-01,
 reported it as "very good", requested no tuning, and recorded
@@ -35,7 +52,19 @@ family. The kit has no resting sticks. All four ambient triplets pass with
 
 ## Current playable candidate
 
-The current build is a 60-second **Groove + Defense** round:
+The build now opens on a five-panel story (poster, stormy arrival, load-in, the
+show working, the beer that hits the mixing desk) and then a title screen with
+two stages. Each stage opens with its own briefing card.
+
+**Stage 1 — "Hold the line", 40 s, defense only.** No Groove Pad, no Groove
+readout, no beat scheduled, scored or missed, one summary column, and no
+vocalist interruption. Its first two spawn phases are identical to the show's
+(1800 ms bottles, then 1300 ms with mugs) so it teaches the round the player is
+about to play; only the last phase is gentler, 950 ms against the show's 850 ms.
+Seed 2, so it does not spoil the show's opening throws.
+
+**Stage 2 — "Keep the beat", `level01`, unchanged.** The 60-second
+**Groove + Defense** round:
 
 - tap one visual Groove Pad at 90 BPM;
 - break approaching bottles and mugs before they hit the kit;
@@ -70,6 +99,9 @@ vocalist timing, and round duration remain frozen for the re-test.
   visuals on device. M14 runtime changes were limited to enabling validated ambient
   bitmaps and updating measured prop-content bounds. Manifest keys, geometry,
   hitboxes, input, timing, scoring, and difficulty remain unchanged.
+- M14.1 render performance: committed as `4571f30`; device retest still open.
+- M15 story, briefings and two stages: implemented, gate green, awaiting the
+  owner's physical review.
 
 ## Verification
 
@@ -105,19 +137,30 @@ human device question.
 
 ## Exact next action
 
-The owner requested a commit, merge, and EAS build on 2026-09-03. The selected
-playtest profile is Android `preview:device` (installable internal APK), not a
-store submission. This request does not close the visual-review gate.
+**Review M15 on a device, then decide whether to merge `feat/m15-story-and-stages`
+into `main`.** The questions that a browser cannot answer: does the story read
+at arm's length and is 3.6 s per panel right; does Stage 1 teach the defense
+job well enough to be worth 40 seconds; and do the briefing cards say enough
+without saying too much.
 
-**Retest M14.1 on the same Galaxy S23 FE once the requested EAS APK is ready.**
-Compare tap-to-feedback response from the first
-target through repeated breaks. The visual direction is approved; do not
-regenerate artwork or change difficulty. Browser results are not device FPS.
+Two things remain independently open and are not blocked by the review above:
+
+1. **Retest M14.1 on the same Galaxy S23 FE** once EAS build
+   `9d1dd65c-8c08-411b-80d4-aa89098df279` is ready. Compare tap-to-feedback
+   response from the first target through repeated breaks. That APK is the
+   M14.1 tree without M15. The visual direction is approved; do not regenerate
+   artwork or change difficulty. Browser results are not device FPS.
+2. If the owner wants M15 in a device build instead, that is a new EAS build
+   and is the owner's call to make — builds cost money and are milestone-only.
 
 ## Known open items
 
 1. M14.1 physical-device performance retest is pending. Visual direction is
    approved; all triplets pass and loops remain enabled.
+2. M15 physical-device review is pending; the branch is unmerged.
+3. Stage progression is not persisted across launches, and no stage is locked.
+   A real unlock needs storage, which is an MVP non-goal — lifting it is an
+   owner decision, not an implementation detail.
 2. The bottom of the reference canvas can sit under the Android gesture area.
    The owner reported no swallowed taps during the M13.1 re-test; keep watching
    bottom-edge Groove Pad taps on other devices.

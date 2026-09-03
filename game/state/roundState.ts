@@ -14,7 +14,8 @@ import { countdownDurationMs } from '../config/rhythm.ts';
 import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
 import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
 import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
-import { level01, type LevelDefinition, type SpawnPhase } from '../levels/level01.ts';
+import { level01 } from '../levels/level01.ts';
+import type { LevelDefinition, SpawnPhase } from '../levels/levelDefinition.ts';
 import {
   hitRadiusAt,
   progressAt,
@@ -317,7 +318,9 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
   state.elapsedMs = Math.min(state.elapsedMs + delta, state.level.durationMs);
 
   // Vocalist interruption takes over before any new spawn is scheduled.
-  if (!state.vocalist.triggered && state.elapsedMs >= state.level.vocalistEventAtMs) {
+  // A level with `vocalistEventAtMs: null` is never interrupted (M15).
+  const vocalistAtMs = state.level.vocalistEventAtMs;
+  if (vocalistAtMs !== null && !state.vocalist.triggered && state.elapsedMs >= vocalistAtMs) {
     state.vocalist.triggered = true;
     state.vocalist.status = 'blocking';
     state.vocalist.startedAtMs = state.elapsedMs;

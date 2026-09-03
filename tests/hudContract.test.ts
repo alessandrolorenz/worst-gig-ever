@@ -38,6 +38,7 @@ import {
 } from '../game/state/rhythmState.ts';
 import { RHYTHM, beatTimeMs } from '../game/config/rhythm.ts';
 import { level01 } from '../game/levels/level01.ts';
+import { STAGES } from '../game/levels/stages.ts';
 
 /**
  * Source text with comments removed.
@@ -224,18 +225,81 @@ test('no combined total is presented anywhere', () => {
   }
 });
 
-test('the READY screen carries the renamed identity and both instructions', () => {
+test('the title screen carries the renamed identity', () => {
   assert.ok(overlaysSource.includes('WORST GIG EVER'));
   assert.ok(overlaysSource.includes('Keep the beat. Survive the gig.'));
-  assert.ok(overlaysSource.includes('Tap the pulsing pad on the beat.'));
-  assert.ok(overlaysSource.includes('Break bottles before they hit your kit.'));
   assert.ok(!overlaysSource.includes('WORST BAND EVER'));
+});
+
+/**
+ * M15 moved the how-to-play copy off the title and into the per-stage
+ * briefings, so the assertion moved with it — but it did not weaken. Both jobs
+ * still have to be taught in words before the player is asked to do them, and
+ * each stage still has to teach the job it actually asks for.
+ */
+test('every stage briefs the job it asks for, before it asks', () => {
+  for (const stage of STAGES) {
+    assert.ok(stage.briefing.length > 0, `stage ${stage.number} has no briefing`);
+    const briefing = stage.briefing.join(' ').toLowerCase();
+
+    // Defense is asked for on every stage, so every briefing must name it.
+    assert.ok(
+      /bottle|mug/.test(briefing) && /smash|break|tap/.test(briefing),
+      `stage ${stage.number} never explains breaking what the crowd throws`,
+    );
+    assert.ok(
+      /kit|show|integrity|over/.test(briefing),
+      `stage ${stage.number} never explains what a miss costs`,
+    );
+
+    /*
+     * The pad is the mechanism, so naming the pad is what counts as teaching
+     * the Groove — not merely using the word "beat". Stage 1's briefing says
+     * "No beat to keep yet", which is the opposite of an instruction to tap
+     * one and exactly the copy that sets Stage 2 up.
+     */
+    const instructsPad = /pad/.test(briefing);
+    assert.equal(
+      instructsPad,
+      stage.groove,
+      stage.groove
+        ? `stage ${stage.number} enables the Groove without naming the pad`
+        : `stage ${stage.number} points at a pad it does not draw`,
+    );
+    if (stage.groove) {
+      assert.ok(/beat/.test(briefing), `stage ${stage.number} never mentions the beat`);
+    }
+  }
+});
+
+test('the stages are ordered, numbered from one, and introduce one job at a time', () => {
+  assert.ok(STAGES.length >= 2, 'M15 asks for at least a defense stage and a groove stage');
+  STAGES.forEach((stage, index) => {
+    assert.equal(stage.number, index + 1, 'stage numbers are 1-based and in order');
+  });
+  // The first stage is the single-job one; the Groove arrives later.
+  assert.equal(STAGES[0].groove, false, 'stage 1 must ask for one job only');
+  assert.ok(
+    STAGES.some((stage) => stage.groove),
+    'some stage must ask for the Groove, or the pivot is gone',
+  );
 });
 
 test('the end copy names both jobs', () => {
   assert.ok(overlaysSource.includes('You kept the groove alive. Somehow.'));
   assert.ok(
     overlaysSource.includes('The gig fell apart. Try to keep the beat while you defend the kit.'),
+  );
+});
+
+/**
+ * A defense-only stage must not be told off for a beat it never had. The
+ * dual-task line above is still there for the stage that does ask for both.
+ */
+test('a defense-only loss is not explained in Groove terms', () => {
+  assert.ok(
+    overlaysSource.includes('The kit took three hits. Watch the crowd, not the floor.'),
+    'the single-job stage needs its own failure line',
   );
 });
 
@@ -274,6 +338,7 @@ test('every summary figure is derivable from the Groove state alone', () => {
     elapsedMs,
     durationMs: level01.durationMs,
     state: 'PLAYING',
+    grooveEnabled: true,
   });
 
   // Two perfects, one good, then two beats let go. Beat 1 is the first that
@@ -303,6 +368,7 @@ test('a round with no beats landed reports no average rather than zero', () => {
     elapsedMs: level01.durationMs,
     durationMs: level01.durationMs,
     state: 'PLAYING',
+    grooveEnabled: true,
   });
   assert.ok(rhythm.misses > 0);
   assert.equal(rhythm.hits, 0);
@@ -316,6 +382,7 @@ test('the pause summary reads state and cannot mutate it', () => {
     elapsedMs: beatTimeMs(2),
     durationMs: level01.durationMs,
     state: 'PLAYING',
+    grooveEnabled: true,
   });
   const before = { ...rhythm };
 

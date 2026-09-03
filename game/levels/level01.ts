@@ -6,29 +6,17 @@
  *
  * Data only. The spawn scheduler that reads it is implemented in M4.
  * Times are milliseconds of round-elapsed (pause-excluded) gameplay time.
+ *
+ * This is the round the owner validated on a physical device at M13.1 and
+ * approved visually at M14. **No value in it has changed since**, and M15
+ * deliberately did not change one either: it is Stage 2 of the new two-stage
+ * flow exactly as it was, which is what makes the pending M14.1 performance
+ * retest still a retest of this round. The shared shape moved to
+ * `levelDefinition.ts` when Stage 1 arrived; the numbers below did not move.
  */
-import type { TargetKind } from '../state/gameState.ts';
+import type { LevelDefinition } from './levelDefinition.ts';
 
-export interface SpawnPhase {
-  readonly fromMs: number;
-  readonly toMs: number;
-  readonly spawnEveryMs: number;
-  readonly kinds: readonly TargetKind[];
-}
-
-export interface LevelDefinition {
-  readonly id: string;
-  readonly durationMs: number;
-  readonly startingIntegrity: number;
-  readonly vocalistEventAtMs: number;
-  readonly maxConcurrentTargets: number;
-  /**
-   * Seed for any randomized selection inside a phase, so a round is
-   * reproducible during tuning (AGENTS.md rule 6).
-   */
-  readonly randomSeed: number;
-  readonly phases: readonly SpawnPhase[];
-}
+export type { LevelDefinition, SpawnPhase } from './levelDefinition.ts';
 
 export const level01: LevelDefinition = {
   id: 'level01',

@@ -65,7 +65,7 @@ function counting(): RoundState {
 }
 
 function context(elapsedMs: number, state: RoundState['state'] = 'PLAYING'): BeatContext {
-  return { elapsedMs, durationMs: DURATION, state };
+  return { elapsedMs, durationMs: DURATION, state, grooveEnabled: true };
 }
 
 // ---------------------------------------------------------------------------

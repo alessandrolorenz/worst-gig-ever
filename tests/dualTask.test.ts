@@ -15,6 +15,7 @@ import assert from 'node:assert/strict';
 
 import type { AudioService } from '../game/audio/audioService.ts';
 import { createSceneEntities, type GameEntities } from '../game/entities/sceneEntities.ts';
+import { STAGES } from '../game/levels/stages.ts';
 import { canvasToScreen, fitCanvas } from '../game/rendering/layout.ts';
 import { roundSystem } from '../game/systems/roundSystem.ts';
 import {
@@ -53,9 +54,26 @@ function createRecordingAudio(): RecordingAudio {
 const SCREEN = { width: 2340, height: 1080 };
 const SURFACE_OFFSET = { pageX: 300, pageY: 260 };
 
+
+/**
+ * These tests are about the dual-task round, which is Stage 2 (M15).
+ *
+ * `createSceneEntities` opens on Stage 1, the defense-only drill, because that
+ * is where the game itself opens. Selecting Stage 2 here is exactly what
+ * `GameEngine`'s stage selection does: point the scene at the stage and build
+ * its round.
+ */
+function selectGrooveStage(entities: GameEntities): void {
+  const stage = STAGES.find((entry) => entry.groove);
+  if (stage === undefined) throw new Error('no stage enables the Groove');
+  entities.scene.stage = stage;
+  entities.scene.round = createRound(stage.level);
+}
+
 function setup() {
   const audio = createRecordingAudio();
   const entities = createSceneEntities(audio, null as never);
+  selectGrooveStage(entities);
   entities.scene.viewport.width = SCREEN.width;
   entities.scene.viewport.height = SCREEN.height;
   entities.scene.viewport.pageX = SURFACE_OFFSET.pageX;
