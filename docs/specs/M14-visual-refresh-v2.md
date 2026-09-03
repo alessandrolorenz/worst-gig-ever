@@ -6,9 +6,10 @@ Planning and the seven-image proof set were completed by 2026-09-02 after owner
 decision `M13_1_VALIDATED`. The owner then recorded
 `V2_DIRECTION_APPROVED`. After the owner continued past the vocalist checkpoint,
 all 33 production PNGs were integrated by 2026-09-03 at canonical paths.
-Current checkpoint: `V2_DEVICE_REVIEW`. All four ambient triplets pass, and
-ambient animation is enabled. Final owner review on a physical device remains
-required; M14 is not yet closed.
+The owner has now approved the visuals in the EAS APK but reported sluggish
+taps on the Galaxy S23 FE. All four ambient triplets pass and remain enabled.
+Performance correction continues under `M14.1-render-performance.md`; final
+physical-device performance validation is pending. M14 is not yet closed.
 
 Do **not** automatically execute M14 before the owner completes the M13.1
 physical re-test and explicitly chooses to continue the visual refresh.

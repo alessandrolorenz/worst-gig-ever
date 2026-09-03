@@ -5,7 +5,7 @@
  * authored on the 1920x1080 reference canvas and scaled once at the root. Art
  * bounds never become hitboxes; positions and radii come from the domain.
  */
-import React, { useCallback, useRef } from 'react';
+import React, { memo, useCallback, useRef } from 'react';
 import { Image, View, Text, StyleSheet, type LayoutChangeEvent } from 'react-native';
 
 import { REFERENCE_CANVAS, STAGE, STAGE_MOTION, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
@@ -47,6 +47,7 @@ import {
 import { isPadPulsing, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
 import { Hud } from './Hud.tsx';
+import { spriteTransform } from './spriteTransform.ts';
 
 export interface SceneRendererProps {
   round: RoundState;
@@ -110,7 +111,7 @@ const LIGHT_PULSE_OPACITY = 0.14;
  * loads. The frame list is fixed for the life of the component, so `index`
  * is a stable key.
  */
-function FrameStack({
+const FrameStack = memo(function FrameStack({
   sources,
   current,
   resizeMode = 'contain',
@@ -125,39 +126,63 @@ function FrameStack({
         <Image
           key={index}
           source={source}
+          fadeDuration={0}
           style={[styles.fill, index === current ? styles.frameShown : styles.frameHidden]}
           resizeMode={resizeMode}
         />
       ))}
     </>
   );
-}
+});
 
-function Backdrop({ stageMotion }: { stageMotion: StageMotionState }) {
-  const pulse = beatPulse(stageMotion.elapsedMs);
-  const crowdFrame = loopFrameAt(stageMotion.elapsedMs, loopMs(), STAGE_MOTION.loopFrames);
+const StageBackground = memo(function StageBackground() {
+  return (
+    <Image source={STAGE_ART.background} style={styles.fill} resizeMode="stretch" fadeDuration={0} />
+  );
+});
+
+const BackCrowd = memo(function BackCrowd() {
+  return (
+    <Image
+      source={STAGE_ART.crowdBack}
+      style={absolute(CROWD_BACK_RECT)}
+      resizeMode="stretch"
+      fadeDuration={0}
+    />
+  );
+});
+
+const FrontCrowd = memo(function FrontCrowd({ frame }: { frame: number }) {
+  return (
+    <View style={absolute(CROWD_FRONT_RECT)}>
+      <FrameStack sources={STAGE_ART.crowdFrames} current={frame} resizeMode="stretch" />
+    </View>
+  );
+});
+
+function Backdrop({ elapsedMs }: { elapsedMs: number }) {
+  const pulse = beatPulse(elapsedMs);
+  const crowdFrame = loopFrameAt(elapsedMs, loopMs(), STAGE_MOTION.loopFrames);
 
   return (
     <>
-      <Image source={STAGE_ART.background} style={styles.fill} resizeMode="stretch" />
+      <StageBackground />
       <Image
         source={STAGE_ART.lights}
         style={[styles.fill, { opacity: LIGHT_BASE_OPACITY + pulse * LIGHT_PULSE_OPACITY }]}
         resizeMode="stretch"
+        fadeDuration={0}
       />
-      <Image source={STAGE_ART.crowdBack} style={absolute(CROWD_BACK_RECT)} resizeMode="stretch" />
-      <View style={absolute(CROWD_FRONT_RECT)}>
-        <FrameStack
-          sources={STAGE_ART.crowdFrames}
-          current={ambientFrame(crowdFrame)}
-          resizeMode="stretch"
-        />
-      </View>
+      <BackCrowd />
+      <FrontCrowd frame={ambientFrame(crowdFrame)} />
     </>
   );
 }
 
-function BandMember({ id, pose }: { id: Exclude<PerformerId, 'vocalist'>; pose: PerformerPose }) {
+const BandMember = memo(function BandMember({ id, pose }: {
+  id: Exclude<PerformerId, 'vocalist'>;
+  pose: PerformerPose;
+}) {
   return (
     <View style={absolute(performerRect(id))}>
       <FrameStack
@@ -166,7 +191,7 @@ function BandMember({ id, pose }: { id: Exclude<PerformerId, 'vocalist'>; pose: 
       />
     </View>
   );
-}
+});
 
 /**
  * Pose bitmaps in one fixed order per performer, so a `FrameStack` index means
@@ -190,8 +215,10 @@ const VOCALIST_BLOCKING_FRAME = VOCALIST_FRAMES.length - 1;
  * singer steps into the drummer's face, and the art fills the tap region the
  * domain already owns so the player swings at what they can see.
  */
-function Vocalist({ round, pose }: { round: RoundState; pose: PerformerPose }) {
-  const status = round.vocalist.status;
+const Vocalist = memo(function Vocalist({ status, pose }: {
+  status: RoundState['vocalist']['status'];
+  pose: PerformerPose;
+}) {
   const rect = status === 'idle' ? performerRect('vocalist') : VOCALIST_BLOCKING_RECT;
   const frame =
     status === 'blocking'
@@ -204,7 +231,7 @@ function Vocalist({ round, pose }: { round: RoundState; pose: PerformerPose }) {
       {status === 'blocking' && <Text style={styles.vocalistCue}>TAP THE SINGER</Text>}
     </View>
   );
-}
+});
 
 /** Debug-only: the art now marks the arrival line with the kit itself. */
 function DangerLine() {
@@ -216,29 +243,30 @@ function DangerLine() {
   );
 }
 
-function DrumKit() {
-  return <Image source={STAGE_ART.drumKit} style={absolute(DRUM_KIT_RECT)} resizeMode="stretch" />;
-}
+const DrumKit = memo(function DrumKit() {
+  return (
+    <Image
+      source={STAGE_ART.drumKit}
+      style={absolute(DRUM_KIT_RECT)}
+      resizeMode="stretch"
+      fadeDuration={0}
+    />
+  );
+});
 
 function TargetShape({ view }: { view: TargetView }) {
   // Drawn size is composition data, checked against the tap radius by test.
   const size = TARGET_DRAW_SIZE[view.kind];
-  const width = size.width * view.scale;
-  const height = size.height * view.scale;
 
   return (
     <Image
       source={TARGET_ART[view.kind]}
       style={{
-        position: 'absolute',
-        left: view.x - width / 2,
-        top: view.y - height / 2,
-        width,
-        height,
+        ...spriteTransform(view.x, view.y, size.width, size.height, view.scale, view.rotation),
         opacity: view.status === 'missed' ? 0.45 : 1,
-        transform: [{ rotate: `${view.rotation}rad` }],
       }}
       resizeMode="contain"
+      fadeDuration={0}
     />
   );
 }
@@ -277,16 +305,17 @@ function Strike({ effect }: { effect: TimedEffect }) {
         position: 'absolute',
         left: STICK_ORIGIN.x,
         top: STICK_ORIGIN.y,
-        width: length * Math.max(0, extend),
+        width: length,
         // Preserve the established strike band; transparent source padding
         // is presentation-only and never affects strike resolution.
         height: STICK_THICKNESS,
         marginTop: -STICK_THICKNESS / 2,
         opacity: 1 - progress * 0.35,
-        transform: [{ rotate: `${angle}rad` }],
+        transform: [{ rotate: `${angle}rad` }, { scaleX: Math.max(0, extend) }],
         transformOrigin: 'left center',
       }}
       resizeMode="stretch"
+      fadeDuration={0}
     />
   );
 }
@@ -299,15 +328,11 @@ function Burst({ effect }: { effect: TimedEffect }) {
     <Image
       source={HIT_BURST_ART}
       style={{
-        position: 'absolute',
-        left: effect.x - size / 2,
-        top: effect.y - size / 2,
-        width: size,
-        height: size,
+        ...spriteTransform(effect.x, effect.y, 100, 100, size / 100, progress * 0.45),
         opacity: 1 - progress,
-        transform: [{ rotate: `${progress * 0.45}rad` }],
       }}
       resizeMode="contain"
+      fadeDuration={0}
     />
   );
 }
@@ -320,15 +345,14 @@ function Debris({ shards }: { shards: readonly Shard[] }) {
           key={shard.id}
           source={GLASS_SHARD_ART[(shard.id - 1) % GLASS_SHARD_ART.length]}
           style={{
-            position: 'absolute',
-            left: shard.body.position.x - shard.size / 2,
-            top: shard.body.position.y - shard.size / 2,
-            width: shard.size,
-            height: shard.size,
+            ...spriteTransform(
+              shard.body.position.x, shard.body.position.y,
+              shard.size, shard.size, 1, shard.body.angle,
+            ),
             opacity: shardOpacity(shard),
-            transform: [{ rotate: `${shard.body.angle}rad` }],
           }}
           resizeMode="contain"
+          fadeDuration={0}
         />
       ))}
     </>
@@ -392,11 +416,11 @@ export function SceneRenderer({
           },
         ]}
       >
-        <Backdrop stageMotion={stageMotion} />
+        <Backdrop elapsedMs={stageMotion.elapsedMs} />
         {SHOW_GRAYBOX_DEBUG && <DangerLine />}
         <BandMember id="bassist" pose={performerPose(stageMotion, 'bassist')} />
         <BandMember id="guitarist" pose={performerPose(stageMotion, 'guitarist')} />
-        <Vocalist round={round} pose={performerPose(stageMotion, 'vocalist')} />
+        <Vocalist status={round.vocalist.status} pose={performerPose(stageMotion, 'vocalist')} />
 
         {targets.far.map(renderTarget)}
         <Debris shards={debris.far} />

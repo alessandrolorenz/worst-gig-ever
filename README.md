@@ -19,8 +19,9 @@ specification-driven development.
 
 > **Status:** M14 V2 art is integrated: 33/33 canonical assets, distinct
 > performers facing the audience, a clear snare, and enabled ambient loops.
-> Current checkpoint: `V2_DEVICE_REVIEW`; owner review on a physical device
-> remains before milestone closure. See `docs/verification/M14-gate.md`.
+> Visuals approved on device. Current checkpoint: `PERFORMANCE_DEVICE_RETEST`;
+> M14.1 reduces rendering overhead and fixes slow-frame hit feedback, pending
+> a new APK test. See `docs/verification/M14.1-gate.md`.
 
 ## Running it
 

@@ -18,6 +18,7 @@ import { startRound, targetViews } from '../game/state/roundState.ts';
 import { PERFORMER_ANCHORS, VOCALIST_BLOCKING_RECT } from '../game/config/stage.ts';
 import { isReacting, performerPose } from '../game/systems/stageMotion.ts';
 import { level01 } from '../game/levels/level01.ts';
+import { addStrike, addBurst, STRIKE_TTL_MS, BURST_TTL_MS } from '../game/systems/effects.ts';
 
 interface RecordingAudio extends AudioService {
   readonly calls: string[];
@@ -181,6 +182,29 @@ test('a tap on empty canvas produces no feedback at all', () => {
   assert.equal(entities.scene.effects.strikes.length, 0);
   assert.equal(entities.scene.shards.shards.length, 0);
   assert.deepEqual(audio.calls, []);
+});
+
+test('a slow frame does not discard new hit feedback before its first render', () => {
+  const { entities, audio } = setup();
+  const view = firstTargetInFlight(entities);
+  addStrike(entities.scene.effects, 10, 10);
+  addBurst(entities.scene.effects, 10, 10);
+
+  step(entities, 350, touchAtCanvas(entities, view.x, view.y));
+
+  assert.equal(entities.scene.round.targetsDestroyed, 1);
+  assert.equal(audio.calls.filter(c => c === 'sfx:glassBreak').length, 1);
+  assert.equal(entities.scene.effects.strikes.length, 1, 'old strike expires, new strike survives');
+  assert.equal(entities.scene.effects.bursts.length, 1, 'old burst expires, new burst survives');
+  assert.equal(entities.scene.effects.strikes[0].ageMs, 0);
+  assert.equal(entities.scene.effects.bursts[0].ageMs, 0);
+  assert.ok(entities.scene.shards.shards.every(shard => shard.ageMs === 0));
+
+  step(entities, STRIKE_TTL_MS);
+  assert.equal(entities.scene.effects.strikes.length, 0);
+  assert.equal(entities.scene.effects.bursts.length, 1);
+  step(entities, BURST_TTL_MS - STRIKE_TTL_MS);
+  assert.equal(entities.scene.effects.bursts.length, 0);
 });
 
 test('a missed target reports an impact on the kit', () => {

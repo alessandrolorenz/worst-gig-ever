@@ -12,6 +12,19 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
+**M14.1 performance correction — `PERFORMANCE_DEVICE_RETEST`.** The owner
+approved the M14 APK visually but reported slow taps on the Galaxy S23 FE.
+The fix preserves every art file and gameplay setting. It reduces the pad SVG
+surface from 1920x1080 to 664x234, memoizes unchanged scenery/poses, uses fixed
+sprite layout with transforms, and prevents a slow tick from consuming newly
+created hit feedback. The controlled browser comparison reduced JavaScript
+time by 36.3%; this is not a measured Galaxy FPS improvement. See
+`docs/verification/M14.1-gate.md`. Changes remain uncommitted; the owner
+requested EAS build `9d1dd65c-8c08-411b-80d4-aa89098df279`, confirmed queued
+on 2026-09-03 (Android `preview:device`, app 1.0.3).
+
+### M14 integration baseline
+
 **M14 V2 production integrated (2026-09-03).** Outcome: `V2_DEVICE_REVIEW`.
 The owner approved the direction and continued past the vocalist checkpoint.
 All 33 canonical assets and four derived app-identity images now use V2 art.
@@ -288,10 +301,11 @@ Measured 2026-08-30 at commit `fb2170978eae4b3bb59e0232e7cc421741c78b32`.
 | `npm test` | `node --test` (native TypeScript type stripping) |
 | `npm run verify` | type-check, lint, tests, strict art contract and continuity |
 
-Last run 2026-09-03 after the full M14 integration: type-check clean, lint
-clean, **241/241 tests passing**, `PASS_ART_READY` (33/33), and
-`PASS_AMBIENT_LOOP_READY` (4/4, including wrap). Web export and full browser
-round completed. See the M14 gate for smoke evidence and remaining review.
+Last run 2026-09-03 after M14.1: type-check clean, lint clean,
+**248/248 tests passing**, `PASS_ART_READY` (33/33), and
+`PASS_AMBIENT_LOOP_READY` (4/4, including wrap). Android export, full browser
+round and native visual smoke passed. See `docs/verification/M14.1-gate.md`
+for the comparative render probe and remaining physical-device retest.
 
 ## Current scope
 
@@ -310,10 +324,10 @@ One 60-second show with:
 
 ## Immediate next action
 
-**Owner reviews V2 on a physical device.** Validate projectile visibility,
-lower-centre pad readability, distinct characters, corrected orientation,
-and animation comfort. M14 remains open until that review; no gameplay
-expansion is implied by art integration.
+**Retest tap responsiveness on the same Galaxy S23 FE when the requested
+M14.1 EAS APK is ready.** The owner approved the visuals; preserve them. Confirm first
+hit and repeated-hit feedback, Groove taps and full-round smoothness.
+No gameplay expansion is implied by the performance correction.
 
 The prior Pack 1 ambient-loop defect is resolved. The regular verification
 command now enforces dimensions, alpha, and pixel continuity in addition to
@@ -626,9 +640,9 @@ what caught the bottle's enlargement in the first place.
 
 ## Open items carried into the next playtest
 
-1. **M14 production is ready for physical-device review.** All 33 runtime art
-   files are integrated and validated. The owner requested a commit, merge to
-   the integration branch, and an EAS build of this candidate on 2026-09-03.
+1. **M14.1 awaits physical-device performance retest.** The owner approved M14
+   visuals after installing its APK. Rendering and feedback corrections are
+   uncommitted; the owner requested a new EAS APK, now submitted (see gate).
 2. `crowd_applause.wav` is still the full 39 s / 6.9 MB source, and volume normalization across the five files has not been done. Both are audible in the current build and are deliberately left alone until after observation.
 3. The current tuning is playtest-informed but remains provisional. The M13
    physical playtest found the dual-task difficulty desirable, so every
@@ -647,7 +661,7 @@ what caught the bottle's enlargement in the first place.
      the final package name — while there is still no installed base, because
      that last step invalidates every installed build.
 8. `package-lock.json` is git-ignored by the template, so dependency resolution is not reproducible across machines — this directly caused the autolinking failure documented in ADR 0006.
-9. **M14 production is integrated; final physical-device review is pending.**
+9. **M14 visuals are approved; M14.1 tap responsiveness remains to be tested.**
 10. **Ambient loop defect resolved 2026-09-03:** all four V2 triplets pass;
     `AMBIENT_LOOP_ART_READY = true`. No frame-count or timing changes.
 11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. **Addressed 2026-09-01:** `npm run measure:art` (`scripts/measure-art-bounds.mjs`) decodes pixels and reports per-triplet feet-anchor drift and frame-to-frame change, plus measured target bounds against the tap-circle rule. Historical Pack 1 scored 10–51 px drift and 43–88% change. V2 passes the unchanged 8 px/25% gates, including wrap; the strict check is now in `npm run verify`.

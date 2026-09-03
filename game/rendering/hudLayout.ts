@@ -16,6 +16,14 @@ import { GROOVE_PAD } from '../config/rhythm.ts';
 import { REFERENCE_CANVAS, STAGE } from '../config/stage.ts';
 import type { Rect } from './composition.ts';
 
+/** Tight SVG surface, including the widest pulse/flash stroke and antialias margin. */
+export const PAD_SURFACE: Rect = {
+  x: GROOVE_PAD.centerX - GROOVE_PAD.halfWidthPx - 12,
+  y: GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx - 12,
+  width: GROOVE_PAD.halfWidthPx * 2 + 24,
+  height: GROOVE_PAD.halfHeightPx * 2 + 24,
+};
+
 /** Canvas inset the top row of the HUD is laid out against. */
 export const HUD_MARGIN = { x: 56, top: 36 } as const;
 

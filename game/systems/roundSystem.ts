@@ -296,14 +296,16 @@ export function roundSystem(entities: GameEntities, args: RoundSystemArgs): Game
   // inert there without a rule of its own.
   rhythmEvents.push(...tickRhythm(rhythm, beatContext(round, previousState)));
 
-  applyEvents(entities, round, events);
-  applyRhythmEvents(entities, rhythmEvents);
-
+  // Age only feedback that already existed. A slow preceding frame must not
+  // consume a newly created strike/burst before it can be displayed once.
   tickEffects(scene.effects, delta);
   tickShards(scene.shards, delta);
   // The stage keeps breathing in every state, menus included, so it is ticked
   // outside the round clock and reads targets rather than owning any.
   tickStageMotion(scene.stageMotion, targetViews(round), delta);
+
+  applyEvents(entities, round, events);
+  applyRhythmEvents(entities, rhythmEvents);
 
   if (round.state !== previousState) scene.onStateChange?.(round.state);
 

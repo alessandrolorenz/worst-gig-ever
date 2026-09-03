@@ -33,7 +33,8 @@ import { StyleSheet, View } from 'react-native';
 import Svg, { Ellipse } from 'react-native-svg';
 
 import { GROOVE_PAD, GROOVE_PULSE, isUnscoredLeadBeat } from '../config/rhythm.ts';
-import { REFERENCE_CANVAS } from '../config/stage.ts';
+import { absolute } from './composition.ts';
+import { PAD_SURFACE } from './hudLayout.ts';
 import { THEME } from './theme.ts';
 import {
   isPadPulsing,
@@ -108,8 +109,9 @@ export function GroovePad({ round, rhythm }: GroovePadProps) {
     <View pointerEvents="none" style={styles.layer}>
       <Svg
         pointerEvents="none"
-        width={REFERENCE_CANVAS.width}
-        height={REFERENCE_CANVAS.height}
+        width={PAD_SURFACE.width}
+        height={PAD_SURFACE.height}
+        viewBox={`${PAD_SURFACE.x} ${PAD_SURFACE.y} ${PAD_SURFACE.width} ${PAD_SURFACE.height}`}
       >
         {/**
          * Resting mark. Always visible, so the pad is findable before the
@@ -155,6 +157,8 @@ export function GroovePad({ round, rhythm }: GroovePadProps) {
 
 const styles = StyleSheet.create({
   layer: {
-    ...StyleSheet.absoluteFillObject,
+    // Android rasterizes the SVG at its native size before the parent scales
+    // the scene. Do not allocate a full-screen bitmap for a small ellipse.
+    ...absolute(PAD_SURFACE),
   },
 });

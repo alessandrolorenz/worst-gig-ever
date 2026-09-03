@@ -1,10 +1,19 @@
 # Current Continuation State
 
 - Last reconciled: 2026-09-03
-- Source branch: `m9/rhythm-pivot`; integration target: `main`
+- Branch: `main`; M14 merge: `f277e0430ece4bcd7f429e3529fd33e801bdb61f`
 - Pre-M14 implementation baseline: `7aa058b799e29e646dbba6442226d679d38d5de3`
-- Active stage: **M14 Visual Refresh V2 — physical-device review**
-- Gate outcome: `V2_DEVICE_REVIEW`
+- Active stage: **M14.1 render performance — device retest pending**
+- Gate outcome: `PERFORMANCE_DEVICE_RETEST`
+
+The owner approved the M14 APK visually but reported delayed taps on the
+Galaxy S23 FE and authorized investigation/correction. M14.1 keeps all art
+unchanged, crops the pad's SVG drawing surface, avoids unchanged pose-tree
+renders, uses fixed-layout sprite transforms, and preserves new hit feedback
+through a slow frame. See `docs/verification/M14.1-gate.md` for measurements.
+The changes remain uncommitted. At the owner's request, the working tree was
+uploaded to Android EAS `preview:device` build
+`9d1dd65c-8c08-411b-80d4-aa89098df279` (confirmed queued on 2026-09-03).
 
 M13.1 is closed. The owner tested the build on a physical phone on 2026-09-01,
 reported it as "very good", requested no tuning, and recorded
@@ -57,14 +66,20 @@ vocalist timing, and round duration remain frozen for the re-test.
   challenging but fun and asked to improve readability and entry.
 - M13.1 readability and entry tuning: implemented, gate green, and validated
   by the owner on a physical device — `M13_1_VALIDATED`, no tuning requested.
-- M14 Visual Refresh V2: 33/33 production assets integrated; final owner device
-  review pending. Runtime changes are limited to enabling validated ambient
+- M14 Visual Refresh V2: 33/33 production assets integrated; owner approved the
+  visuals on device. M14 runtime changes were limited to enabling validated ambient
   bitmaps and updating measured prop-content bounds. Manifest keys, geometry,
   hitboxes, input, timing, scoring, and difficulty remain unchanged.
 
 ## Verification
 
-Re-run on 2026-09-03 after completing the V2 set:
+Latest M14.1 verification: 248/248 tests, type-check, lint and strict art gates
+pass; Android export succeeds; full browser round completes with 36 objects
+destroyed, zero missed and integrity 3/3. Native visual smoke passes. Browser
+JavaScript work decreased 36.3% in a single comparative probe; physical-device
+responsiveness remains unmeasured. See `docs/verification/M14.1-gate.md`.
+
+Historical M14 integration verification (2026-09-03):
 
 - `git diff --check` — pass.
 - `npm run verify` — pass: type-check, lint, and 241/241 tests.
@@ -94,15 +109,15 @@ The owner requested a commit, merge, and EAS build on 2026-09-03. The selected
 playtest profile is Android `preview:device` (installable internal APK), not a
 store submission. This request does not close the visual-review gate.
 
-**Owner plays the V2 build on a physical device.** Check target visibility
-through the full arc, the lower-centre Groove Pad, character distinction,
-rear-facing orientation, and animation comfort. Approve M14 or name specific
-visual corrections; do not proceed to deferred gameplay features automatically.
+**Retest M14.1 on the same Galaxy S23 FE once the requested EAS APK is ready.**
+Compare tap-to-feedback response from the first
+target through repeated breaks. The visual direction is approved; do not
+regenerate artwork or change difficulty. Browser results are not device FPS.
 
 ## Known open items
 
-1. M14 physical-device visual approval remains pending. The prior ambient
-   continuity defect is fixed; all triplets pass and loops are enabled.
+1. M14.1 physical-device performance retest is pending. Visual direction is
+   approved; all triplets pass and loops remain enabled.
 2. The bottom of the reference canvas can sit under the Android gesture area.
    The owner reported no swallowed taps during the M13.1 re-test; keep watching
    bottom-edge Groove Pad taps on other devices.
