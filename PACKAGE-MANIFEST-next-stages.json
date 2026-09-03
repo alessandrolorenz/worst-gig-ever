@@ -1,0 +1,47 @@
+{
+  "package": "worst-band-ever-next-stages",
+  "version": 1,
+  "intendedBaseline": {
+    "branch": "m5/physical-playtest",
+    "m5aCommit": "4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3"
+  },
+  "sequence": [
+    "M6",
+    "M6A",
+    "ART_GATE",
+    "M6B",
+    "M7",
+    "M8"
+  ],
+  "files": [
+    "NEXT-STAGES-README.md",
+    "docs/assets/ART-PROVENANCE-TEMPLATE.md",
+    "docs/specs/M6-art-direction-lock.md",
+    "docs/specs/M6A-asset-pack-production.md",
+    "docs/specs/M6B-art-integration.md",
+    "docs/specs/M7-stage-chaos-interactions.md",
+    "docs/specs/M8-visual-mvp-candidate.md",
+    "docs/verification/GLOBAL-CONTINUATION-GATE.md",
+    "docs/verification/M6-gate.md",
+    "docs/verification/M6A-gate.md",
+    "docs/verification/M6B-gate.md",
+    "docs/verification/M7-gate.md",
+    "docs/verification/M8-gate.md",
+    "prompts/04-run-next-stages-master.md",
+    "prompts/05-m6-art-direction-lock.md",
+    "prompts/06-m6a-asset-pack-production.md",
+    "prompts/07-m6b-art-integration.md",
+    "prompts/08-m7-stage-chaos-interactions.md",
+    "prompts/09-m8-visual-mvp-candidate.md",
+    "prompts/assets/00-style-bible.md",
+    "prompts/assets/01-stage-environment.md",
+    "prompts/assets/02-crowd-3frame.md",
+    "prompts/assets/03-drumkit-pov.md",
+    "prompts/assets/04-vocalist-pack.md",
+    "prompts/assets/05-bassist-pack.md",
+    "prompts/assets/06-guitarist-pack.md",
+    "prompts/assets/07-props.md",
+    "prompts/assets/08-break-fx.md",
+    "PACKAGE-MANIFEST-next-stages.json"
+  ]
+}

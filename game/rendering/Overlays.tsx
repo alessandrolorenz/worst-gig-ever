@@ -12,11 +12,17 @@ import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
 import { THEME } from './theme.ts';
 import type { GameState } from '../state/gameState.ts';
+import {
+  judgedBeats,
+  meanAbsTimingErrorMs,
+  type RhythmState,
+} from '../state/rhythmState.ts';
 import type { RoundState } from '../state/roundState.ts';
 
 interface OverlayProps {
   state: GameState;
   round: RoundState;
+  rhythm: RhythmState;
   audioAvailable: boolean;
   onStart(): void;
   onPause(): void;
@@ -61,13 +67,45 @@ function Button({
   );
 }
 
-function Summary({ round }: { round: RoundState }) {
+/**
+ * The two performances, side by side and never added together (M12).
+ *
+ * Both columns read straight off the domain, so a number here cannot disagree
+ * with the number the rules used. There is no combined score and no overall
+ * grade: hiding one dimension behind a blend would defeat the point of the
+ * pivot, which is to see whether the player is good at one job, the other, or
+ * both.
+ */
+function Summary({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
+  const meanError = meanAbsTimingErrorMs(rhythm);
+
   return (
     <View style={styles.summary}>
-      <SummaryRow label="Score" value={String(round.score)} />
-      <SummaryRow label="Best combo" value={String(round.bestCombo)} />
-      <SummaryRow label="Objects destroyed" value={String(round.targetsDestroyed)} />
-      <SummaryRow label="Misses" value={String(round.misses)} />
+      <View style={styles.summaryColumn}>
+        <Text style={[styles.summaryHeading, { color: THEME.cymbal }]}>GROOVE</Text>
+        <SummaryRow label="Groove score" value={String(rhythm.score)} />
+        <SummaryRow label="Beats hit" value={`${rhythm.hits} / ${judgedBeats(rhythm)}`} />
+        <SummaryRow label="Perfect" value={String(rhythm.perfects)} />
+        <SummaryRow label="Good" value={String(rhythm.goods)} />
+        <SummaryRow label="Beats missed" value={String(rhythm.misses)} />
+        <SummaryRow label="Best beat streak" value={String(rhythm.bestStreak)} />
+        <Text style={styles.summaryDetail}>
+          {meanError === null
+            ? 'No beats landed this round.'
+            : `Average timing ${Math.round(meanError)} ms off the beat.`}
+        </Text>
+      </View>
+
+      <View style={styles.summaryColumn}>
+        <Text style={[styles.summaryHeading, { color: THEME.accent }]}>DEFENSE</Text>
+        <SummaryRow label="Defense score" value={String(round.score)} />
+        <SummaryRow label="Objects destroyed" value={String(round.targetsDestroyed)} />
+        <SummaryRow label="Objects missed" value={String(round.misses)} />
+        <SummaryRow label="Best hit combo" value={String(round.bestCombo)} />
+        <Text style={styles.summaryDetail}>
+          Show Integrity left: {round.integrity} of {round.level.startingIntegrity}.
+        </Text>
+      </View>
     </View>
   );
 }
@@ -82,7 +120,7 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 export function Overlays(props: OverlayProps) {
-  const { state, round, audioAvailable } = props;
+  const { state, round, rhythm, audioAvailable } = props;
 
   if (state === 'PLAYING' || state === 'VOCALIST_EVENT') {
     return (
@@ -94,14 +132,23 @@ export function Overlays(props: OverlayProps) {
     );
   }
 
+  /*
+   * The pre-roll shows the scene and nothing else (M13.1). No scrim, because
+   * the point of the countdown is to let the player read the stage before it
+   * fills up, and deliberately no pause control: there is nothing yet to
+   * pause, and a button appearing for three seconds and then moving would be
+   * worse than not having one.
+   */
+  if (state === 'COUNTDOWN') return null;
+
   if (state === 'READY') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.kicker}>WORST BAND EVER</Text>
-        <Text style={styles.title}>Survive the worst gig ever.</Text>
+        <Text style={styles.title}>WORST GIG EVER</Text>
+        <Text style={styles.tagline}>Keep the beat. Survive the gig.</Text>
         <Text style={styles.body}>
-          Tap the bottles and mugs before they reach your kit.{'\n'}
-          Three get through and the show is over.
+          Tap the pulsing pad on the beat.{'\n'}
+          Break bottles before they hit your kit.
         </Text>
         <Button label="Start the show" onPress={props.onStart} />
         {!audioAvailable && (
@@ -117,9 +164,11 @@ export function Overlays(props: OverlayProps) {
     return (
       <View style={styles.scrim}>
         <Text style={styles.title}>Paused</Text>
-        <Summary round={round} />
-        <Button label="Resume" onPress={props.onResume} />
-        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+        <Summary round={round} rhythm={rhythm} />
+        <View style={styles.buttonRowLayout}>
+          <Button label="Resume" onPress={props.onResume} />
+          <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+        </View>
       </View>
     );
   }
@@ -128,27 +177,38 @@ export function Overlays(props: OverlayProps) {
   return (
     <View style={styles.scrim}>
       <Text style={[styles.title, { color: complete ? THEME.integrityFull : THEME.accent }]}>
-        {complete ? 'Show Complete' : 'Show Ruined'}
+        {complete ? 'SHOW COMPLETE' : 'SHOW RUINED'}
       </Text>
       <Text style={styles.body}>
         {complete
-          ? 'You survived the whole song. Barely.'
-          : 'The kit took too many hits. The crowd noticed.'}
+          ? 'You kept the groove alive. Somehow.'
+          : 'The gig fell apart. Try to keep the beat while you defend the kit.'}
       </Text>
-      <Summary round={round} />
-      <Button label="Play again" onPress={props.onRestart} />
-      <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+      <Summary round={round} rhythm={rhythm} />
+      <View style={styles.buttonRowLayout}>
+        <Button label="Play again" onPress={props.onRestart} />
+        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  /*
+   * Sized for the shortest viewport this actually runs on. A 1080p phone in
+   * landscape at 420 dpi is 923 x 411 *dp*, not pixels — so the whole results
+   * screen has 411 dp of height to work with. The M12 summary overflowed it
+   * and clipped the outcome title off the top and the quit button off the
+   * bottom, which is how the emulator run for M13 found it. Everything below
+   * is measured against that budget.
+   */
   scrim: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.overlayScrim,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
+    paddingVertical: 10,
   },
   hudControls: {
     ...StyleSheet.absoluteFillObject,
@@ -172,54 +232,87 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 1,
   },
-  kicker: {
-    color: THEME.accent,
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 6,
-    marginBottom: 6,
-  },
   title: {
     color: THEME.hudText,
-    fontSize: 40,
+    fontSize: 30,
     fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  tagline: {
+    color: THEME.accent,
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 2,
     textAlign: 'center',
     marginBottom: 10,
   },
   body: {
     color: THEME.hudDim,
-    fontSize: 17,
-    lineHeight: 25,
+    fontSize: 14,
+    lineHeight: 20,
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   warning: {
     color: THEME.burst,
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
-    marginTop: 18,
+    marginTop: 10,
     maxWidth: 460,
   },
+  /**
+   * Two columns rather than one list. In landscape the width is there, and
+   * side by side is what makes the two dimensions read as two performances
+   * instead of one long tally. It wraps on a narrow viewport rather than
+   * clipping.
+   */
   summary: {
-    minWidth: 320,
-    marginBottom: 22,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  summaryColumn: {
+    minWidth: 280,
+    maxWidth: 330,
+    marginHorizontal: 14,
+  },
+  summaryHeading: {
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 5,
+    marginBottom: 2,
   },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 5,
+    paddingVertical: 1,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 236, 216, 0.12)',
   },
-  summaryLabel: { color: THEME.hudDim, fontSize: 16 },
-  summaryValue: { color: THEME.hudText, fontSize: 16, fontWeight: '700' },
+  summaryLabel: { color: THEME.hudDim, fontSize: 13 },
+  summaryValue: { color: THEME.hudText, fontSize: 13, fontWeight: '700' },
+  summaryDetail: {
+    color: THEME.hudDim,
+    fontSize: 11,
+    marginTop: 4,
+    lineHeight: 15,
+  },
+  buttonRowLayout: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+  },
   button: {
     backgroundColor: THEME.accent,
-    paddingVertical: 14,
-    paddingHorizontal: 42,
-    borderRadius: 28,
-    marginTop: 10,
-    minWidth: 260,
+    paddingVertical: 10,
+    paddingHorizontal: 30,
+    borderRadius: 24,
+    marginTop: 6,
+    marginHorizontal: 6,
+    minWidth: 200,
   },
   buttonSecondary: {
     backgroundColor: 'transparent',
@@ -235,7 +328,7 @@ const styles = StyleSheet.create({
   buttonTextWithIcon: { marginLeft: 10 },
   buttonText: {
     color: THEME.hudText,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 1,

@@ -19,9 +19,17 @@ import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
 import { level01 } from '../levels/level01.ts';
 import type { GameState } from '../state/gameState.ts';
-import { createRound, pauseRound, resumeRound, startRound } from '../state/roundState.ts';
+import { clearRhythm } from '../state/rhythmState.ts';
+import {
+  cancelCountdown,
+  createRound,
+  pauseRound,
+  resumeRound,
+  startRound,
+} from '../state/roundState.ts';
 import { clearEffects } from './effects.ts';
 import { clearShards } from './shards.ts';
+import { clearStageMotion } from './stageMotion.ts';
 import { roundSystem } from './roundSystem.ts';
 
 const EngineComponent = Platform.OS === 'web' ? WebGameEngine : ReactGameEngine;
@@ -56,6 +64,12 @@ export default function GameEngine() {
   // Release players on unmount, so a quit or reload cannot leave music running.
   useEffect(() => () => audio.dispose(), [audio]);
 
+  /**
+   * Start opens the `3 -> 2 -> 1 -> GO` pre-roll rather than the round itself
+   * (M13.1). The music starts here rather than on `GO` because it was never
+   * the rhythm clock and is not being made into one — it simply plays under
+   * the count, exactly as it played under M10's count-in.
+   */
   const handleStart = useCallback(() => {
     startRound(entities.scene.round);
     audio.playMusic();
@@ -77,8 +91,13 @@ export default function GameEngine() {
   const resetScene = useCallback(() => {
     const scene = entities.scene;
     scene.round = createRound(level01);
+    // Restart resets both dimensions. The Groove is cleared in place rather
+    // than replaced, because the entity map is built once per mount and the
+    // renderer holds this exact object (ADR 0001).
+    clearRhythm(scene.rhythm);
     clearEffects(scene.effects);
     clearShards(scene.shards);
+    clearStageMotion(scene.stageMotion);
   }, [entities]);
 
   const handleRestart = useCallback(() => {
@@ -103,6 +122,18 @@ export default function GameEngine() {
           pauseRound(round);
           audio.pauseMusic();
           setUiState(round.state);
+        } else if (round.state === 'COUNTDOWN') {
+          /*
+           * A pre-roll is not worth resuming: three seconds of preparation
+           * resumed from the middle teaches the player nothing and would drop
+           * them into the round on a beat they never heard counted. Nothing
+           * has happened yet, so going back to the title costs nothing — and
+           * the music has to stop with it, because the title's Start button
+           * plays it again from the top (M13.1, background during countdown).
+           */
+          cancelCountdown(round);
+          audio.stopMusic();
+          setUiState(round.state);
         }
       }
     });
@@ -120,6 +151,7 @@ export default function GameEngine() {
         <Overlays
           state={uiState}
           round={entities.scene.round}
+          rhythm={entities.scene.rhythm}
           audioAvailable={audio.available}
           onStart={handleStart}
           onPause={handlePause}

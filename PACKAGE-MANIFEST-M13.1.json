@@ -1,0 +1,8 @@
+{
+  "package": "worst-gig-ever-m13.1-groove-readability-tuning",
+  "version": 1,
+  "milestone": "M13.1",
+  "objective": "Improve Groove Pad ergonomics and add deterministic pre-round countdown without changing difficulty.",
+  "masterPrompt": "prompts/17-m13.1-groove-readability-and-countdown.md",
+  "expectedFinalStatus": "READY_FOR_M13_1_RETEST"
+}

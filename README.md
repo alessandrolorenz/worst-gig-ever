@@ -1,175 +1,119 @@
-# React Native Game Engine Expo TypeScript Template
+# Worst Gig Ever
 
-A modern template to jumpstart your game development with React Native using the react-native-game-engine library and TypeScript. Includes a complete "Balloon Pop" example game. Uses Expo 53, React 19, and has web support.
+**Keep the beat. Survive the gig.**
 
-## Getting Started
+A small mobile arcade game: you are the drummer at a chaotic rock show. Keep a
+simple groove on the pulsing lower-centre drum pad while the crowd throws things at your kit.
+Smash them before they land, survive sixty seconds, and try not to let the
+singer ruin your night.
 
-### Prerequisites
+Built with Expo, React Native Game Engine, and Matter.js, using
+specification-driven development.
 
-- Node.js (18+)
-- Expo CLI or `npx expo`
-- eas-cli (for building and submitting your app using EAS Build and EAS Submit)
+> **Renamed at M9** (2026-08-31), from the working title *Worst Band Ever*. The
+> joke is the gig, not the band. The GitHub repository, the Expo slug
+> (`worst-band-ever`), the EAS project, and the native application identifiers
+> (`com.worstbandever.app`) deliberately still carry the old name — they are
+> technical identifiers with remote state attached, and migrating them is a
+> pre-release task tracked in ADR 0010.
 
-### Current Stack
+> **Status:** M14 V2 art is integrated: 33/33 canonical assets, distinct
+> performers facing the audience, a clear snare, and enabled ambient loops.
+> Current checkpoint: `V2_DEVICE_REVIEW`; owner review on a physical device
+> remains before milestone closure. See `docs/verification/M14-gate.md`.
 
-- **Expo SDK**: 53
-- **React**: 19
-- **React Native**: 0.79.6
-- **TypeScript**: Strict mode with path mapping
-- **ESLint**: Configured for TypeScript + React
-- **Cross-platform**: iOS, Android, and Web support
+## Running it
 
-### Setup
+**[docs/running-the-game.md](docs/running-the-game.md)** — step by step for
+web, the Android emulator, and a physical device.
 
-Clone the repository to get started:
-
-```sh
-git clone https://github.com/nightness/react-native-game-engine-expo-typescript-template
-cd react-native-game-engine-expo-typescript-template
-```
-
-Install the dependencies:
+The short version:
 
 ```sh
 npm install
+npm run web                                   # fastest look at it
 ```
 
-### Type Checking
-
-Run TypeScript type checking:
+For Android, with an emulator already running:
 
 ```sh
-npm run type-check
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+npm start                                     # then press "a"
 ```
 
-## Using Expo Dev Client
+The installed APK is a **development client** — it loads its JavaScript from
+Metro at runtime, so TypeScript and JSX changes need no rebuild.
 
-This project uses `expo-dev-client` to enable a more integrated development workflow, allowing you to build and run your app on simulators/emulators with hot module reloading and access to developer tools.
-
-### Building for Development
-
-The `expo-dev-client` allows you to create custom builds of your application for development purposes.
-
-To create a development build for each platform, run the following command:
-
-- For iOS:
-
-  ```sh
-  npm run build:dev
-  ```
-
-  This command generates a `.tar.gz` file containing an "app folder". Extract this folder and drag the app binary into your iOS Simulator to install it.
-
-- For Android:
-
-  ```sh
-  npm run build:dev
-  ```
-
-  For Android, this command generates an APK file that can be installed on your emulator or physical device. Drag and drop the APK file into your Android Emulator to install it.
-
-After building and installing the development client, you can open your project directly from the simulator/emulator. The Expo development menu can be accessed within the simulator/emulator, enabling you to use features like live reloading and debugging.
-
-### Running the Development Build
-
-After installing the development build on your emulator/simulator, you can run the project using the `npm start` command. This will start the Metro bundler and enable you to load and test your app with the development build just installed.
-
-Start the project using the Expo dev client:
+## Validating it
 
 ```sh
-npm run start
+npm run verify        # type-check, lint, tests, art contract and continuity
 ```
 
-To run the game on a specific platform, use the corresponding script:
+Individually: `npm run type-check`, `npm run lint`, `npm test`
+(`node --test`, using native TypeScript type stripping — no test framework).
 
-```sh
-npm run android # for Android
-npm run ios # for iOS
-npm run web # for Web (with react-game-engine)
+The gate runs entirely in JavaScript and cannot catch native linking
+regressions. Only a native build can; see ADR 0006.
+
+## How the code is organised
+
+Gameplay logic is independent of rendering. Everything under `game/config/`,
+`game/levels/`, and `game/state/` imports neither React nor React Native, so
+every rule is testable without a renderer — `tests/roundSystem.test.ts` runs a
+full round, Matter physics included, under plain `node --test` with only the
+audio device faked.
+
+```
+game/
+  config/      tuning data — hitboxes, arcs, scoring, stage geometry and cadence
+  levels/      round schedules (level01)
+  state/       the round domain: clock, spawning, hit resolution, scoring, state machine
+  systems/     approach and throw math, effects, debris, stage motion, the engine bridge
+  entities/    the engine entity map
+  rendering/   scene renderer, art registry, scene composition, HUD, overlays, canvas fitting
+  audio/       audio service and asset registry
+  utils/       seedable RNG
+tests/         node:test suites, one per module
+docs/
+  specs/       milestone specifications — the contract
+  decisions/   ADRs, numbered
+  architecture/, assets/
 ```
 
-## Project Structure
+Rendering is replaceable: no gameplay rule reads an asset, and no hitbox is
+derived from art dimensions.
 
-- `assets/`: Static assets including custom SVG components
-  - `SVG/`: Custom game SVG components (BalloonSVG, QuitSVG)
-- `game/`: Core game logic and types
-  - `entities/`: Game entity components and factory functions
-  - `systems/`: Game engine and loop logic
-  - `types.ts`: TypeScript interfaces and type definitions
-  - `global.d.ts`: Global type declarations
-- `types/`: Additional TypeScript declarations (react-game-engine)
-- Configuration files: `tsconfig.json`, `.eslintrc.js`, `babel.config.js`
+## Working on it
 
-## Example Game: Balloon Pop
+Read **`AGENTS.md`** first — it holds the working rules, and they are binding.
+The important ones: specifications are the contract, no feature creep, gameplay
+logic stays independent of rendering, elapsed time rather than frame count,
+seedable randomness, and every milestone must pass the validation gate.
 
-This template includes a complete example game to demonstrate the architecture:
+Then, in order:
 
-- **Gameplay**: Touch/click balloons before they hit the ground
-- **Scoring**: +1 point for each balloon popped, -1 for missed balloons  
-- **Features**: High score tracking, game states (start/playing/paused), quit confirmation
-- **Cross-platform**: Works on mobile (touch) and web (mouse clicks)
-- **Physics**: Matter.js integration for realistic balloon movement
+| Document | What it is |
+|---|---|
+| `START-HERE.md` | the original brief and MVP definition |
+| `project-status.md` | current phase, gates, open items — start here for "where are we" |
+| `docs/specs/` | milestone specs, M0 through the prepared M14 plan |
+| `docs/decisions/` | ADRs: why things are the way they are |
+| `docs/architecture/game-architecture.md` | system boundaries |
+| `docs/running-the-game.md` | how to run and debug it |
 
-## Creating Your Own Game
+## Provenance
 
-1. **Study the Example**: Review the Balloon Pop implementation to understand the architecture
-2. **Replace Game Logic**: Modify `game/entities/entities.ts` to define your game entities
-3. **Update Game Loop**: Edit `game/systems/GameLoop.ts` for your game's update logic
-4. **Create New Entities**: Add entity components in `game/entities/` following the pattern
-5. **Add Assets**: Replace or add SVG components and other assets
-6. **Update Types**: Modify `game/types.ts` for your game's data structures
-7. **Customize UI**: Edit `game/systems/GameEngine.tsx` for your game's interface
-8. **Test & Build**: Use the provided build scripts for development and production
+Bootstrapped from
+[nightness/react-native-game-engine-expo-typescript-template](https://github.com/nightness/react-native-game-engine-expo-typescript-template)
+(MIT, Copyright © 2025 Josh Guyette), tracked as the `upstream` remote and kept
+at the `baseline/template-import` tag. The template's Balloon Pop example and
+its `global.*` coupling were removed in M4; see ADR 0001 and ADR 0005.
 
-## Building and Submitting
-
-The `eas.json` file is configured with profiles for local, development, preview, and production builds:
-
-- `build:adhoc`: Build a local adhoc app binary locally
-- `build:dev`: Build a development client app binary locally  
-- `build:preview`: Build for preview channel
-- `build:production`: Build for production channel
-- `eas:preview`: Build and submit to preview channel automatically
-- `eas:production`: Build and submit to production channel automatically
-- `submit:preview`: Submit app to preview channel
-- `submit:production`: Submit app to production channel
-- `update`: Push over-the-air updates without app store resubmission
-
-```sh
-npm run build:adhoc      # Build for physical device testing
-npm run build:dev        # Build for Expo development client  
-npm run build:preview    # Build for preview
-npm run build:production # Build for production
-npm run eas:preview      # Build and submit for preview
-npm run eas:production   # Build and submit for production
-```
-
-## Continuous Updates
-
-With EAS Update, you can keep your app up to date without waiting for app store reviews:
-
-```sh
-npm run update           # Auto-update
-npm run update:preview   # Update the preview channel
-npm run update:production # Update the production channel
-```
-
-## Development Features
-
-- **ESLint**: Pre-configured with TypeScript and React rules
-- **TypeScript**: Strict mode with path mapping for clean imports
-- **Cross-platform**: Shared game logic works on mobile and web
-- **Hot Reload**: Fast development with Expo dev client
-- **Matter.js**: Physics engine integration for realistic game mechanics
-
-## Support
-
-File issues on the repository issue tracker.
-
-## Contributing
-
-Contributions are welcome. Please fork the repository and submit a pull request.
+Audio assets are CC0 with provenance recorded in `docs/assets/AUDIO-SOURCES.md`.
+No copyrighted music, band logos, celebrity likenesses, or branded alcohol
+labels are used anywhere in the project.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT. See `LICENSE`.

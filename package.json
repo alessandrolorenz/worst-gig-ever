@@ -1,5 +1,5 @@
 {
-  "name": "worst-band-ever",
+  "name": "worst-gig-ever",
   "version": "1.0.0",
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
@@ -22,14 +22,21 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.tsx,.js",
     "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test",
-    "verify": "npm run type-check && npm run lint && npm test"
+    "validate:art": "node scripts/validate-pack1-art.mjs",
+    "verify": "npm run type-check && npm run lint && npm test && npm run validate:art -- --require-ready && npm run measure:art -- --require-continuity",
+    "measure:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-art-bounds.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
     "babel-plugin-module-resolver": "^5.0.2",
     "expo": "53.0.22",
+    "expo-asset": "~11.1.7",
     "expo-audio": "~0.4.9",
+    "expo-constants": "~17.1.8",
     "expo-dev-client": "~5.2.4",
+    "expo-file-system": "~18.1.11",
+    "expo-font": "~13.3.2",
+    "expo-keep-awake": "~14.1.4",
     "expo-status-bar": "~2.2.3",
     "matter-js": "^0.18.0",
     "react": "19.0.0",
@@ -60,6 +67,7 @@
     "@typescript-eslint/parser": "^6.18.0",
     "eslint": "^8.56.0",
     "eslint-plugin-react": "^7.33.2",
+    "pngjs": "^3.4.0",
     "typescript": "~5.8.3"
   },
   "license": "MIT",

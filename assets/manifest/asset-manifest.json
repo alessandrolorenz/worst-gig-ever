@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "referenceCanvas": {
     "width": 1920,
     "height": 1080,
@@ -9,112 +9,364 @@
     "stageBgBase": {
       "path": "assets/art/backgrounds/stage_bg_base.png",
       "kind": "background",
-      "requiredForMvp": true
+      "width": 1920,
+      "height": 1080,
+      "transparency": "opaque",
+      "prompt": "prompts/assets/01-stage-environment.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "stageLightsOverlay": {
+      "path": "assets/art/backgrounds/stage_lights_overlay.png",
+      "kind": "layer",
+      "width": 1920,
+      "height": 1080,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/01-stage-environment.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "crowdBack": {
       "path": "assets/art/crowd/crowd_back.png",
       "kind": "layer",
-      "requiredForMvp": true
+      "width": 1920,
+      "height": 520,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/02-crowd-3frame.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "crowdFront": {
-      "path": "assets/art/crowd/crowd_front.png",
+      "aliasOf": "crowdFront01",
       "kind": "layer",
-      "requiredForMvp": true
+      "requiredForMvp": true,
+      "deprecated": true
+    },
+    "crowdFront01": {
+      "path": "assets/art/crowd/crowd_front_01.png",
+      "kind": "layer",
+      "width": 1920,
+      "height": 420,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/02-crowd-3frame.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "crowdFront02": {
+      "path": "assets/art/crowd/crowd_front_02.png",
+      "kind": "layer",
+      "width": 1920,
+      "height": 420,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/02-crowd-3frame.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "crowdFront03": {
+      "path": "assets/art/crowd/crowd_front_03.png",
+      "kind": "layer",
+      "width": 1920,
+      "height": 420,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/02-crowd-3frame.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "drumkitPov": {
       "path": "assets/art/drums/drumkit_pov.png",
       "kind": "foreground",
-      "requiredForMvp": true
+      "width": 1920,
+      "height": 700,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/03-drumkit-pov.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "vocalistIdle": {
       "path": "assets/art/band/vocalist_idle.png",
       "kind": "character",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "vocalistLoopA": {
+      "path": "assets/art/band/vocalist_loop_a.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "vocalistLoopB": {
+      "path": "assets/art/band/vocalist_loop_b.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "vocalistBlocking": {
       "path": "assets/art/band/vocalist_blocking.png",
       "kind": "character",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "vocalistHitReaction": {
       "path": "assets/art/band/vocalist_hit_reaction.png",
       "kind": "character",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "vocalistDodge": {
+      "path": "assets/art/band/vocalist_dodge.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/04-vocalist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "bassistIdle": {
       "path": "assets/art/band/bassist_idle.png",
       "kind": "character",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/05-bassist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "bassistGroove": {
-      "path": "assets/art/band/bassist_groove.png",
+      "aliasOf": "bassistLoopA",
       "kind": "character",
-      "requiredForMvp": false
+      "requiredForMvp": false,
+      "deprecated": true
+    },
+    "bassistLoopA": {
+      "path": "assets/art/band/bassist_loop_a.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/05-bassist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "bassistLoopB": {
+      "path": "assets/art/band/bassist_loop_b.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/05-bassist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "bassistHitReaction": {
+      "path": "assets/art/band/bassist_hit_reaction.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/05-bassist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "bassistDodge": {
+      "path": "assets/art/band/bassist_dodge.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/05-bassist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "guitaristIdle": {
       "path": "assets/art/band/guitarist_idle.png",
       "kind": "character",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/06-guitarist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "guitaristLoopA": {
+      "path": "assets/art/band/guitarist_loop_a.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/06-guitarist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "guitaristLoopB": {
+      "path": "assets/art/band/guitarist_loop_b.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/06-guitarist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "guitaristHitReaction": {
+      "path": "assets/art/band/guitarist_hit_reaction.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/06-guitarist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
+    },
+    "guitaristDodge": {
+      "path": "assets/art/band/guitarist_dodge.png",
+      "kind": "character",
+      "width": 640,
+      "height": 900,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/06-guitarist-pack.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "beerBottle": {
       "path": "assets/art/props/beer_bottle.png",
       "kind": "target",
-      "requiredForMvp": true
+      "width": 256,
+      "height": 512,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/07-props.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "beerMug": {
       "path": "assets/art/props/beer_mug.png",
       "kind": "target",
-      "requiredForMvp": true
+      "width": 384,
+      "height": 384,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/07-props.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "whiskeyBottle": {
       "path": "assets/art/props/whiskey_bottle.png",
       "kind": "target",
-      "requiredForMvp": false
+      "width": 280,
+      "height": 560,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/07-props.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
     },
     "drumstick": {
       "path": "assets/art/props/drumstick.png",
       "kind": "feedback",
-      "requiredForMvp": true
+      "width": 640,
+      "height": 96,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/07-props.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "hitBurst": {
       "path": "assets/art/effects/hit_burst.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 256,
+      "height": 256,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "dustPuff": {
       "path": "assets/art/effects/dust_puff.png",
       "kind": "effect",
-      "requiredForMvp": false
+      "width": 256,
+      "height": 256,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
     },
     "glassShard01": {
       "path": "assets/art/effects/glass_shard_01.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "glassShard02": {
       "path": "assets/art/effects/glass_shard_02.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "glassShard03": {
       "path": "assets/art/effects/glass_shard_03.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "glassShard04": {
       "path": "assets/art/effects/glass_shard_04.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "glassShard05": {
       "path": "assets/art/effects/glass_shard_05.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     },
     "glassShard06": {
       "path": "assets/art/effects/glass_shard_06.png",
       "kind": "effect",
-      "requiredForMvp": true
+      "width": 128,
+      "height": 128,
+      "transparency": "transparent",
+      "prompt": "prompts/assets/08-break-fx.md",
+      "requiredForMvp": true,
+      "requiredForM6B": true
     }
   },
   "audio": {
