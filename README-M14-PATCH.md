@@ -1,5 +1,10 @@
 # Worst Gig Ever — M14 Visual Refresh Patch
 
+> **Patch status:** Already merged into this repository. M14 now has a complete
+> approved proof set and all 33 production replacements (2026-09-03), at
+> `V2_DEVICE_REVIEW`. This file is retained to record the source
+> patch; do not copy it over the current M14 files again.
+
 This patch replaces the earlier M14 visual-refresh direction.
 
 ## Why
@@ -13,7 +18,7 @@ The new direction aims for a **middle ground**:
 - readable at phone size;
 - suitable for the existing low-frame animation system.
 
-## Replace
+## Historical merge instructions
 
 Copy/merge these files into the repository:
 
@@ -22,4 +27,5 @@ Copy/merge these files into the repository:
 
 They are intended to replace the same files from the earlier rhythm-pivot package.
 
-Do not execute M14 before the M13 owner playtest gate.
+Do not execute M14 before the owner completes the M13.1 physical re-test and
+explicitly chooses to continue the visual refresh.

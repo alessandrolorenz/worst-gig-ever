@@ -1,10 +1,15 @@
 # Pack 1 Art Production State
 
+> **Historical production snapshot.** This file records the 2026-08-30 M6A
+> art-production handoff. M6B and M13.1 were completed afterward. For the
+> current continuation state use `project-status.md`; for the proposed V2
+> replacement use `docs/assets/M14-V2-VISUAL-PLAN.md`.
+
 Last updated: 2026-08-30  
 Branch: `m5/physical-playtest`  
 Completed baseline before art production: `90cf9d7b29bb895d7283d017352424426e000a4c` (`docs: prepare M6A asset pack production`)
 
-## Current gate state
+## Gate state at this historical snapshot
 
 - M5A is complete at `4aa553752c5ed1fdfc47d03a3f8548a44aeb43f3`; do not reimplement it.
 - M6 is complete at `6506698fd6d399c97d2960332996f98d78c63765`.

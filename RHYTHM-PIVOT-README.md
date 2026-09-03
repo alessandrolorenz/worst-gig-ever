@@ -1,5 +1,11 @@
 # Worst Gig Ever — Rhythm Pivot SDD Package
 
+> **Execution status:** The M9–M13 sequence described by this package has been
+> completed. The owner validated the M13.1 follow-up, and M14 is now at
+> `V2_VISUAL_DIRECTION_REVIEW` with seven candidate proofs. This file is
+> retained as package history; use `project-status.md` for the current
+> continuation state.
+
 This package continues the existing project after the current visual/arc playtest prototype.
 
 ## Product rename
@@ -47,7 +53,7 @@ The player now has two simultaneous jobs:
 
 No audio synchronization is required in this pivot. The beat clock is intentionally visual and deterministic.
 
-## Planned sequence
+## Original planned sequence
 
 - M9 — Product Rename & Rhythm Pivot Freeze
 - M10 — Visual Beat Clock & Groove Pad Foundation

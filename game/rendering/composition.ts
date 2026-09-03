@@ -115,13 +115,13 @@ const TARGET_ART_FRAME: Readonly<Record<TargetKind, { width: number; height: num
 
 /**
  * Measured opaque bounds inside those frames. A prop is mostly padding — the
- * bottle covers 110x494 of its 256x512 frame — so the layout box overstates
+ * bottle covers 94x470 of its 256x512 frame — so the layout box overstates
  * how much of the screen the object actually occupies. Regenerating a prop
  * means re-measuring these.
  */
 const TARGET_ART_CONTENT: Readonly<Record<TargetKind, { width: number; height: number }>> = {
-  beerBottle: { width: 110, height: 494 },
-  beerMug: { width: 307, height: 339 },
+  beerBottle: { width: 94, height: 470 },
+  beerMug: { width: 306, height: 312 },
 };
 
 /**

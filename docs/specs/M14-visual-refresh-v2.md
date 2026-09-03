@@ -2,9 +2,20 @@
 
 ## Status
 
-Prepared for later execution.
+Planning and the seven-image proof set were completed by 2026-09-02 after owner
+decision `M13_1_VALIDATED`. The owner then recorded
+`V2_DIRECTION_APPROVED`. After the owner continued past the vocalist checkpoint,
+all 33 production PNGs were integrated by 2026-09-03 at canonical paths.
+Current checkpoint: `V2_DEVICE_REVIEW`. All four ambient triplets pass, and
+ambient animation is enabled. Final owner review on a physical device remains
+required; M14 is not yet closed.
 
-Do **not** automatically execute M14 before the owner completes the M13 rhythm playtest and explicitly chooses to continue the visual refresh.
+Do **not** automatically execute M14 before the owner completes the M13.1
+physical re-test and explicitly chooses to continue the visual refresh.
+
+Both prerequisites and the first-family checkpoint are satisfied. Production
+followed the family-by-family runbook. See `docs/verification/M14-gate.md` for
+automated checks, smoke evidence, and the remaining device review.
 
 ## Objective
 
@@ -153,6 +164,11 @@ Do not increase frame count.
 
 The deliberately choppy 3-frame ambient motion remains part of the game identity.
 
+Because the camera is the drummer's point of view behind the band, ambient
+performers face the audience in rear three-quarter view. Reaction and dodge
+states keep that orientation. The vocalist `blocking` state is the explicit
+exception: it turns toward the drummer/camera to interrupt the sightline.
+
 ### Frame continuity
 
 Across `idle`, `loopA`, and `loopB`:
@@ -209,10 +225,13 @@ Important:
 - cymbals, toms, and snare remain recognizable;
 - the foreground should not become visually heavy;
 - the center sightline remains open;
-- the designated Groove Pad cymbal must be visually easy to identify;
+- the current lower-centre Groove Pad area must remain visually easy to identify;
 - code-driven pulse/glow must remain visible over the art.
 
 The Groove Pad should be important, but it should still look like part of the drum kit rather than a separate UI button.
+
+Preserve the M13.1 lower-centre geometry and open central projectile sightline.
+Do not move the pad back to the former hi-hat position as part of an art refresh.
 
 Do not bake the pulse into the artwork.
 
@@ -304,12 +323,14 @@ Before regenerating the full asset set, M14 should produce a **small visual dire
 
 Preferred proof set:
 
-1. vocalist reference;
-2. bassist reference;
-3. guitarist reference;
-4. one crowd sample;
-5. drum-kit sample;
-6. one bottle/prop sample.
+1. one three-performer lineup gate, proving distinct face geometry, body shape,
+   height, posture, and energy before individual sheets are made;
+2. vocalist reference;
+3. bassist reference;
+4. guitarist reference;
+5. one crowd sample with an independent cast;
+6. drum-kit sample with no baked drumsticks;
+7. one bottle/prop sample.
 
 The owner should review this small set before the rest of the animation frames and asset family are produced.
 
@@ -319,7 +340,8 @@ This prevents a full art pass in the wrong direction.
 
 M14 planning can finish before art exists.
 
-Actual V2 art production requires owner approval after the rhythm playtest.
+Actual V2 art production requires owner approval after the M13.1 physical
+re-test and the small visual-direction proof review.
 
 After M14 planning, the next art-production step should first stop at:
 

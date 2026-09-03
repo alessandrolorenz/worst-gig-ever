@@ -3,7 +3,7 @@
 **Keep the beat. Survive the gig.**
 
 A small mobile arcade game: you are the drummer at a chaotic rock show. Keep a
-simple groove on the pulsing hi-hat while the crowd throws things at your kit.
+simple groove on the pulsing lower-centre drum pad while the crowd throws things at your kit.
 Smash them before they land, survive sixty seconds, and try not to let the
 singer ruin your night.
 
@@ -17,10 +17,10 @@ specification-driven development.
 > technical identifiers with remote state attached, and migrating them is a
 > pre-release task tracked in ADR 0010.
 
-> **Status:** M9 rename and rhythm-pivot freeze. The playable slice is the
-> bottle-defense round on final Pack 1 art; the visual Groove Pad lands in
-> M10–M13. The band and crowd hold a single pose because the ambient loop art
-> is not yet a loop; see `project-status.md` and ADR 0009.
+> **Status:** M14 V2 art is integrated: 33/33 canonical assets, distinct
+> performers facing the audience, a clear snare, and enabled ambient loops.
+> Current checkpoint: `V2_DEVICE_REVIEW`; owner review on a physical device
+> remains before milestone closure. See `docs/verification/M14-gate.md`.
 
 ## Running it
 
@@ -47,7 +47,7 @@ Metro at runtime, so TypeScript and JSX changes need no rebuild.
 ## Validating it
 
 ```sh
-npm run verify        # type-check, then lint, then tests
+npm run verify        # type-check, lint, tests, art contract and continuity
 ```
 
 Individually: `npm run type-check`, `npm run lint`, `npm test`
@@ -97,7 +97,7 @@ Then, in order:
 |---|---|
 | `START-HERE.md` | the original brief and MVP definition |
 | `project-status.md` | current phase, gates, open items — start here for "where are we" |
-| `docs/specs/` | milestone specs, M0 through M5A |
+| `docs/specs/` | milestone specs, M0 through the prepared M14 plan |
 | `docs/decisions/` | ADRs: why things are the way they are |
 | `docs/architecture/game-architecture.md` | system boundaries |
 | `docs/running-the-game.md` | how to run and debug it |

@@ -6,11 +6,13 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const manifestPath = join(repoRoot, 'assets/manifest/asset-manifest.json');
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const requireReady = process.argv.includes('--require-ready');
+const overlayIndex = process.argv.indexOf('--overlay-root');
+const overlayRoot = overlayIndex >= 0 ? resolve(process.argv[overlayIndex + 1]) : null;
 
 const PNG_SIGNATURE = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
 
-function inspectPng(relativePath) {
-  const bytes = readFileSync(join(repoRoot, relativePath));
+function inspectPng(absolutePath) {
+  const bytes = readFileSync(absolutePath);
   if (bytes.length < 29 || !bytes.subarray(0, 8).equals(PNG_SIGNATURE)) {
     return { error: 'not a valid PNG signature' };
   }
@@ -35,14 +37,22 @@ const missing = [];
 const invalid = [];
 const present = [];
 
+function pathFor(entry) {
+  if (overlayRoot && entry.path.startsWith('assets/art/')) {
+    const candidate = join(overlayRoot, entry.path.slice('assets/art/'.length));
+    if (existsSync(candidate)) return candidate;
+  }
+  return join(repoRoot, entry.path);
+}
+
 for (const [key, entry] of productionEntries) {
-  const absolutePath = join(repoRoot, entry.path);
+  const absolutePath = pathFor(entry);
   if (!existsSync(absolutePath)) {
     if (entry.requiredForM6B) missing.push([key, entry]);
     continue;
   }
 
-  const png = inspectPng(entry.path);
+  const png = inspectPng(absolutePath);
   if (png.error) {
     invalid.push([key, entry, png.error]);
     continue;
@@ -80,7 +90,7 @@ if (invalid.length > 0) {
   for (const [, entry, reason] of invalid) console.log(`INVALID ${entry.path} | ${reason}`);
 }
 
-const optionalMissing = optional.filter(([, entry]) => !existsSync(join(repoRoot, entry.path)));
+const optionalMissing = optional.filter(([, entry]) => !existsSync(pathFor(entry)));
 for (const [, entry] of optionalMissing) {
   console.log(
     `OPTIONAL_MISSING ${entry.path} | ${entry.width}x${entry.height} | ${entry.transparency} | ${entry.prompt}`,

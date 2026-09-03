@@ -3,9 +3,10 @@
 > **Historical document.** This is the original bootstrap package, kept as
 > delivered. The product was renamed to **Worst Gig Ever** at M9 (2026-08-31)
 > with the tagline *Keep the beat. Survive the gig.*, and the core loop pivoted
-> to Groove + Defense. For the current identity and plan start from
-> `RHYTHM-PIVOT-README.md` and `project-status.md`. The names below record what
-> was decided at bootstrap; they are not the current product name.
+> to Groove + Defense. For the current identity and continuation state start
+> from `README.md` and `project-status.md`; the rhythm-pivot package itself is
+> retained in `RHYTHM-PIVOT-README.md` as historical context. The names below
+> record what was decided at bootstrap; they are not the current product name.
 
 ## Working identity
 

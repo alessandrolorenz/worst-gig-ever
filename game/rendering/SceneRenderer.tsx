@@ -1,5 +1,5 @@
 /**
- * Pack 1 scene renderer.
+ * Canonical scene renderer with M14 V2 art.
  *
  * Draws a snapshot of the round without owning gameplay state. Everything is
  * authored on the 1920x1080 reference canvas and scaled once at the root. Art
@@ -65,24 +65,13 @@ export interface SceneRendererProps {
 export const SHOW_GRAYBOX_DEBUG = false;
 
 /**
- * Whether the Pack 1 ambient frames actually form a loop.
- *
- * They do not. `idle`, `loopA`, and `loopB` are three separate drawings of
- * each performer rather than three poses of one: proportions, line weight,
- * palette, and foot anchor all move, and 60-87% of the drawn subject changes
- * between frames — the crowd is the worst at 85%. M6 froze the opposite
- * ("the same fictional person... and approximate foot anchor", "differences
- * are subtle"), so cutting between them at tempo reads as flickering rather
- * than as animation. No renderer trick makes three unrelated drawings a loop.
- *
- * Until the frames are regenerated as variations of one drawing, the scene
- * holds the first ambient frame. The choreography itself keeps running and
- * stays tested — only the bitmap choice is pinned — so this becomes `true`
- * again with no other change. Reactions are unaffected: `hitReaction` and
- * `dodge` are one-shots answering an event, and a hard change there reads as
- * a reaction rather than as a flicker. See ADR 0009.
+ * M14 replaces the unrelated Pack 1 drawings with identity-preserving edits.
+ * All four ambient triplets now pass the pixel continuity and anchor gates.
+ * Keep `npm run verify` green before replacing any frame; it checks the art
+ * as well as gameplay. This flag only selects bitmaps, never beat timing.
+ * See ADR 0009 and docs/verification/M14-gate.md for the original hold.
  */
-export const AMBIENT_LOOP_ART_READY = false;
+export const AMBIENT_LOOP_ART_READY = true;
 
 /** The ambient loop frame to draw, honouring the hold above. */
 function ambientFrame(frame: number): number {
@@ -289,9 +278,8 @@ function Strike({ effect }: { effect: TimedEffect }) {
         left: STICK_ORIGIN.x,
         top: STICK_ORIGIN.y,
         width: length * Math.max(0, extend),
-        // The stick art is mostly transparent padding: only 40 of its 96
-        // source rows are wood, so a 28 px band drew a 12 px sliver nobody
-        // could see land.
+        // Preserve the established strike band; transparent source padding
+        // is presentation-only and never affects strike resolution.
         height: STICK_THICKNESS,
         marginTop: -STICK_THICKNESS / 2,
         opacity: 1 - progress * 0.35,
@@ -419,8 +407,8 @@ export function SceneRenderer({
         <DrumKit />
 
         {/**
-         * Drawn over the kit, because the pad marks a cymbal in that very
-         * bitmap and would otherwise be hidden by it. It stays *under* the
+         * Drawn over the lower-centre kit face so the pad remains visible.
+         * It stays *under* the
          * near-field projectiles and the strike, so a bottle arriving at the
          * player's face is never obscured by a UI ring — the Defense read
          * still wins the foreground.

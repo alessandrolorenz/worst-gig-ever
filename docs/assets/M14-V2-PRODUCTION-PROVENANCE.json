@@ -1,0 +1,659 @@
+{
+  "version": 1,
+  "recorded": "2026-09-03",
+  "status": "V2_DEVICE_REVIEW",
+  "rights": "Original/generated for this project; fictional adults and generic unbranded props; no external stock assets, real-person likenesses, commercial band logos or alcohol labels. No third-party source page or license applies.",
+  "assets": [
+    {
+      "key": "stageBgBase",
+      "path": "assets/art/backgrounds/stage_bg_base.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "13b8e1d61c7d194756f0313d3b60ea4d039787c672c6b605db3670111eb47bee",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/15-stage-environment.md",
+      "reference": "Approved V2 style and prior venue composition; final light edit uses earlier V2 overlay",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/backgrounds/stage_bg_base.png",
+          "sha256": "a21c7f1b79c315dcc8f56d6325e9fa094f0256657e33ebcfab00f901f9a93b25",
+          "originalFilename": "exec-119c549a-a17c-4733-b36e-c925fbb48532.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Base: resize full canvas to opaque RGB. Lights: preserve generator partial alpha and resize only (supersedes gray-card attempt)."
+    },
+    {
+      "key": "stageLightsOverlay",
+      "path": "assets/art/backgrounds/stage_lights_overlay.png",
+      "width": 1920,
+      "height": 1080,
+      "sha256": "0ff991fd681b0a926bd1ef567ed7a54564916c0c480fa6f00b355dd97d5ae902",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/15-stage-environment.md",
+      "reference": "Approved V2 style and prior venue composition; final light edit uses earlier V2 overlay",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/backgrounds/stage_lights_overlay.png",
+          "sha256": "e544405465dcaba7761e1ed019c64bbbd327daa79ebfda44e09e4e2389560634",
+          "originalFilename": "exec-4fa323b8-08a6-42a5-82c3-d0dfa5a44ba1.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Base: resize full canvas to opaque RGB. Lights: preserve generator partial alpha and resize only (supersedes gray-card attempt)."
+    },
+    {
+      "key": "crowdBack",
+      "path": "assets/art/crowd/crowd_back.png",
+      "width": 1920,
+      "height": 520,
+      "sha256": "5d0ab4129f70afd3053e263fd1a8a73134d05f6f935c618931ba892ac1f0ec82",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/13-crowd-3frame.md",
+      "reference": "design-reference/m14-v2-proof/crowd-sample-v2.png; each front variant derives from its own group's frame01",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/back_left.png",
+          "sha256": "3f5306a47deda87c78a988a9dd62177d1e6bf381db4c20c4f9c3d0d86062df7c",
+          "originalFilename": "exec-ba0c8597-bd6a-45c1-bbc4-0de24cbddb8d.png",
+          "date": "2026-09-02"
+        },
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/back_right.png",
+          "sha256": "02a591561dcee7da63b75d6f18c47baa42eb87afbb2eab3e3dc741d8a1ea92b8",
+          "originalFilename": "exec-84d54493-a2d5-489e-812b-c4a9a9ccab13.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; two-half assembly, front 900x420 at x=0/1020, rear 960x520 at x=0/960. Frame03 upper-body blend from frame01."
+    },
+    {
+      "key": "crowdFront01",
+      "path": "assets/art/crowd/crowd_front_01.png",
+      "width": 1920,
+      "height": 420,
+      "sha256": "a469fab7d9bc66a0835591776a5da68fff88169da306d309511f57626bbe34bd",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/13-crowd-3frame.md",
+      "reference": "design-reference/m14-v2-proof/crowd-sample-v2.png; each front variant derives from its own group's frame01",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_left_01.png",
+          "sha256": "dbf7f217e4443dc6f93b87c90d03fc12af8a0310802c7440c9405147623f4eec",
+          "originalFilename": "exec-41d72a08-fb3f-4fa4-9138-c007e5eea6fb.png",
+          "date": "2026-09-02"
+        },
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_right_01.png",
+          "sha256": "1f4d1d6e3b64e6ba3f3c26d5c25f1c9ed59e64da92c461f17108e93b81eab7e7",
+          "originalFilename": "exec-8d73fcef-f236-4bd7-a103-88cdae8be701.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; two-half assembly, front 900x420 at x=0/1020, rear 960x520 at x=0/960. Frame03 upper-body blend from frame01."
+    },
+    {
+      "key": "crowdFront02",
+      "path": "assets/art/crowd/crowd_front_02.png",
+      "width": 1920,
+      "height": 420,
+      "sha256": "179cdd2413b1a4552d68ee7525573d2f1706e5f9766f9a185c6ed05ae1b0430c",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/13-crowd-3frame.md",
+      "reference": "design-reference/m14-v2-proof/crowd-sample-v2.png; each front variant derives from its own group's frame01",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_left_02.png",
+          "sha256": "fd827d4062a5d1d14f8d6cb8c89c3d845973c1eb01f3245215219005fce165da",
+          "originalFilename": "exec-edf20484-8941-4546-a938-bd5d531948d4.png",
+          "date": "2026-09-02"
+        },
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_right_02.png",
+          "sha256": "b0ad05ae0ee2065dee61828830a0a52830ed570ca72874de108a748da94315ff",
+          "originalFilename": "exec-ef1e9595-dc43-4159-bcfa-074f45e47f23.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; two-half assembly, front 900x420 at x=0/1020, rear 960x520 at x=0/960. Frame03 upper-body blend from frame01."
+    },
+    {
+      "key": "crowdFront03",
+      "path": "assets/art/crowd/crowd_front_03.png",
+      "width": 1920,
+      "height": 420,
+      "sha256": "f049d133e39c4b7d5a79cdab5718065e3781213527a98100eb08c3fedcfa3be4",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/13-crowd-3frame.md",
+      "reference": "design-reference/m14-v2-proof/crowd-sample-v2.png; each front variant derives from its own group's frame01",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_left_03.png",
+          "sha256": "942e651141a851e11fd4e9c499d52df591ff3e2857f05363e9b066808a3ac7fc",
+          "originalFilename": "exec-5b08ec9b-9a0c-4fee-a72f-784882313935.png",
+          "date": "2026-09-02"
+        },
+        {
+          "rawPath": "design-reference/m14-v2-raw/crowd/front_right_03.png",
+          "sha256": "950a18ebc4f509fa97a64bdee6b9d184d37e126b72bed4f69e8bb84bba02bacc",
+          "originalFilename": "exec-ffdd69a5-b704-4d97-ac95-fdf1ed9efd22.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; two-half assembly, front 900x420 at x=0/1020, rear 960x520 at x=0/960. Frame03 upper-body blend from frame01."
+    },
+    {
+      "key": "drumkitPov",
+      "path": "assets/art/drums/drumkit_pov.png",
+      "width": 1920,
+      "height": 700,
+      "sha256": "9ca71e6b6c8a9a374410d042c215f868c816c30061a12017e5ac48d514af2705",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/14-drumkit-pov.md",
+      "reference": "design-reference/m14-v2-proof/drumkit-sample-v2.png (corrected no-sticks proof)",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/drums/drumkit_pov.png",
+          "sha256": "1925b3a8d4b79e286f6e6581800f06713d1d16c5506a1484fa91c8e34c361478",
+          "originalFilename": "exec-4dec34ed-d097-48b7-9968-fec7e48757b1.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction at 1920x1080 (bg-distance 45), then vertical resize to 1920x700. Snare clear; no sticks."
+    },
+    {
+      "key": "vocalistIdle",
+      "path": "assets/art/band/vocalist_idle.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "9c1b76b5e32eaef8d76a88f7910e64754f5289c05b1de6241141211a9ba98274",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_idle.png",
+          "sha256": "9ece25712aa7d22bcb04e8af10907a5180f2f1ec74c62cbf732f22f380af9799",
+          "originalFilename": "exec-ae2c12dd-875d-4cfc-a4fe-2d1329cbcd98.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "vocalistLoopA",
+      "path": "assets/art/band/vocalist_loop_a.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "d1e912845e64ed6f67e4e0fa4e97e0f3cdd1beebe25baaad4ea82e6c8281954b",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_loop_a.png",
+          "sha256": "d035e4ff1570b61f8c3aef33b8acb3dee52e9b1b10e3b8f27c635ef66ff267e2",
+          "originalFilename": "exec-913ec04f-c988-4e58-a4fa-fa0aa0ca6387.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "vocalistLoopB",
+      "path": "assets/art/band/vocalist_loop_b.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "2fa9e95b6fecdd24655994f5bdaca8e9902ced06ccdb0234feb8fb9468b427ff",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_loop_b.png",
+          "sha256": "b8f6cfe86288d9254c8213c90d4c8f6b2ae299c0b500acc85c4c8dcc141d5017",
+          "originalFilename": "exec-1df4962e-77a1-484a-a3ec-a026e4a54ead.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "vocalistBlocking",
+      "path": "assets/art/band/vocalist_blocking.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "b9eb98048eb09a612cb8ce95e724a4e3bbca6a460f4ebbac1d20a2ad9bb0040e",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_blocking.png",
+          "sha256": "5712c79577cb058e537d0eb10ee4e549a5d04d2573c4bbd907dfd39ebe8d7f8f",
+          "originalFilename": "exec-2261e2ec-60e9-46a0-b4d1-3646a21ec933.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "vocalistHitReaction",
+      "path": "assets/art/band/vocalist_hit_reaction.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "48764455e6ed9c34cea8dc3f99141746133282f1732bcb1bf88a6dd9cb7ccb40",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_hit_reaction.png",
+          "sha256": "6848dcd9c2608847d4e76b8289a5831d90a2e62fc67e3f0a37d98017a0c0d673",
+          "originalFilename": "exec-05aab9cb-2eea-4afb-8df1-c581e254fb7c.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "vocalistDodge",
+      "path": "assets/art/band/vocalist_dodge.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "0f01e03da6b5069f267f4bee3bef290fb5b6ee1e4a4baee4506774a73aa2dd6b",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/10-vocalist-pack.md",
+      "reference": "design-reference/m14-v2-proof/vocalist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/vocalist_dodge.png",
+          "sha256": "c6e5c249a6eba3b6119ef8eca6b1ced73ca0ec20e0a898831d6a780001b2e078",
+          "originalFilename": "exec-16e1cdc4-05a8-4103-85ed-a8430984020a.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "bassistIdle",
+      "path": "assets/art/band/bassist_idle.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "74ab3c59a73c113ccb8775f3761575919b4eacb7c8358ac81013a6d524b37bbd",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/11-bassist-pack.md",
+      "reference": "design-reference/m14-v2-proof/bassist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/bassist_idle.png",
+          "sha256": "919b62ae67a9b81de5dca1c0ae426123788f8fc17e64853f6f596c64d198cfc8",
+          "originalFilename": "exec-7b3c7ac4-33d3-4269-80cd-23c572b2a2e5.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "bassistLoopA",
+      "path": "assets/art/band/bassist_loop_a.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "8e10cf4e3c326f27f550fa5c2ae3d2b36ecb50dace42136efb5cd2c1bc6ad2df",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/11-bassist-pack.md",
+      "reference": "design-reference/m14-v2-proof/bassist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/bassist_loop_a.png",
+          "sha256": "a673fe109d8feeb6c867f19df89eb260c227129a04a96b4ba4e5c8fbf8005084",
+          "originalFilename": "exec-8db5479f-068d-47f3-b5ba-b2e0282212b3.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "bassistLoopB",
+      "path": "assets/art/band/bassist_loop_b.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "5077d88f1df30f34e0abc79389d349b0f5fe1a19a5d049b8207154d0e290b6db",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/11-bassist-pack.md",
+      "reference": "design-reference/m14-v2-proof/bassist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/bassist_loop_b.png",
+          "sha256": "9851d978e0ab2a0794bcac5af77b6b94b4639fa6b7e09310868a5672d360747c",
+          "originalFilename": "exec-26ef6904-5c31-4eb7-aa64-4604f42ee697.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "bassistHitReaction",
+      "path": "assets/art/band/bassist_hit_reaction.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "048fbc1bd925f9e70c6bc73edd1792eb299e3c13edffee8a34f8f720f0ded082",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/11-bassist-pack.md",
+      "reference": "design-reference/m14-v2-proof/bassist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/bassist_hit_reaction.png",
+          "sha256": "dfc4458cfc445550e22eefa029997e9b66d7ef5fa6f993497735b83d32878db7",
+          "originalFilename": "exec-edd1af7b-f51b-4192-aa4a-1ccadb681e86.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "bassistDodge",
+      "path": "assets/art/band/bassist_dodge.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "3958d6bf0b56a727a21f80d344ac883b6226aa3f3a651f7ad9bc30d52e90c483",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/11-bassist-pack.md",
+      "reference": "design-reference/m14-v2-proof/bassist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/bassist_dodge.png",
+          "sha256": "0cf199bd8ad86c9eb1f40e6737c049b816d88b36a4e2db06a9d50727854c1862",
+          "originalFilename": "exec-049aca3a-2241-4049-894e-9a5da80ccb03.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "guitaristIdle",
+      "path": "assets/art/band/guitarist_idle.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "bca688f6a3a16b2da048802f570f116f3470f6066c6d041447142dae9f700590",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/12-guitarist-pack.md",
+      "reference": "design-reference/m14-v2-proof/guitarist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/guitarist_idle.png",
+          "sha256": "957747c21bc3f2ba367e7bca972b88ef7b40430a23ca2cccf4e257a45d668347",
+          "originalFilename": "exec-10937546-bafd-4883-b044-b1b0a51554ac.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "guitaristLoopA",
+      "path": "assets/art/band/guitarist_loop_a.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "963be39e592cbf6d0dc8a91a7f5a28830afad819de64458c8fcc7b5b916efa97",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/12-guitarist-pack.md",
+      "reference": "design-reference/m14-v2-proof/guitarist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/guitarist_loop_a.png",
+          "sha256": "9bd665beb5d2f2e2987664d51f23f7fb2dfc0bcc502d876752d165dd7d499eaa",
+          "originalFilename": "exec-fd2c240e-6e86-4672-95ad-47aeac77b06b.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "guitaristLoopB",
+      "path": "assets/art/band/guitarist_loop_b.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "98a7a9e70a02f066663188fd953d9a608576b71dd7f17eee610c2d5fbe66bc3b",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/12-guitarist-pack.md",
+      "reference": "design-reference/m14-v2-proof/guitarist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/guitarist_loop_b.png",
+          "sha256": "5b7d612b65f2edd1b0048592b5066d54f8fd1b43d6dda2b8cf81dc7c8330adef",
+          "originalFilename": "exec-9aeea3af-0d7f-4584-bd96-f118d144290b.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "guitaristHitReaction",
+      "path": "assets/art/band/guitarist_hit_reaction.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "18acdf36af241856d8a5b9284200a7408155f12869e3c6dcbe9e098d2dc275e0",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/12-guitarist-pack.md",
+      "reference": "design-reference/m14-v2-proof/guitarist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/guitarist_hit_reaction.png",
+          "sha256": "c83f93e0918dfa363c71d785fe2f12110509517e8440b20cb8f7267df8fa8838",
+          "originalFilename": "exec-ac09e4db-a0ea-45ba-8db0-e123f80aec18.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "guitaristDodge",
+      "path": "assets/art/band/guitarist_dodge.png",
+      "width": 640,
+      "height": 900,
+      "sha256": "d158e186c8c55e7ef4a31c012755a3eafd63f58d0df6f42b7e97842a04b38894",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/12-guitarist-pack.md",
+      "reference": "design-reference/m14-v2-proof/guitarist-reference-v2.png; each variant derives from its production idle",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/band/guitarist_dodge.png",
+          "sha256": "8aa72ea7aa56de481b7408fb9f70b7a35e57b57c8f86a79d70031ba5a447e8dd",
+          "originalFilename": "exec-c76c8087-6314-4fe9-86e9-78bb282d2cf9.png",
+          "date": "2026-09-02"
+        }
+      ],
+      "processing": "Gray-card extraction; shared family crop; canonical 640x900 framing and feet baseline. Ambient upper-body edits stabilized against idle where necessary; no runtime geometry change."
+    },
+    {
+      "key": "beerBottle",
+      "path": "assets/art/props/beer_bottle.png",
+      "width": 256,
+      "height": 512,
+      "sha256": "0611028ee6c47f5f2cf9b4ba88f551329a699aa2b134fd7aba3fa4d374119230",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/16-props.md",
+      "reference": "Approved V2 style and bottle proof; existing generic prop silhouette",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/props/beer_bottle.png",
+          "sha256": "724ed2196749cdad7550afe7e660af23a5b6d9584738a4020f370260074fffe6",
+          "originalFilename": "exec-6b206858-fa20-4e1f-a863-f5759b6566bf.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction, canonical frame, centered alpha content. Bottle bounds94x470; mug306x312. Derived app identity regenerated."
+    },
+    {
+      "key": "beerMug",
+      "path": "assets/art/props/beer_mug.png",
+      "width": 384,
+      "height": 384,
+      "sha256": "90e876c81b90ddf988aa3630db47bb976c12650ba1e9f65d9d35b5307d914683",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/16-props.md",
+      "reference": "Approved V2 style and bottle proof; existing generic prop silhouette",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/props/beer_mug.png",
+          "sha256": "554e3f2bdb5ff9df774cecaa53b132c8de4853aa525eb4351561b9695573dfe8",
+          "originalFilename": "exec-65491aeb-0edb-4370-b888-f2fd0bd8915d.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction, canonical frame, centered alpha content. Bottle bounds94x470; mug306x312. Derived app identity regenerated."
+    },
+    {
+      "key": "drumstick",
+      "path": "assets/art/props/drumstick.png",
+      "width": 640,
+      "height": 96,
+      "sha256": "ffe05caf3ffbed0f45d06cc6ec222a8e39ff4a1dbf089972735ded4c80585271",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/16-props.md",
+      "reference": "Approved V2 style and bottle proof; existing generic prop silhouette",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/props/drumstick.png",
+          "sha256": "70e288cec7f4aa8163f14aa53126c21aac2282f61df6fd7cf3248b96622a4a73",
+          "originalFilename": "exec-78f88984-29a1-42d3-b34d-a72ad23c430e.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction, canonical frame, centered alpha content. Bottle bounds94x470; mug306x312. Derived app identity regenerated."
+    },
+    {
+      "key": "hitBurst",
+      "path": "assets/art/effects/hit_burst.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "549cc92e799667d2c2983b03949f841ce070fead737bdcc9a12cb2fc055bfa1e",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/hit_burst.png",
+          "sha256": "ac7ad009a3aca0d2e47318ab99a7ffdf55402b444d71275e091dbc3acb57138e",
+          "originalFilename": "exec-8eda82dd-e0bc-4e7a-8dc8-949ed64e1e98.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard01",
+      "path": "assets/art/effects/glass_shard_01.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "631b9ed751c70369a3ed5cebcf930108042e77f9259d735f435cee3022363946",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_01.png",
+          "sha256": "79a11d78190c648e304297bcbb9da6f565dc63ab89ca1205fb49e0050d0de433",
+          "originalFilename": "exec-88e14fce-85d4-47c3-aada-bd0e3e23b02b.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard02",
+      "path": "assets/art/effects/glass_shard_02.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "e6afb13c283bf3df37a0608c51daa9b4debf25cd5b3c88d86b27f5956fae14ed",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_02.png",
+          "sha256": "2e990854ed096b3af4f2c637eef20b63e6277ec9ec2d34884fd85a3b2e93fd16",
+          "originalFilename": "exec-1e8b8501-a8d5-484f-9974-16fa4fc364d1.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard03",
+      "path": "assets/art/effects/glass_shard_03.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "a74bd22f1ff0b59a3476d6ed57537eb92cff22ffad4b60dfbef94ab84e3d2a80",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_03.png",
+          "sha256": "6b391586cce71b23fa4e339e433cea318aaf07ec2ff5153c16d2902d8d725c26",
+          "originalFilename": "exec-628d544d-bb1f-4b3e-bc1f-a291c90ac5b8.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard04",
+      "path": "assets/art/effects/glass_shard_04.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "8997ae0c22a5aebe98c9c80eb1e486d16f31b3fb88f59541e7ccaf5d8d889d41",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_04.png",
+          "sha256": "4435d0f95c2fbfd53fc685483dbf89d5dfea67b1894103fd421d488e1c1c4b03",
+          "originalFilename": "exec-e72a5a9a-38e8-4c51-bc9f-1ceee0948ea5.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard05",
+      "path": "assets/art/effects/glass_shard_05.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "7b92e526023da0e9a05b0aa25aef7c489309f2830141597c803edf93a455efe0",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_05.png",
+          "sha256": "a91f2f9625864d422723ce6d310bb8f841b09b84e59a6432d1243a7506289992",
+          "originalFilename": "exec-2eb9fe7b-75b7-401b-8797-a99bf4cedaf5.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    },
+    {
+      "key": "glassShard06",
+      "path": "assets/art/effects/glass_shard_06.png",
+      "width": 128,
+      "height": 128,
+      "sha256": "f045a8fc5702df947dfc93c7cc623e6a665c969756bb826b197092eb5af5c0f6",
+      "tool": "OpenAI built-in image generation",
+      "prompt": "prompts/assets-v2/17-break-fx.md",
+      "reference": "Approved V2 style and original glass-fragment silhouette descriptions",
+      "sources": [
+        {
+          "rawPath": "design-reference/m14-v2-raw/effects/glass_shard_06.png",
+          "sha256": "25d037a72fe4471db67184c8f39627d1d2905222b7eeeef54a31bb51fc10933e",
+          "originalFilename": "exec-9959508e-9160-4973-a573-5fe9dbb18279.png",
+          "date": "2026-09-03"
+        }
+      ],
+      "processing": "Gray-card extraction; canonical frame; centered alpha content. Six distinct shard silhouettes."
+    }
+  ]
+}

@@ -12,9 +12,34 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M13.1 Groove readability and entry tuning ready for owner re-test
-(2026-09-01).** Outcome: `READY_FOR_M13_1_RETEST`. Automated gate green, native
-smoke done on the `Pixel_9` emulator, and the session instrument is
+**M14 V2 production integrated (2026-09-03).** Outcome: `V2_DEVICE_REVIEW`.
+The owner approved the direction and continued past the vocalist checkpoint.
+All 33 canonical assets and four derived app-identity images now use V2 art.
+
+The three performers have distinct builds and face the audience from the
+drummer's viewpoint. A front-facing guitarist draft was rejected before
+integration. The crowd has an independent cast; the kit has no resting sticks.
+A live-smoke correction replaced opaque-looking light patches with genuine
+partial-alpha beams.
+
+All four ambient triplets pass with 0 px anchor drift. Changes across
+idle→A / A→B / B→idle are vocalist 13/15/10%, bassist 7/18/15%, guitarist
+7/20/17%, crowd 13/23/19% (limit 25%). Ambient animation is enabled.
+Runtime changes are limited to that flag and measured prop-content bounds.
+No hitbox, timing, scoring, input, spawn, or difficulty change.
+
+`npm run verify` passes 241 tests plus strict art/continuity checks.
+A full browser round finished with 37 objects destroyed, none missed, 43/89
+beats hit and integrity 3/3; no page errors. Physical-device visual approval
+is still required. See `docs/verification/M14-gate.md` and
+`docs/assets/M14-V2-PRODUCTION-PROVENANCE.md`.
+
+## M13.1 validated result
+
+The owner completed a physical test on 2026-09-01, reported that the build is
+"very good", requested no tuning, chose `M13_1_VALIDATED`, and authorized M14
+planning. Detailed round count, finger split, and checklist answers were not
+provided and are not inferred. The recorded result is in
 `docs/specs/M13.1-physical-retest-checklist.md`.
 
 M13.1 answers the first physical playtest, which found the dual-task loop fun
@@ -176,7 +201,7 @@ song* to:
 > Keep a simple visual groove while breaking incoming objects and surviving
 > the gig.
 
-The player gets two independent jobs — **Groove** (tap the pulsing hi-hat on
+The player gets two independent jobs — **Groove** (tap the pulsing Groove Pad on
 the visual beat) and **Defense** (break bottles and mugs before they reach the
 kit) — scored as two separate dimensions, with no combined total. The beat
 clock is visual and deterministic; it is deliberately **not** synchronized to
@@ -202,11 +227,11 @@ image-source swaps that blank a frame. All are fixed.
 
 No gameplay rule, hitbox, trajectory, scoring value, or timing value changed.
 
-**Known shortfall:** the Pack 1 ambient frames are not a loop — `idle`,
+**Historical shortfall (resolved by M14 V2):** the Pack 1 ambient frames were not a loop — `idle`,
 `loopA`, and `loopB` are three separate drawings of each character, differing
 by 60–87% of the drawn subject, against M6's frozen continuity rule. The scene
-holds a single ambient frame (`AMBIENT_LOOP_ART_READY = false`) until they are
-regenerated. The band is quieter than M5A intended; nothing was substituted.
+held one ambient frame until M14 replaced all four triplets and enabled the
+validated loops. The original hold changed presentation only.
 
 **Emulator smoke (2026-08-30, `Pixel_9`, `npx expo run:android`):** builds,
 installs, launches, and plays. The scene composes correctly in landscape —
@@ -261,56 +286,38 @@ Measured 2026-08-30 at commit `fb2170978eae4b3bb59e0232e7cc421741c78b32`.
 | `npm run type-check` | `tsc --noEmit` |
 | `npm run lint` | eslint over `.ts`, `.tsx`, `.js` |
 | `npm test` | `node --test` (native TypeScript type stripping) |
-| `npm run verify` | all three, in order |
+| `npm run verify` | type-check, lint, tests, strict art contract and continuity |
 
-Last run 2026-08-31 (third tweak pass): type-check clean, lint clean, 145/145 tests passing. `npx expo export` succeeds for android and web. `npm run validate:art -- --require-ready` reports `PASS_ART_READY`.
+Last run 2026-09-03 after the full M14 integration: type-check clean, lint
+clean, **241/241 tests passing**, `PASS_ART_READY` (33/33), and
+`PASS_AMBIENT_LOOP_READY` (4/4, including wrap). Web export and full browser
+round completed. See the M14 gate for smoke evidence and remaining review.
 
 ## Current scope
 
 One 60-second show with:
 
+- one deterministic 90 BPM Groove Pad;
+- a beat-aligned `3 → 2 → 1 → GO` pre-roll;
+- independent Groove and Defense scoring;
 - two throwable target types;
 - one vocalist event;
-- score and combo;
+- Defense score/combo and Groove score/streak;
 - three-point Show Integrity;
 - one CC0 rock music source;
 - core impact/break/crowd sound effects;
-- graybox first, art integration second.
+- V2 art with all four continuous ambient loops enabled.
 
 ## Immediate next action
 
-**Re-test M13.1 on a physical phone**, using
-`docs/specs/M13.1-physical-retest-checklist.md` — at least six rounds (two
-one-finger, two two-finger, one Groove-focused, one free) before any tuning,
-then choose one of `M13_1_VALIDATED`, `PAD_TOO_LARGE`, `PAD_STILL_TOO_SMALL`,
-`PAD_POSITION_NEEDS_TUNING`, `COUNTDOWN_NEEDS_TUNING`,
-`RHYTHM_DIFFICULTY_NEEDS_TUNING`, `DEFENSE_DIFFICULTY_NEEDS_TUNING`, or
-`DUAL_TASK_NEEDS_TUNING`. That decision is the owner's; Claude must not make it.
+**Owner reviews V2 on a physical device.** Validate projectile visibility,
+lower-centre pad readability, distinct characters, corrected orientation,
+and animation comfort. M14 remains open until that review; no gameplay
+expansion is implied by art integration.
 
-The question M13.1 exists to answer is whether the *same* challenge is now
-easier to read and control. If it plays too easily, that is a new playtest
-finding — not licence to change the frozen values, which is why none of them
-moved.
-
-M14 (`prompts/16-m14-visual-refresh-planning.md`) is prepared but **must not
-run** until the owner has played the candidate and explicitly asks for it.
-
-Still outstanding from before the pivot, and deliberately not blocking it:
-
-**Regenerate the ambient loop art.** For each of the bassist, guitarist,
-vocalist, and front crowd, `idle`, `loopA`, and `loopB` must be one drawing in
-three slightly different poses — same outline weight, palette, proportions,
-silhouette, camera, and foot anchor, with only body/head/instrument movement
-between them. Generating each frame independently is what produced the current
-set. Then set `AMBIENT_LOOP_ART_READY = true` in
-`game/rendering/SceneRenderer.tsx`.
-
-Then run the M6B visual smoke on the Android emulator or a device: landscape
-composition, drum-kit foreground, band readable beside the projectile corridor,
-projectiles visible through the whole arc including arrival, loops that read as
-animation rather than as cuts, reaction frames anchored, no clipping. Everything
-automated in `docs/verification/M6B-gate.md` already passes, and the web build
-has been inspected running.
+The prior Pack 1 ambient-loop defect is resolved. The regular verification
+command now enforces dimensions, alpha, and pixel continuity in addition to
+code contracts. See `docs/handoff/CURRENT-STATE.md`.
 
 M7 and M8 (`prompts/08`, `prompts/09`) are **superseded for now** by the
 rhythm pivot: the owner chose to test whether Groove + Defense is fun before
@@ -319,7 +326,8 @@ adding more stage chaos. They are not cancelled, just not next.
 ## Gates
 
 - M0–M2 Fast Track: **COMPLETE** (2026-08-30)
-- M3 Asset Contract: RECONCILED WITH M6 — audio acquired, verified, and integrated; art not yet produced
+- M3 Asset Contract: **RECONCILED WITH M6** — its original contract-only art
+  checkpoint was subsequently satisfied by M6A production and the green Art Gate
 - M4 Vertical Slice: **COMPLETE** (2026-08-30), commit `733fb15`
 - M5 Physical Playtest: **FIRST OBSERVATION DONE** (2026-08-30) — outcome: TUNE
 - M5A First Tuning Pass: **COMPLETE** (2026-08-30) — awaiting a second playtest
@@ -335,8 +343,8 @@ adding more stage chaos. They are not cancelled, just not next.
 - M11 Dual-Task Gameplay Integration: **GATE GREEN** (2026-08-31) — ADR 0011; 17 integration tests; no difficulty value changed
 - M12 Dual Score, HUD & Results: **GATE GREEN** (2026-08-31) — two metrics, no combined total; 15 presentation contract tests
 - M13 Rhythm MVP Candidate: **PLAYED** (2026-08-31) — `READY_FOR_RHYTHM_PLAYTEST`; confirmed working on the Galaxy S23 FE; owner's verdict was promising, keep the difficulty, fix readability and entry
-- M13.1 Groove Readability & Entry Tuning: **GATE GREEN** (2026-09-01) — `READY_FOR_M13_1_RETEST`; ADR 0012; 22 new pre-roll and geometry tests; no difficulty value changed; one Groove Pad
-- M14 Visual Refresh V2: **PREPARED, NOT STARTED** — blocked on the M13.1 re-test decision
+- M13.1 Groove Readability & Entry Tuning: **VALIDATED BY OWNER** (2026-09-01) — `M13_1_VALIDATED`; no tuning requested; detailed checklist breakdown not supplied
+- M14 Visual Refresh V2: **PRODUCTION INTEGRATED** (2026-09-03) — `V2_DEVICE_REVIEW`; 33/33 assets, ambient loops enabled, 241 tests green; physical-device owner review remains
 
 ## M13.1 native smoke (2026-09-01)
 
@@ -467,7 +475,7 @@ a quarter of wall time (19 s of tapping advanced the round 5 s). That is an
 emulator artifact of a debug build with `jsEngine: jsc`, not a gameplay bug —
 and it is exactly why ADR 0006 says not to judge pacing without a real device.
 
-## Device validation performed (2026-08-30)
+## Historical M0–M6B device validation (2026-08-30)
 
 Smoke validation only. No subjective judgement was made and no gameplay value was changed.
 
@@ -489,13 +497,16 @@ Smoke validation only. No subjective judgement was made and no gameplay value wa
 physical device, plus the troubleshooting for the failure modes recorded in
 ADR 0006.
 
-Verified 2026-08-30 on the `Pixel_9` AVD: dev client installs, connects to
-Metro, and plays the M5A slice. A control run of one tap to start and no
-further input ended SHOW_RUINED with 0 destroyed and 3 misses.
+The current M13.1 candidate was last smoke-tested on the `Pixel_9` AVD on
+2026-09-01: the dev client launched through Metro, ran the full countdown, and
+started the Groove + Defense round without a pre-`GO` spawn. See the M13.1
+native-smoke section above for the exact boundary of what the emulator proved.
 
 ## Physical playtest instrument
 
-`docs/specs/M5-physical-playtest-checklist.md` — fill in during the session, then decide via `docs/specs/M5-playtest-and-decision.md`. The build under test is now the M5A slice, not commit `733fb15`.
+The active instrument is
+`docs/specs/M13.1-physical-retest-checklist.md`. The M5 checklist and decision
+documents are historical records and must not be used for the current build.
 
 ## What M5A changed
 
@@ -529,7 +540,7 @@ scoring value, or timing value moved.
 | Layout | The scene root used `flex: 1` inside the engine's non-flex web container, so it had zero height and `overflow: hidden` clipped the whole scene. It now fills its parent explicitly | `game/rendering/SceneRenderer.tsx` |
 | Flicker | `beatPulse` snapped from 0 back to 1 on every beat; on a full-canvas overlay that strobed the stage. It is now a continuous raised cosine, and the overlay swings 0.58–0.72 instead of 0.36–0.78 | `game/systems/stageMotion.ts` |
 | Flicker | Pose changes swapped an `Image`'s `source`, which blanks it while the new bitmap loads. Every frame is now mounted once and switched by opacity | `game/rendering/SceneRenderer.tsx` |
-| Flicker | The ambient loop holds one frame while the Pack 1 loop art is not a loop | `game/rendering/SceneRenderer.tsx` |
+| Flicker | V2 triplets pass pixel continuity, including wrap; ambient loops enabled | `game/rendering/SceneRenderer.tsx` |
 
 ## Playtest tweaks after the first phone build (2026-08-31)
 
@@ -615,9 +626,14 @@ what caught the bottle's enlargement in the first place.
 
 ## Open items carried into the next playtest
 
-1. **The tuned build has not been played by a human.** M5A's three subjective success criteria are unverified.
+1. **M14 production is ready for physical-device review.** All 33 runtime art
+   files are integrated and validated. The owner requested a commit, merge to
+   the integration branch, and an EAS build of this candidate on 2026-09-03.
 2. `crowd_applause.wav` is still the full 39 s / 6.9 MB source, and volume normalization across the five files has not been done. Both are audible in the current build and are deliberately left alone until after observation.
-3. Tuning values in `game/config/` and `game/levels/level01.ts` remain first guesses. M5A moved hitbox radius, arc shape, and stage cadence; approach duration and spawn cadence are untouched. If the game now plays too easily, `HIT_FORGIVENESS.minRadiusPx` is the first dial to turn, then `assistRadiusPx`.
+3. The current tuning is playtest-informed but remains provisional. The M13
+   physical playtest found the dual-task difficulty desirable, so every
+   difficulty value is frozen through the M13.1 re-test. Tune only after the
+   owner records one of the explicit M13.1 decision outcomes.
 4. The hit-radius halo and the danger line are tuning affordances, now behind `SHOW_GRAYBOX_DEBUG` in `game/rendering/SceneRenderer.tsx`. Turn the flag on if the next playtest needs to see what the player was aiming at.
 5. The development client is a **debug** build and `jsEngine` is still `jsc`, not Hermes. Both add overhead; do not judge frame pacing without re-checking a release build (ADR 0006).
 6. The generated manifest requests `RECORD_AUDIO`, pulled in by expo-audio's config plugin even though the game never records. Harmless for a playtest; must be removed before any store submission.
@@ -631,9 +647,10 @@ what caught the bottle's enlargement in the first place.
      the final package name — while there is still no installed base, because
      that last step invalidates every installed build.
 8. `package-lock.json` is git-ignored by the template, so dependency resolution is not reproducible across machines — this directly caused the autolinking failure documented in ADR 0006.
-9. **The M6B scene has been inspected running in a browser, but not on a device.** Frame pacing, touch, and readability at phone size are all still unverified.
-10. **The Pack 1 ambient loop art must be regenerated** as one drawing in three poses per set. Until then `AMBIENT_LOOP_ART_READY` is `false` and the band and crowd hold a single frame. `loopA`, `loopB`, `crowd_front_02` and `crowd_front_03` are bundled but unused; they are the frames to replace.
-11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. A frame-to-frame continuity check belongs in that script and does not exist yet.
+9. **M14 production is integrated; final physical-device review is pending.**
+10. **Ambient loop defect resolved 2026-09-03:** all four V2 triplets pass;
+    `AMBIENT_LOOP_ART_READY = true`. No frame-count or timing changes.
+11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. **Addressed 2026-09-01:** `npm run measure:art` (`scripts/measure-art-bounds.mjs`) decodes pixels and reports per-triplet feet-anchor drift and frame-to-frame change, plus measured target bounds against the tap-circle rule. Historical Pack 1 scored 10–51 px drift and 43–88% change. V2 passes the unchanged 8 px/25% gates, including wrap; the strict check is now in `npm run verify`.
 12. **Play-surface touch cannot be exercised on the emulator** — no adb input
     method reaches the game engine's bubbling touch handler, though Pressables
     receive them. **Closed on hardware:** a round on the Galaxy S23 FE scored

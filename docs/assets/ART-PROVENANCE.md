@@ -1,8 +1,14 @@
 # Art Provenance
 
 Production visual assets are original images created for this project with the
-OpenAI built-in image generator. Every selected image is recorded here before
-it is eligible for M6B integration.
+OpenAI built-in image generator.
+
+**Current production ledger (2026-09-03):**
+`M14-V2-PRODUCTION-PROVENANCE.md` and its companion JSON supersede all 33
+Pack 1 runtime rows and four derived identity rows below. They record the V2
+sources, final hashes, conditioning, references, dates, and prompts. The table
+below is retained as historical Pack 1/proof provenance, not the current PNG
+inventory.
 
 | Asset key | Local path | Source type | Tool/provider | Prompt file | Reference used | Generated/created date | Manual edits | Rights/licensing note |
 |---|---|---|---|---|---|---|---|---|
@@ -43,6 +49,25 @@ it is eligible for M6B integration.
 | `adaptiveIcon` | `assets/adaptive-icon.png` | composed/derived | `scripts/make-app-icon.mjs` (no third-party tool) | none — built from existing Pack 1 props | `assets/art/props/beer_bottle.png` and `assets/art/props/drumstick.png`, used unchanged | 2026-08-31 | Composited by script: transparent 1024x1024 foreground inside the Android safe zone; rerun the script to regenerate | Derived from this project's own generated art; no real likeness, logo, or brand |
 | `favicon` | `assets/favicon.png` | composed/derived | `scripts/make-app-icon.mjs` (no third-party tool) | none — built from existing Pack 1 props | `assets/art/props/beer_bottle.png` and `assets/art/props/drumstick.png`, used unchanged | 2026-08-31 | Composited by script: full-bleed 96x96 for the web build; rerun the script to regenerate | Derived from this project's own generated art; no real likeness, logo, or brand |
 | `splash` | `assets/splash.png` | composed/derived | `scripts/make-app-icon.mjs` (no third-party tool) | none — built from existing Pack 1 props | `assets/art/props/beer_bottle.png` and `assets/art/props/drumstick.png`, used unchanged | 2026-08-31 | Composited by script: transparent 1024x1024 over `splash.backgroundColor`; rerun the script to regenerate | Derived from this project's own generated art; no real likeness, logo, or brand |
+| `m14ProofPerformerLineup` | `design-reference/m14-v2-proof/performer-lineup-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/00-performer-lineup-proof.md` | M14 style bible and locked fictional performer identity tokens; no real-person reference | 2026-09-01 | None; RGB warm-gray concept card, not a runtime cutout | Original/generated for this project; fictional adults, generic instruments, no real likeness, logo, or brand |
+| `m14ProofVocalist` | `design-reference/m14-v2-proof/vocalist-reference-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/01-vocalist-reference.md` | `performer-lineup-v2.png`, left performer identity and style | 2026-09-01 | None; RGB warm-gray two-view concept sheet, not a runtime cutout | Original/generated for this project; fictional character, generic microphone, no real likeness, logo, or brand |
+| `m14ProofBassist` | `design-reference/m14-v2-proof/bassist-reference-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/02-bassist-reference.md` | `performer-lineup-v2.png`, centre performer identity and style | 2026-09-01 | None; RGB warm-gray two-view concept sheet, not a runtime cutout | Original/generated for this project; fictional character, generic instrument, no real likeness, logo, or brand |
+| `m14ProofGuitarist` | `design-reference/m14-v2-proof/guitarist-reference-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/03-guitarist-reference.md` | `performer-lineup-v2.png`, right performer identity and style | 2026-09-01 | None; RGB warm-gray two-view concept sheet, not a runtime cutout | Original/generated for this project; fictional character, generic instrument, no real likeness, logo, or brand |
+| `m14ProofCrowd` | `design-reference/m14-v2-proof/crowd-sample-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/04-crowd-sample.md` | Written M14 style/detail contract only; no performer image input, to prevent identity copying | 2026-09-01 | Regenerated after rejecting a draft that copied band identities; current file is the independent-cast candidate | Original/generated for this project; fictional crowd, no real likeness, logo, or brand |
+| `m14ProofDrumKit` | `design-reference/m14-v2-proof/drumkit-sample-v2.png` | generated/original direction proof | OpenAI built-in image generation and edit | `prompts/assets-v2/05-drumkit-sample.md` | `performer-lineup-v2.png` for style and current `assets/art/drums/drumkit_pov.png` for POV/layout | 2026-09-01 | Corrected with a generator edit on 2026-09-02 to remove both resting drumsticks; snare is clear | Original/generated for this project; generic unbranded kit, no logo or brand |
+| `m14ProofBeerBottle` | `design-reference/m14-v2-proof/beer-bottle-sample-v2.png` | generated/original direction proof | OpenAI built-in image generation | `prompts/assets-v2/06-beer-bottle-sample.md` | `performer-lineup-v2.png` for style and current `assets/art/props/beer_bottle.png` for silhouette/palette | 2026-09-01 | None; RGB warm-gray concept card, not a runtime cutout | Original/generated for this project; generic blank label, no recognizable brand or logo |
+
+M14 proof-file SHA-256 checksums (candidate set dated 2026-09-02):
+
+| File | SHA-256 |
+|---|---|
+| `performer-lineup-v2.png` | `895ed7ef5f47da0a0d70ba39f8189740d893456d75a14c508f35c7c2943a4a71` |
+| `vocalist-reference-v2.png` | `838a9e92e5c3acbc55bab9a4a6fbbf5901897f8f63466774264e5a87970e17d4` |
+| `bassist-reference-v2.png` | `6237cd1aa23fc60f3b84825443924ef743adb05c8fea1b4c273062f457fffa4c` |
+| `guitarist-reference-v2.png` | `bfe377e44911f6773caa2c35f2ef6c571f39d7eaadbc08ade926dadbe2b10bcd` |
+| `crowd-sample-v2.png` | `d0201e36592d96451af2fd010b3ee6c295e8b1bc594739a999c342eb71fab93a` |
+| `drumkit-sample-v2.png` | `a74977cd6cbccbc77ef74ee2c6878201d4e9ec22ff219bb747fd5303f80e52fb` |
+| `beer-bottle-sample-v2.png` | `44ff92b30554b90c6077334819d00219e7b6470e5a8ef418d638774d28a1c0f4` |
 
 Rules:
 - Do not leave provenance blank for a production asset.

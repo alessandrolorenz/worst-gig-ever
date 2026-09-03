@@ -1,6 +1,7 @@
 # Execute M14 — Visual Refresh V2 Planning
 
-Only execute after the owner has completed M13 and explicitly asked to continue the visual refresh.
+Only execute after the owner has completed the M13.1 physical re-test and
+explicitly asked to continue the visual refresh.
 
 Read:
 
@@ -42,7 +43,8 @@ Do not interpret "simpler" as:
    - vocalist blocking
 6. Make facial expression and body language explicit requirements for character humor.
 7. Reduce crowd detail more aggressively than performer detail.
-8. Make Groove Pad readability a first-class drum-kit requirement.
+8. Make Groove Pad readability a first-class drum-kit requirement while
+   preserving the M13.1 lower-centre geometry and central projectile sightline.
 9. Do not modify gameplay, hitboxes, timing, scoring, or input behavior.
 10. Do not generate the entire V2 asset family immediately.
 
@@ -50,11 +52,13 @@ Do not interpret "simpler" as:
 
 Prepare a **small V2 proof set** specification first:
 
+- one three-performer lineup gate, with visibly different face geometry, body
+  shape, height, posture, and energy;
 - one canonical vocalist reference;
 - one canonical bassist reference;
 - one canonical guitarist reference;
-- one crowd sample;
-- one drum-kit sample;
+- one crowd sample with an independent cast;
+- one drum-kit sample with no baked drumsticks;
 - one throwable-prop sample.
 
 If generation tooling is available and owner authorization covers generating these proof assets, generate only this proof set.
