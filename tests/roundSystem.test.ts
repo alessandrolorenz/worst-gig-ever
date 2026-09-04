@@ -17,6 +17,7 @@ import { canvasToScreen, fitCanvas } from '../game/rendering/layout.ts';
 import { roundSystem } from '../game/systems/roundSystem.ts';
 import { createRound, startRound, targetViews } from '../game/state/roundState.ts';
 import { PERFORMER_ANCHORS, VOCALIST_BLOCKING_RECT } from '../game/config/stage.ts';
+import { COUNTDOWN, GROOVE_PAD, beatTimeMs } from '../game/config/rhythm.ts';
 import { isReacting, performerPose } from '../game/systems/stageMotion.ts';
 import { level01 } from '../game/levels/level01.ts';
 import { addStrike, addBurst, STRIKE_TTL_MS, BURST_TTL_MS } from '../game/systems/effects.ts';
@@ -54,16 +55,26 @@ const SURFACE_OFFSET = { pageX: 300, pageY: 260 };
 
 
 /**
- * These tests are about the dual-task round, which is Stage 2 (M15).
+ * These tests are about the round that asks for **both jobs at once**, which
+ * is the show — Stage 2 at M15, Stage 3 since M16 inserted the beat-teaching
+ * stage in front of it.
+ *
+ * It is selected by what it *is* rather than by its index, so inserting
+ * another stage cannot silently re-point these tests at a different round: the
+ * Groove must be on, and objects must be in the air from the first second.
+ * M16's Stage 2 has the Groove but throws nothing for twelve seconds, which is
+ * exactly the round a dual-task test must not accidentally get.
  *
  * `createSceneEntities` opens on Stage 1, the defense-only drill, because that
- * is where the game itself opens. Selecting Stage 2 here is exactly what
+ * is where the game itself opens. Selecting the stage here is exactly what
  * `GameEngine`'s stage selection does: point the scene at the stage and build
  * its round.
  */
 function selectGrooveStage(entities: GameEntities): void {
-  const stage = STAGES.find((entry) => entry.groove);
-  if (stage === undefined) throw new Error('no stage enables the Groove');
+  const stage = STAGES.find(
+    (entry) => entry.groove && entry.level.phases.some((phase) => phase.fromMs === 0),
+  );
+  if (stage === undefined) throw new Error('no stage asks for both jobs at once');
   entities.scene.stage = stage;
   entities.scene.round = createRound(stage.level);
 }
@@ -194,12 +205,25 @@ test('a hit produces strike, burst, and physical debris', () => {
   assert.equal(entities.scene.effects.bursts.length, 0);
 });
 
-test('a tap on empty canvas produces no feedback at all', () => {
+test('a tap on empty canvas produces no hit feedback at all', () => {
   const { audio, entities } = setup();
   step(entities, 16, touchAtCanvas(entities, 30, 1040));
   assert.equal(entities.scene.effects.strikes.length, 0);
   assert.equal(entities.scene.shards.shards.length, 0);
-  assert.deepEqual(audio.calls, []);
+
+  /*
+   * The beat click is deliberately excluded rather than asserted away (M16).
+   * It is a metronome: it sounds because a beat happened, not because anything
+   * was hit, and the first tick of a round crosses the `GO` beat. What this
+   * test is about is that a swing at nothing is answered by nothing — so the
+   * check is that no *hit* sound was made.
+   */
+  assert.deepEqual(
+    audio.calls.filter((call) => call !== 'sfx:beatClick'),
+    [],
+    'a tap that hit nothing still made a noise',
+  );
+  assert.ok(audio.calls.includes('sfx:beatClick'), 'the beat itself should still have sounded');
 });
 
 test('a slow frame does not discard new hit feedback before its first render', () => {
@@ -438,4 +462,121 @@ test('the band reacts to what is in the air across a whole round', () => {
     if (entities.scene.round.state === 'SHOW_RUINED') break;
   }
   assert.ok(seen.has('dodge'), 'nobody ever ducked an incoming object');
+});
+
+// ---------------------------------------------------------------------------
+// The beat click (M16)
+// ---------------------------------------------------------------------------
+
+/** How many clicks have sounded so far. */
+function clicks(audio: RecordingAudio): number {
+  return audio.calls.filter((call) => call === 'sfx:beatClick').length;
+}
+
+/** Runs a whole pre-roll in engine-sized steps. */
+function runCountdown(entities: GameEntities): void {
+  let guard = 0;
+  while (entities.scene.round.state === 'COUNTDOWN' && guard < 1000) {
+    step(entities, 16);
+    guard += 1;
+  }
+}
+
+test('the count-in is audible: three numerals and GO', () => {
+  const { audio, entities } = setup();
+  assert.equal(entities.scene.round.state, 'COUNTDOWN');
+
+  runCountdown(entities);
+  assert.equal(entities.scene.round.state, 'PLAYING');
+
+  /*
+   * Four clicks by the time the round begins: the three pre-roll beats and the
+   * `GO` beat itself, which is round beat 0. This is the whole reason the
+   * click is fired from `pulseClockMs` rather than from the scoring tick —
+   * `tickRhythm` does not run in COUNTDOWN, and a count-in nobody can hear is
+   * not a count-in.
+   */
+  assert.equal(clicks(audio), COUNTDOWN.leadBeats + 1);
+});
+
+test('the beat clicks once per beat through a round, and never twice', () => {
+  const { audio, entities } = setup();
+  runCountdown(entities);
+  const afterCountdown = clicks(audio);
+
+  // Eight beats of play, in ticks that do not divide the beat interval.
+  const target = beatTimeMs(8);
+  let guard = 0;
+  while (entities.scene.round.elapsedMs < target && guard < 5000) {
+    step(entities, 17);
+    guard += 1;
+  }
+
+  assert.equal(clicks(audio) - afterCountdown, 8, 'the beat did not click once per beat');
+});
+
+test('the click can be switched off, and switching it off changes nothing else', () => {
+  /*
+   * The guarantee the whole switch rests on. The click is an *output* of the
+   * beat clock, so muting it must not be able to move a judgement — and the
+   * only way to show that is to play the same round twice, tap it in the same
+   * places, and compare everything that is not the sound.
+   */
+  function play(clickEnabled: boolean) {
+    const { audio, entities } = setup();
+    entities.scene.flow.clickEnabled = clickEnabled;
+    runCountdown(entities);
+
+    /*
+     * Tap the pad on every other beat, deliberately 45 ms late, so the round
+     * ends up holding hits *and* misses *and* a broken streak — a comparison
+     * across a round where nothing ever went wrong would not be worth much.
+     */
+    const pad = touchAtCanvas(entities, GROOVE_PAD.centerX, GROOVE_PAD.centerY);
+    let nextBeat = 1;
+    let guard = 0;
+    while (nextBeat <= 11 && guard < 5000) {
+      const due = entities.scene.round.elapsedMs >= beatTimeMs(nextBeat) + 45;
+      step(entities, 16, due ? pad : []);
+      if (due) nextBeat += 2;
+      guard += 1;
+    }
+    return { audio, rhythm: entities.scene.rhythm, round: entities.scene.round };
+  }
+
+  const on = play(true);
+  const off = play(false);
+
+  assert.ok(clicks(on.audio) > 0, 'the click never sounded with the switch on');
+  assert.equal(clicks(off.audio), 0, 'the click sounded with the switch off');
+
+  // Everything the player is actually judged on is identical.
+  assert.ok(on.rhythm.hits > 0, 'the test never landed a beat, so it proves nothing');
+  assert.equal(off.rhythm.score, on.rhythm.score);
+  assert.equal(off.rhythm.hits, on.rhythm.hits);
+  assert.equal(off.rhythm.misses, on.rhythm.misses);
+  assert.equal(off.rhythm.perfects, on.rhythm.perfects);
+  assert.equal(off.rhythm.goods, on.rhythm.goods);
+  assert.equal(off.rhythm.bestStreak, on.rhythm.bestStreak);
+  assert.equal(off.rhythm.nextBeatToFinalize, on.rhythm.nextBeatToFinalize);
+  assert.equal(off.round.score, on.round.score);
+  assert.equal(off.round.integrity, on.round.integrity);
+  assert.equal(off.round.targetsDestroyed, on.round.targetsDestroyed);
+
+  // The one thing that does differ is the cursor's own bookkeeping, which is
+  // fine: it is what decides whether a sound is due, and nothing reads it.
+  assert.equal(off.rhythm.lastPulsedBeatIndex, on.rhythm.lastPulsedBeatIndex);
+});
+
+test('a defense-only stage never clicks, because it has no beat to keep', () => {
+  const audio = createRecordingAudio();
+  const entities = createSceneEntities(audio, null as never);
+  // The scene opens on Stage 1, which is the defense drill.
+  assert.equal(entities.scene.stage.groove, false);
+  startRound(entities.scene.round);
+
+  for (let i = 0; i < 400; i += 1) step(entities, 16);
+
+  assert.ok(entities.scene.round.elapsedMs > 0, 'the round never started');
+  assert.equal(clicks(audio), 0, 'a stage with no Groove made a metronome noise');
 });

@@ -56,16 +56,26 @@ const SURFACE_OFFSET = { pageX: 300, pageY: 260 };
 
 
 /**
- * These tests are about the dual-task round, which is Stage 2 (M15).
+ * These tests are about the round that asks for **both jobs at once**, which
+ * is the show — Stage 2 at M15, Stage 3 since M16 inserted the beat-teaching
+ * stage in front of it.
+ *
+ * It is selected by what it *is* rather than by its index, so inserting
+ * another stage cannot silently re-point these tests at a different round: the
+ * Groove must be on, and objects must be in the air from the first second.
+ * M16's Stage 2 has the Groove but throws nothing for twelve seconds, which is
+ * exactly the round a dual-task test must not accidentally get.
  *
  * `createSceneEntities` opens on Stage 1, the defense-only drill, because that
- * is where the game itself opens. Selecting Stage 2 here is exactly what
+ * is where the game itself opens. Selecting the stage here is exactly what
  * `GameEngine`'s stage selection does: point the scene at the stage and build
  * its round.
  */
 function selectGrooveStage(entities: GameEntities): void {
-  const stage = STAGES.find((entry) => entry.groove);
-  if (stage === undefined) throw new Error('no stage enables the Groove');
+  const stage = STAGES.find(
+    (entry) => entry.groove && entry.level.phases.some((phase) => phase.fromMs === 0),
+  );
+  if (stage === undefined) throw new Error('no stage asks for both jobs at once');
   entities.scene.stage = stage;
   entities.scene.round = createRound(stage.level);
 }

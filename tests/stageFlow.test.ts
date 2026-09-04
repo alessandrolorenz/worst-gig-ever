@@ -36,6 +36,7 @@ import {
   stageAt,
 } from '../game/levels/stages.ts';
 import { defenseDrill } from '../game/levels/defenseDrill.ts';
+import { findTheBeat } from '../game/levels/findTheBeat.ts';
 import { level01 } from '../game/levels/level01.ts';
 import { createRound, phaseAt, tickRound } from '../game/state/roundState.ts';
 import { createRhythm, resolvePadTap, tickRhythm } from '../game/state/rhythmState.ts';
@@ -45,15 +46,74 @@ import { beatTimeMs } from '../game/config/rhythm.ts';
 // The stages
 // ---------------------------------------------------------------------------
 
-test('there are two stages: defense alone, then defense with the Groove', () => {
-  assert.equal(stageCount(), 2);
-  assert.equal(STAGES[0].groove, false);
-  assert.equal(STAGES[1].groove, true);
+test('there are three stages: objects, then the beat, then both', () => {
+  // The teaching order the owner asked for at M16, asserted as a sequence
+  // rather than as three separate facts: one job, the other job, both.
+  assert.equal(stageCount(), 3);
   assert.equal(STAGES[0].level, defenseDrill);
-  assert.equal(STAGES[1].level, level01);
+  assert.equal(STAGES[1].level, findTheBeat);
+  assert.equal(STAGES[2].level, level01);
+
+  assert.equal(STAGES[0].groove, false, 'stage 1 teaches objects with no beat');
+  assert.equal(STAGES[1].groove, true, 'stage 2 teaches the beat');
+  assert.equal(STAGES[2].groove, true, 'stage 3 is the show');
 });
 
-test('Stage 2 is the validated round, untouched', () => {
+test('the beat stage opens on the beat alone, and only then adds objects', () => {
+  // Twelve seconds of nothing but the pulse is the entire point of the stage
+  // (M16). If a phase ever covers time zero, the lesson is gone.
+  assert.equal(phaseAt(findTheBeat, 0), null, 'something is thrown in the teaching window');
+  assert.equal(phaseAt(findTheBeat, 11_999), null);
+  assert.notEqual(phaseAt(findTheBeat, 12_000), null);
+
+  // And the first bottle lands one full interval after the phase opens,
+  // because that is how the scheduler seeds a phase it enters from silence.
+  const round = createRound(findTheBeat);
+  round.state = 'PLAYING';
+  let firstSpawnAtMs: number | null = null;
+  for (let guard = 0; guard < 10_000 && round.elapsedMs < findTheBeat.durationMs; guard += 1) {
+    const events = tickRound(round, 50);
+    if (firstSpawnAtMs === null && events.some((event) => event.type === 'TARGET_SPAWNED')) {
+      firstSpawnAtMs = round.elapsedMs;
+    }
+  }
+  assert.notEqual(firstSpawnAtMs, null, 'the teaching stage never threw anything');
+  assert.ok(
+    firstSpawnAtMs !== null && firstSpawnAtMs >= 14_600 && firstSpawnAtMs < 14_700,
+    `first spawn was at ${String(firstSpawnAtMs)}, expected ~14600`,
+  );
+});
+
+test('the beat stage is the sparsest round in the game, and bottles only', () => {
+  const sparsest = Math.min(...findTheBeat.phases.map((phase) => phase.spawnEveryMs));
+  const showOpening = level01.phases[0].spawnEveryMs;
+  const drillSparsest = Math.min(...defenseDrill.phases.map((phase) => phase.spawnEveryMs));
+  assert.ok(
+    Math.max(...findTheBeat.phases.map((phase) => phase.spawnEveryMs)) > drillSparsest,
+    'the teaching stage must be sparser than the drill somewhere',
+  );
+  assert.ok(sparsest >= showOpening, 'the teaching stage must never out-pace the show opening');
+
+  for (const phase of findTheBeat.phases) {
+    assert.deepEqual(phase.kinds, ['beerBottle'], 'the teaching stage introduces one object only');
+  }
+
+  // It hands over at exactly the cadence the show opens on, so Stage 3 starts
+  // where Stage 2 finished instead of stepping down and up again.
+  const last = findTheBeat.phases[findTheBeat.phases.length - 1];
+  assert.equal(last.spawnEveryMs, showOpening);
+});
+
+test('the beat stage does not spend the show\'s one surprise', () => {
+  assert.equal(findTheBeat.vocalistEventAtMs, null);
+});
+
+test('every stage draws from its own seed', () => {
+  const seeds = STAGES.map((stage) => stage.level.randomSeed);
+  assert.equal(new Set(seeds).size, seeds.length, 'two stages would rehearse each other');
+});
+
+test('Stage 3 is the validated round, untouched', () => {
   // The M13.1/M14 difficulty freeze, read from the level the stage points at.
   assert.equal(level01.durationMs, 60_000);
   assert.equal(level01.startingIntegrity, 3);
@@ -93,7 +153,7 @@ test('the drill has no vocalist interruption, and the round respects that', () =
 });
 
 test('the drill opens on exactly the cadence the show opens on', () => {
-  // What the player learns in Stage 1 has to be what Stage 2 then asks for.
+  // What the player learns in Stage 1 has to be what the show then asks for.
   assert.equal(phaseAt(defenseDrill, 0)?.spawnEveryMs, phaseAt(level01, 0)?.spawnEveryMs);
   assert.deepEqual(phaseAt(defenseDrill, 0)?.kinds, phaseAt(level01, 0)?.kinds);
 });

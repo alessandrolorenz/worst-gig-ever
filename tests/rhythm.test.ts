@@ -10,6 +10,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  BEAT_BAR,
+  BEAT_MARKERS,
   COUNTDOWN,
   GROOVE_PAD,
   GROOVE_PULSE,
@@ -24,10 +26,15 @@ import {
   scheduledBeatCount,
 } from '../game/config/rhythm.ts';
 import {
+  barPosition,
   createRhythm,
   clearRhythm,
   isBeatClockRunning,
   isPadPulsing,
+  markerOpacity,
+  markerTravel,
+  pulseBeatIndex,
+  pulseBeats,
   judgedBeats,
   meanAbsTimingErrorMs,
   nearestBeatIndex,
@@ -616,4 +623,179 @@ test('mean timing error is null until a beat is actually hit', () => {
   resolvePadTap(rhythm, context(beatTimeMs(FIRST_SCORED) + 40));
   resolvePadTap(rhythm, context(beatTimeMs(FIRST_SCORED + 1) - 20));
   assert.equal(meanAbsTimingErrorMs(rhythm), 30);
+});
+
+// ---------------------------------------------------------------------------
+// The beat cue (M16)
+// ---------------------------------------------------------------------------
+
+test('the pulse index counts the pre-roll beats, and does not invent one', () => {
+  // The whole reason `pulseBeatIndex` multiplies by the BPM instead of
+  // dividing by the interval. The pre-roll begins at exactly -2000 ms, and
+  // `-2000 / (60000 / 90)` is -3.0000000000000004 in floating point — whose
+  // floor is -4, a fourth count-in beat that does not exist and would click a
+  // fraction of a millisecond early.
+  assert.equal(pulseBeatIndex(-countdownDurationMs()), -COUNTDOWN.leadBeats);
+  assert.equal(pulseBeatIndex(-beatTimeMs(2)), -2);
+  assert.equal(pulseBeatIndex(-beatTimeMs(1)), -1);
+  assert.equal(pulseBeatIndex(0), 0);
+  assert.equal(pulseBeatIndex(beatTimeMs(1)), 1);
+
+  // It is the beat we are *in*, so it holds until the next one arrives.
+  assert.equal(pulseBeatIndex(beatIntervalMs() - 1), 0);
+  assert.equal(pulseBeatIndex(beatIntervalMs() + 1), 1);
+});
+
+test('the bar counts 3 - 2 - 1 - GO across a bar line', () => {
+  // Not a decorative detail: it is what makes the pre-roll read as a musician
+  // counting a band in rather than as four unrelated blinks.
+  assert.equal(barPosition(-3), 2);
+  assert.equal(barPosition(-2), 3);
+  assert.equal(barPosition(-1), 4);
+  assert.equal(barPosition(0), 1);
+  assert.equal(barPosition(1), 2);
+  assert.equal(barPosition(BEAT_BAR.beats), 1, 'the bar must wrap');
+
+  for (let beat = -12; beat <= 40; beat += 1) {
+    const position = barPosition(beat);
+    assert.ok(
+      position >= 1 && position <= BEAT_BAR.beats,
+      `beat ${String(beat)} fell outside the bar at position ${String(position)}`,
+    );
+  }
+});
+
+test('the markers meet exactly on the beat, and only on the beat', () => {
+  // The whole cue is a coincidence, so the coincidence has to be exact.
+  for (const beat of [0, 1, 2, 17, 88]) {
+    const atBeat = markerTravel(beatTimeMs(beat));
+    assert.ok(
+      Math.abs(atBeat - 1) < 1e-9 || atBeat < 1e-9,
+      `travel at beat ${String(beat)} was ${String(atBeat)}`,
+    );
+  }
+  // Just before a beat they are as good as touching; just after, back at the rim.
+  assert.ok(markerTravel(beatTimeMs(4) - 1) < 0.01, 'the markers had not arrived');
+  assert.ok(markerTravel(beatTimeMs(4) + 1) > 0.99, 'the markers did not restart');
+});
+
+test('the markers close at a constant rate, so the eye can predict them', () => {
+  // An eased approach is prettier and useless: a timing cue has to let the
+  // player extrapolate where the marker will be, and only a straight line
+  // does that. Asserted as equal travel over equal time.
+  const interval = beatIntervalMs();
+  const samples = [0.1, 0.3, 0.5, 0.7].map((fraction) => markerTravel(interval * fraction));
+  for (let i = 1; i < samples.length; i += 1) {
+    const step = samples[i - 1] - samples[i];
+    assert.ok(Math.abs(step - 0.2) < 1e-9, `travel step was ${String(step)}, expected 0.2`);
+  }
+});
+
+test('the markers fade in rather than snapping back to the rim', () => {
+  // Reappearing at full brightness reads as a strobe, which is the defect M6B
+  // fixed in the stage overlay for exactly the same reason.
+  assert.equal(markerOpacity(1), 0, 'the markers popped in at the rim');
+  assert.equal(markerOpacity(1 - BEAT_MARKERS.fadeInFraction), 1);
+  assert.equal(markerOpacity(0), 1, 'the markers must be solid when they meet');
+  assert.ok(markerOpacity(1 - BEAT_MARKERS.fadeInFraction / 2) > 0);
+});
+
+test('the markers start inside the pad they belong to', () => {
+  // They live in the existing SVG surface, and that is the point: a converging
+  // ring would have needed a bigger one, on the device whose render cost is
+  // still under an open retest.
+  assert.ok(BEAT_MARKERS.startFraction < 1, 'the markers would start outside the tap area');
+  const startOffset = BEAT_MARKERS.startFraction * GROOVE_PAD.halfWidthPx;
+  assert.ok(
+    startOffset + BEAT_MARKERS.widthPx / 2 <= GROOVE_PAD.halfWidthPx,
+    'a marker overhangs the pad rim at the start of its travel',
+  );
+});
+
+test('the bar counter sits inside the pad, clear of the markers', () => {
+  // Above the axis, on purpose: below it collides with the markers, and the
+  // canvas band from y 1020 is where a phone gesture pill sits (open item 15).
+  const dy = BEAT_BAR.offsetY;
+  assert.ok(dy < 0, 'the bar row must sit above the axis the markers travel');
+  assert.ok(
+    Math.abs(dy) + BEAT_BAR.radiusPx * 1.35 < GROOVE_PAD.halfHeightPx,
+    'the bar row spills out of the pad vertically',
+  );
+
+  // The row has to fit the ellipse at its own height, not at the widest point.
+  const halfWidthAtRow =
+    GROOVE_PAD.halfWidthPx * Math.sqrt(1 - (dy / GROOVE_PAD.halfHeightPx) ** 2);
+  const rowHalfSpan = ((BEAT_BAR.beats - 1) / 2) * BEAT_BAR.spacingPx + BEAT_BAR.radiusPx * 1.35;
+  assert.ok(
+    rowHalfSpan < halfWidthAtRow,
+    `the bar row is ${String(Math.round(rowHalfSpan))} px wide against ${String(Math.round(halfWidthAtRow))} px of pad`,
+  );
+
+  const padTop = GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx;
+  assert.ok(GROOVE_PAD.centerY + dy > padTop, 'the bar row left the pad');
+  assert.ok(GROOVE_PAD.centerY + dy < 1020, 'the bar row runs under the system navigation bar');
+});
+
+test('a beat pulses once, whatever the tick size', () => {
+  const rhythm = createRhythm();
+
+  // The first call arms the cursor and reports the beat it landed in, so the
+  // very first pre-roll beat is never silent.
+  const first = pulseBeats(rhythm, -countdownDurationMs(), true);
+  assert.deepEqual(first, [{ type: 'BEAT_PULSE', beatIndex: -COUNTDOWN.leadBeats }]);
+
+  // Ticking on inside the same beat reports nothing more.
+  assert.deepEqual(pulseBeats(rhythm, -countdownDurationMs() + 10, true), []);
+  assert.deepEqual(pulseBeats(rhythm, -countdownDurationMs() + 300, true), []);
+
+  // Crossing into the next one reports exactly one.
+  assert.deepEqual(pulseBeats(rhythm, -beatTimeMs(2), true), [
+    { type: 'BEAT_PULSE', beatIndex: -2 },
+  ]);
+});
+
+test('a stalled frame cannot machine-gun a bar of clicks', () => {
+  const rhythm = createRhythm();
+  pulseBeats(rhythm, 0, true);
+  // Eight beats in one step: a resumed app, or a very long stall.
+  const events = pulseBeats(rhythm, beatTimeMs(8), true);
+  assert.equal(events.length, 1, 'a backlog was flushed as a burst of clicks');
+  assert.deepEqual(events, [{ type: 'BEAT_PULSE', beatIndex: 8 }]);
+});
+
+test('the pulse cursor is dropped whenever the pad stops, so the next round counts in', () => {
+  const rhythm = createRhythm();
+  pulseBeats(rhythm, beatTimeMs(3), true);
+  assert.equal(rhythm.lastPulsedBeatIndex, 3);
+
+  assert.deepEqual(pulseBeats(rhythm, beatTimeMs(4), false), []);
+  assert.equal(rhythm.lastPulsedBeatIndex, null);
+
+  // And the next round's first pre-roll beat still sounds.
+  assert.deepEqual(pulseBeats(rhythm, -countdownDurationMs(), true), [
+    { type: 'BEAT_PULSE', beatIndex: -COUNTDOWN.leadBeats },
+  ]);
+});
+
+test('the pulse never touches a judgement', () => {
+  // The guarantee the click switch rests on: pulsing is an output of the clock
+  // and can neither score, miss, nor advance finalization.
+  const rhythm = createRhythm();
+  const before = { ...rhythm };
+  for (let beat = -3; beat < 20; beat += 1) pulseBeats(rhythm, beatTimeMs(beat), true);
+
+  assert.equal(rhythm.score, before.score);
+  assert.equal(rhythm.hits, before.hits);
+  assert.equal(rhythm.misses, before.misses);
+  assert.equal(rhythm.streak, before.streak);
+  assert.equal(rhythm.nextBeatToFinalize, before.nextBeatToFinalize);
+  assert.equal(rhythm.lastHitBeatIndex, before.lastHitBeatIndex);
+  assert.equal(rhythm.lastJudgement, before.lastJudgement);
+});
+
+test('clearing the rhythm clears the pulse cursor with it', () => {
+  const rhythm = createRhythm();
+  pulseBeats(rhythm, beatTimeMs(9), true);
+  clearRhythm(rhythm);
+  assert.equal(rhythm.lastPulsedBeatIndex, null);
 });

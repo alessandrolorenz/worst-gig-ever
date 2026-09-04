@@ -53,10 +53,39 @@ export interface AppFlowState {
   bestStageCleared: number;
   /** True once the story has been watched or skipped, so it plays once. */
   introSeen: boolean;
+  /**
+   * Whether the beat click sounds (M16).
+   *
+   * On by default and switchable from the title and the pause overlay, at the
+   * owner's request. Session-only, exactly like `bestStageCleared` and for the
+   * same reason: persistence needs storage and storage is an MVP non-goal. A
+   * relaunch brings the click back, which is the right failure — a player who
+   * turned it off loses a preference, and a player who forgot they turned it
+   * off is not left wondering why the game went quiet.
+   *
+   * It lives on the flow rather than in the audio service because it is a
+   * player choice about the whole session, not a property of a round or of a
+   * player pool. Nothing in the rhythm domain reads it: the beat is emitted
+   * either way and this only decides whether a sound comes out, which is what
+   * makes "muting cannot change a judgement" true by construction rather than
+   * by care.
+   */
+  clickEnabled: boolean;
 }
 
 export function createAppFlow(): AppFlowState {
-  return { screen: 'STORY', stageIndex: 0, bestStageCleared: -1, introSeen: false };
+  return {
+    screen: 'STORY',
+    stageIndex: 0,
+    bestStageCleared: -1,
+    introSeen: false,
+    clickEnabled: true,
+  };
+}
+
+/** The click switch, from the title or from a paused round. */
+export function toggleClick(flow: AppFlowState): void {
+  flow.clickEnabled = !flow.clickEnabled;
 }
 
 export function currentStage(flow: AppFlowState): StageDefinition {

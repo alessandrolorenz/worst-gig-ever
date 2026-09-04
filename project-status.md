@@ -396,6 +396,61 @@ and `prompts/19-m18-mug-drink-reaction.md`. M17's is written after M16 is
 judged on a device, because the shape of a difficulty ramp depends on whether
 the beat became readable.
 
+### M16 in progress — `feat/m16-beat-clarity`
+
+Started 2026-09-04, off `feat/m15-story-and-stages`. Five of the six work items
+are implemented and the gate is green at **322 tests**.
+
+| Item | State |
+|---|---|
+| A converging cue on the pad | done — **two markers, not a ring**; see the deviation note in the spec |
+| B bar counter | done — four marks, `beatIndex % 4`, downbeat accented |
+| C audible click, with a switch | done — generated asset, toggle on title and pause |
+| D one tempo in the venue | done — `STAGE_MOTION.bpm` 132 to 90 |
+| E music re-acquired at 90 BPM | **partly done** — routed per stage; the teaching stage has a generated, provably 90 BPM bed; the *show's* bed is still the drifting loop |
+| F new Stage 2, "Find the beat" | done — the show is Stage 3, unchanged |
+
+Two decisions worth carrying forward:
+
+1. **The converging ring in the spec was not built, and the spec records why.**
+   The pad's bottom edge is at y 1075 on a 1080 px canvas, so any concentric
+   ring over 1.03x is cut off by the screen; and a 1.45x ring needs roughly
+   twice the SVG surface M14.1 just recovered, on the device whose tap
+   responsiveness is still under an open retest. The cue converges *inside* the
+   pad instead — two markers meeting at its centre exactly on the beat — and
+   `PAD_SURFACE` is unchanged, held there by a test.
+2. **The click is generated, not downloaded.** `scripts/make-beat-click.mjs`
+   synthesizes it deterministically: 90 ms, 8 kB, reproducible to the committed
+   SHA-256. No licence to verify and no source page to rot, which is the
+   cleanest answer available to AGENTS.md rules 12-14.
+
+3. **Open item 2 is closed, and its two halves went different ways.**
+   `crowd_applause.wav` was the largest asset in the app — 39.15 s / 6.59 MB
+   for a sound that plays once over a results screen — and is now 5.00 s /
+   0.84 MB, cut from the natural swell rather than from a hard onset mid-clap.
+   The "volume normalization" half was **measured and found not to be the
+   problem**: all four one-shots already peak at 0.97-1.00, and EBU R128
+   integrated loudness cannot be measured on them at all, because the gate
+   needs 400 ms of content and three of them are shorter than that. No file was
+   re-levelled; relative loudness is the `MIX` table's job and is now testable.
+4. **The audio mix became assertable.** `audioAssets.ts` reaches for files
+   through Metro's `require`, so nothing in a `node --test` run could import it
+   and no rule about the mix was checkable. Levels, pool sizes and the new
+   tempo-lock table moved to `game/audio/audioMix.ts`; the registry keeps only
+   the filenames it was always documented to own.
+
+Audio footprint: **5.7 MB**, down from 10.7 MB, with two new files in it.
+
+Still open before the stop checkpoint:
+
+- **the show's bed.** Every stage that scores beats should play music whose
+  loop is a whole number of 90 BPM beats. Stage 2 does; Stage 3 does not, and
+  the click carries the beat there in the meantime. Picking its replacement is
+  a taste decision, not an engineering one. `tests/audioContract.test.ts` names
+  the show as the sole permitted exception, so a fourth stage cannot quietly
+  join it. Open item 13 is narrowed to this one stage rather than closed.
+- **the physical device review itself.**
+
 **Sequence, and why.**
 
 1. Close the two open device reviews first — M15 and the M14.1 tap

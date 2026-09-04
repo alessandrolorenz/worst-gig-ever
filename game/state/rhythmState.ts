@@ -31,6 +31,8 @@
  * beat was last scored.
  */
 import {
+  BEAT_BAR,
+  BEAT_MARKERS,
   GROOVE_PULSE,
   RHYTHM,
   beatIntervalMs,
@@ -77,6 +79,17 @@ export interface RhythmState {
   /** Summed absolute error over scored beats, for the mean in the summary. */
   totalAbsTimingErrorMs: number;
   lastJudgement: BeatJudgement | null;
+  /**
+   * The last beat the *pulse* reached, or null when the pad is not animating
+   * (M16).
+   *
+   * Deliberately separate from `nextBeatToFinalize`, which is about judgement.
+   * This one counts beats that merely *happened*, including the three pre-roll
+   * beats that have negative indices and are never scored — it is the cursor
+   * the click is emitted from, and it must advance through the count-in or the
+   * count-in is silent.
+   */
+  lastPulsedBeatIndex: number | null;
 }
 
 export type RhythmEvent =
@@ -88,7 +101,12 @@ export type RhythmEvent =
       points: number;
       streak: number;
     }
-  | { type: 'BEAT_MISSED'; beatIndex: number };
+  | { type: 'BEAT_MISSED'; beatIndex: number }
+  /**
+   * A beat arrived. Not a judgement of any kind — it fires whether or not the
+   * player tapped, and it fires for the unscored pre-roll beats too.
+   */
+  | { type: 'BEAT_PULSE'; beatIndex: number };
 
 /**
  * Everything the Groove needs to know about the round, passed in rather than
@@ -130,6 +148,7 @@ export function createRhythm(): RhythmState {
     lastHitBeatIndex: -1,
     totalAbsTimingErrorMs: 0,
     lastJudgement: null,
+    lastPulsedBeatIndex: null,
   };
 }
 
@@ -382,6 +401,108 @@ export function padPulse(elapsedMs: number): number {
  */
 export function upcomingBeatIndex(elapsedMs: number): number {
   return Math.ceil(elapsedMs / beatIntervalMs());
+}
+
+/**
+ * The index of the beat the pulse has most recently reached (M16).
+ *
+ * Floor rather than round, because this answers "which beat are we in", not
+ * "which beat is a tap nearest to" — `nearestBeatIndex` already does the
+ * latter and they are different questions. It goes negative through the
+ * pre-roll: -3, -2, -1 for the three numerals and 0 for `GO`.
+ *
+ * Derived by multiplying by the BPM rather than dividing by the interval, for
+ * the same reason `scheduledBeatCount` and `countdownStep` are: the pre-roll
+ * starts at exactly -2000 ms, and `-2000 / (60000 / 90)` is -3.0000000000000004
+ * in floating point, whose floor is -4 — an extra count-in beat that does not
+ * exist, clicking a fraction of a millisecond before the real one.
+ */
+export function pulseBeatIndex(clockMs: number): number {
+  return Math.floor((clockMs * RHYTHM.bpm) / 60_000);
+}
+
+/**
+ * Where a beat falls in the bar, from 1 to `BEAT_BAR.beats` (M16).
+ *
+ * The modulo is taken the long way round so negative indices land correctly:
+ * `-3 % 4` is `-3` in JavaScript, not 1. Working it out for the pre-roll is
+ * what shows the numbering is right — the three numerals come out as bar
+ * positions 2, 3, 4 and `GO` as 1, so `3 - 2 - 1 - GO` is a musician counting
+ * the band in across a bar line rather than four arbitrary blinks.
+ */
+export function barPosition(beatIndex: number): number {
+  const beats = BEAT_BAR.beats;
+  return (((beatIndex % beats) + beats) % beats) + 1;
+}
+
+/**
+ * How far the converging markers still have to travel, from 1 (just restarted
+ * at the rim) to 0 (touching at the centre, on the beat) (M16).
+ *
+ * A pure function of the clock, like every other thing the pad draws, so the
+ * cue cannot disagree with the judgement it is cueing.
+ *
+ * It is deliberately linear. The markers are a timing cue, and the only thing
+ * that lets an eye predict *when* something will arrive is constant velocity;
+ * an eased approach looks better standing still and is useless in motion.
+ */
+export function markerTravel(clockMs: number): number {
+  const interval = beatIntervalMs();
+  if (!(interval > 0)) return 0;
+  const phase = ((clockMs % interval) + interval) % interval;
+  return 1 - phase / interval;
+}
+
+/**
+ * How visible the markers are at a given point in their travel (M16).
+ *
+ * They restart at the rim the instant they have met, and reappearing at full
+ * brightness reads as a strobe — the same defect M6B fixed in the stage
+ * overlay. Fading the first fraction of the journey keeps the arrival sharp
+ * and the departure quiet.
+ */
+export function markerOpacity(travel: number): number {
+  const fade = BEAT_MARKERS.fadeInFraction;
+  if (!(fade > 0)) return 1;
+  return Math.max(0, Math.min(1, (1 - travel) / fade));
+}
+
+/**
+ * Advances the pulse cursor and reports beats that have just arrived (M16).
+ *
+ * This is what the click is fired from, and it is separate from `tickRhythm`
+ * for one reason: `tickRhythm` runs only while the beat clock is *scoring*,
+ * and the click has to sound through the `3 -> 2 -> 1 -> GO` pre-roll, which is
+ * the whole point of a count-in. So this takes `pulseClockMs` — negative
+ * through the pre-roll — and `isPadPulsing`, which is the wider set of states.
+ *
+ * At most one beat is reported per call, however long the tick was. The round
+ * already caps a tick at `MAX_TICK_DELTA_MS` (100 ms), well under a 667 ms
+ * beat, so a backlog cannot build up in practice; refusing to emit one anyway
+ * means a resumed app or a stalled frame can never machine-gun a bar's worth
+ * of clicks at once.
+ *
+ * It records nothing that judgement reads, and judgement records nothing it
+ * reads. Muting the click therefore cannot move a beat window — the click is
+ * an output of the clock, never an input to it.
+ */
+export function pulseBeats(
+  state: RhythmState,
+  clockMs: number,
+  pulsing: boolean,
+): RhythmEvent[] {
+  if (!pulsing) {
+    // Between rounds and on a menu the cursor is dropped rather than kept, so
+    // the next round's first pre-roll beat always clicks.
+    state.lastPulsedBeatIndex = null;
+    return [];
+  }
+
+  const beatIndex = pulseBeatIndex(clockMs);
+  if (state.lastPulsedBeatIndex !== null && beatIndex <= state.lastPulsedBeatIndex) return [];
+
+  state.lastPulsedBeatIndex = beatIndex;
+  return [{ type: 'BEAT_PULSE', beatIndex }];
 }
 
 /**

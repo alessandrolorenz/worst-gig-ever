@@ -108,6 +108,77 @@ Choose one short clean sample from the pack. Preserve the pack/source provenance
 
 ---
 
+## Generated audio — no third party involved
+
+Not every file has to be *found*. A sound this repository synthesizes from a
+committed script has provenance that cannot rot: no source page to go dead, no
+licence to re-verify, no author to attribute, and a build step that reproduces
+it byte for byte. AGENTS.md rule 12 prefers original assets, and this is the
+strongest form of one.
+
+### `groove_bed_90.wav`
+
+- Origin: **generated**, `scripts/make-groove-bed.mjs` (`npm run make:bed`)
+- Licence: same as this repository (MIT). No third-party rights involved.
+- Added: 2026-09-04, for M16 (Stage 2, "Find the beat")
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 10.666667 s, 940,844 bytes
+- SHA-256: `ea89d7e217fa479877936386fe26919c18e29d88a71bc2e60c0dcba978a66616`
+- **Exactly 16 beats at 90 BPM** — four bars of four, verified on disk by
+  `tests/audioContract.test.ts`
+
+Reason it exists: a stage that scores beats must not play music that disagrees
+with the beat clock. `rock_theme_song_loop.wav` is 21.75 s, which at 90 BPM is
+32.625 beats — it slips about 417 ms every loop, more than twice the GOOD
+window, and is in antiphase with the pad after two. Stage 2 spends its first
+twelve seconds on nothing but the beat, so a bed sliding out of phase
+underneath would teach the opposite of the lesson.
+
+Reason it is generated rather than found: searching CC0 libraries for a track
+that happens to be at exactly 90 BPM *and* happens to loop on a bar line is
+slow and uncertain. Rendering one makes the property true by construction, and
+the script wraps every voice's tail back to the head so the loop is seamless —
+a truncated kick tail would click audibly on every repeat, which on this stage
+is a tick in exactly the wrong place.
+
+What it is: kick on 1 and 3, snare on 2 and 4, eighth-note hats accented on the
+beat, and root notes on a plain A-A-G-D four-bar figure. Deliberately a bed and
+not a song — Stage 2 exists to teach the beat, and an arrangement worth
+listening to buries the thing being taught. Peak-normalized to 0.72 so the
+click stays the clearest thing in the mix.
+
+The show's bed is **not** this file and is still the drifting rock loop. That
+is the one open piece of M16: replacing it is a music choice that belongs to
+the owner, not to a generator.
+
+### `beat_click.wav`
+
+- Origin: **generated**, `scripts/make-beat-click.mjs` (`npm run make:click`)
+- Licence: same as this repository (MIT). No third-party rights involved.
+- Added: 2026-09-04, for M16 (the audible beat)
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 90 ms, 7,982 bytes
+- SHA-256: `799b4fa4951e3168cb2325329037fda9c85d9e4b0144ae2f7a658ac641e92a57`
+
+Reason it exists: until M16 every cue for the beat was visual, on the one
+screen the player must also scan for incoming glass. The owner reported the
+beats as unreadable, and a rhythm you cannot hear is most of why.
+
+Reason it is generated rather than downloaded: it plays ninety times a round,
+so it wants to be tiny (8 kB), and it wants to be exactly one thing — a dry
+stick on a rim, over in 90 ms, with no room tone or tail to smear across the
+next beat. Searching CC0 libraries for that is slower and less certain than
+writing it.
+
+What it is, in the script's terms: a 4 ms noise transient for the impact, two
+decaying partials at 1850 Hz and 3100 Hz for the wood, a quiet 220 Hz body so
+it survives a phone speaker, and a 0.6 ms attack ramp so it does not pop. The
+noise runs off a fixed seed, so regenerating it reproduces the SHA-256 above —
+which is what makes the checked-in file verifiable rather than merely present.
+
+Mono on purpose: it is a point event in the middle of the mix and stereo would
+double its size for nothing.
+
+---
+
 ## Derivatives
 
 Derivatives are produced locally from the verified CC0 sources above. They inherit CC0. Each entry records the exact command so the file can be regenerated from the recorded source SHA-256.
@@ -122,6 +193,36 @@ ffmpeg -i rock_theme_songloop.wav -c:a pcm_s16le -ar 44100 -ac 2 \
 ```
 
 Result: 16-bit PCM, 44.1 kHz, stereo, 21.75 s, 3.66 MB (from 5.50 MB). No trimming, no resampling, no level change.
+
+### `crowd_applause.wav` — trimmed 2026-09-04 (M16)
+
+Reason: the committed file was the full 39.15 s / 6.59 MB source and was the
+largest asset in the entire app. It plays once, at `SHOW_COMPLETED`, over a
+results screen the player reads in a few seconds. This closes open item 2.
+
+Measured before trimming, the clap builds from -28.8 dB RMS at 0 s to about
+-24 dB by 2 s and decays steadily after 8 s, so the first five seconds are the
+natural swell — starting later would have meant a hard onset mid-applause.
+
+```bash
+ffmpeg -i crowd_applause.wav -t 5.0 -af "afade=t=out:st=3.8:d=1.2" \
+  -c:a pcm_s16le -ar 44100 -ac 2 crowd_applause.wav
+```
+
+Result: 16-bit PCM, 44.1 kHz, stereo, **5.00 s, 882,078 bytes (0.84 MB)**, down
+from 6.59 MB. Licence and provenance unchanged — it is the same CC0 recording,
+shorter.
+
+- SHA-256 before: `0d3bfde5a050f3c5e6685bd7f1efc7ab1d289fbad65c88c1ce9b4691228c69c9`
+- SHA-256 after: `3b7c9f0ab7bc7c9927a368b2a1639e41eeaa0eb9d22c255c8cf51334d137c9c9`
+
+**On the "volume normalization" half of open item 2:** measured rather than
+assumed, and it turned out not to be the problem. All four one-shots already
+peak at 0.97-1.00, and EBU R128 integrated loudness cannot be measured on them
+at all — the gate needs 400 ms of content and `stick_whoosh`, `impact_thwack`
+and `beat_click` are 280, 310 and 90 ms. Relative loudness is therefore set by
+the `MIX` table in `game/audio/audioMix.ts`, which is where it has always been
+and where it is now assertable. No file was re-levelled.
 
 ### `stick_whoosh.wav`
 

@@ -14,7 +14,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { GROOVE_PAD, GROOVE_PULSE } from '../game/config/rhythm.ts';
+import { BEAT_BAR, BEAT_MARKERS, GROOVE_PAD, GROOVE_PULSE } from '../game/config/rhythm.ts';
 import { REFERENCE_CANVAS, STAGE } from '../game/config/stage.ts';
 import {
   COUNTDOWN_BOX,
@@ -22,6 +22,7 @@ import {
   GROOVE_PANEL_ROWS,
   HUD_MARGIN,
   HUD_TOP_HEIGHT,
+  PAD_SURFACE,
   padBoundingRect,
   rectsOverlap,
   targetCorridor,
@@ -391,4 +392,52 @@ test('the pause summary reads state and cannot mutate it', () => {
   meanAbsTimingErrorMs(rhythm);
 
   assert.deepEqual({ ...rhythm }, before);
+});
+
+test('the beat cue did not cost the pad surface M14.1 bought back', () => {
+  /*
+   * M14.1 cut the pad's SVG from 1920x1080 to a tight box around the ellipse,
+   * on a device whose tap responsiveness is *still* under an open retest. M16
+   * adds two moving cues to that same surface, and the standard cue — a ring
+   * converging from outside the pad — would have needed roughly twice the area
+   * back. That is why the markers converge inward instead.
+   *
+   * This test is the thing that keeps that decision honest: the surface is
+   * still exactly the ellipse plus its stroke margin, and any future cue that
+   * needs more room has to come and change this number on purpose.
+   */
+  assert.equal(PAD_SURFACE.width, GROOVE_PAD.halfWidthPx * 2 + 24);
+  assert.equal(PAD_SURFACE.height, GROOVE_PAD.halfHeightPx * 2 + 24);
+  assert.equal(PAD_SURFACE.x, GROOVE_PAD.centerX - GROOVE_PAD.halfWidthPx - 12);
+  assert.equal(PAD_SURFACE.y, GROOVE_PAD.centerY - GROOVE_PAD.halfHeightPx - 12);
+
+  // Everything M16 draws has to fit in it, at every point of the travel.
+  const startOffset = BEAT_MARKERS.startFraction * GROOVE_PAD.halfWidthPx;
+  const markerReach = startOffset + BEAT_MARKERS.widthPx / 2;
+  assert.ok(
+    GROOVE_PAD.centerX - markerReach >= PAD_SURFACE.x &&
+      GROOVE_PAD.centerX + markerReach <= PAD_SURFACE.x + PAD_SURFACE.width,
+    'a marker is drawn outside the surface it is drawn on',
+  );
+
+  const barReach = ((BEAT_BAR.beats - 1) / 2) * BEAT_BAR.spacingPx + BEAT_BAR.radiusPx * 1.35;
+  assert.ok(
+    GROOVE_PAD.centerX - barReach >= PAD_SURFACE.x &&
+      GROOVE_PAD.centerX + barReach <= PAD_SURFACE.x + PAD_SURFACE.width,
+    'the bar counter is drawn outside the surface',
+  );
+});
+
+test('nothing the beat cue draws reaches into the target corridor', () => {
+  // M13.1's rule, applied to the two things M16 adds: Groove feedback must not
+  // cover the lane the player is watching for glass.
+  const corridor = targetCorridor();
+  const barY = GROOVE_PAD.centerY + BEAT_BAR.offsetY - BEAT_BAR.radiusPx * 1.35;
+  assert.ok(
+    barY > corridor.y + corridor.height,
+    'the bar counter reaches up into the target corridor',
+  );
+
+  const markerTop = GROOVE_PAD.centerY - BEAT_MARKERS.heightPx / 2;
+  assert.ok(markerTop > corridor.y + corridor.height, 'a marker reaches into the corridor');
 });

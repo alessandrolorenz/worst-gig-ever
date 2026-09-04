@@ -50,6 +50,7 @@ interface OverlayProps {
   onRestart(): void;
   onNextStage(): void;
   onQuit(): void;
+  onToggleClick(): void;
 }
 
 function Button({
@@ -90,6 +91,29 @@ function Button({
         </Text>
       </View>
     </Pressable>
+  );
+}
+
+/**
+ * The beat-click switch (M16).
+ *
+ * The owner asked for the click across the whole game with a way to turn it
+ * off, so this is the whole of that: one control, in the two places a player
+ * is already stopped — the title and a paused round. Not a settings screen,
+ * which the milestone explicitly does not add.
+ *
+ * It states what is *true*, not what pressing it would do. "Click: on" reads
+ * correctly whether or not you are about to press it; "Turn click off" is a
+ * sentence about the future that is wrong the moment you have read it.
+ */
+function ClickToggle({ enabled, onPress }: { enabled: boolean; onPress(): void }) {
+  return (
+    <Button
+      label={enabled ? 'Click: on' : 'Click: off'}
+      onPress={onPress}
+      tone="secondary"
+      compact
+    />
   );
 }
 
@@ -219,6 +243,7 @@ export function Overlays(props: OverlayProps) {
         <View style={styles.buttonRowLayout}>
           <Button label="How to play" onPress={props.onShowBriefing} tone="secondary" compact />
           <Button label="Story" onPress={props.onReplayStory} tone="secondary" compact />
+          <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
         </View>
         {!audioAvailable && (
           <Text style={styles.warning}>
@@ -295,6 +320,7 @@ export function Overlays(props: OverlayProps) {
         <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
         <View style={styles.buttonRowLayout}>
           <Button label="Resume" onPress={props.onResume} />
+          <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
         </View>
       </View>

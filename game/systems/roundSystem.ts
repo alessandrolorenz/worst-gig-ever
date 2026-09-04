@@ -13,6 +13,9 @@ import { fitCanvas, screenToCanvas, type CanvasFit, type Viewport } from '../ren
 import type { GameState } from '../state/gameState.ts';
 import type { RoundEvent } from '../state/roundEvents.ts';
 import {
+  isPadPulsing,
+  pulseBeats,
+  pulseClockMs,
   resolveRhythmTap,
   tickRhythm,
   type BeatContext,
@@ -219,9 +222,26 @@ function applyEvents(entities: GameEntities, round: RoundState, events: RoundEve
  * is nothing (M11, "Rhythm miss behavior").
  */
 function applyRhythmEvents(entities: GameEntities, events: RhythmEvent[]): void {
-  const { audio } = entities.scene;
+  const { audio, flow } = entities.scene;
   for (const event of events) {
     if (event.type === 'BEAT_HIT') audio.playSfx('stickWhoosh');
+    /*
+     * The beat itself (M16). The owner's report was that the beats are not
+     * clear, and every cue the game had was visual — on the one screen the
+     * player must simultaneously scan for incoming glass.
+     *
+     * The switch is read *here*, at the point of playing a sound, and nowhere
+     * else. The domain emits `BEAT_PULSE` whether the click is on or off, so
+     * turning it off cannot change which beats exist, when their windows open,
+     * or what a tap is worth. Muting an output is not allowed to move a
+     * judgement, and putting the condition anywhere upstream of this line is
+     * how that guarantee would quietly stop being true.
+     *
+     * This is not audio synchronization. The sound is a consequence of the
+     * visual clock; nothing is ever read back from playback position into it
+     * (rhythm-pivot architecture, "Audio non-goal").
+     */
+    if (event.type === 'BEAT_PULSE' && flow.clickEnabled) audio.playSfx('beatClick');
   }
 }
 
@@ -304,6 +324,28 @@ export function roundSystem(entities: GameEntities, args: RoundSystemArgs): Game
   // The clock does not move in READY, PAUSED, or a terminal state, so this is
   // inert there without a rule of its own.
   rhythmEvents.push(...tickRhythm(rhythm, beatContext(round, previousState, grooveEnabled)));
+
+  /*
+   * The click's cursor, advanced off the *post-tick* state rather than the
+   * state the frame started in — the opposite of the judgement above, and for
+   * a concrete reason.
+   *
+   * On the tick that crosses `GO`, `beginPlaying` sets the state to PLAYING,
+   * zeroes `countdownMs`, and leaves `elapsedMs` at 0. Reading that frame as
+   * COUNTDOWN would send `pulseClockMs` the pre-roll branch with a countdown
+   * clock of 0, which is -2000 ms — the *first* count-in beat, replayed. The
+   * post-tick state reads it as 0 ms, which is `GO`, which is what actually
+   * just happened.
+   *
+   * Gated on the stage's Groove: a defense-only stage has no beat to click.
+   */
+  rhythmEvents.push(
+    ...pulseBeats(
+      rhythm,
+      pulseClockMs(round.state, round.elapsedMs, round.countdownMs),
+      grooveEnabled && isPadPulsing(round.state),
+    ),
+  );
 
   // Age only feedback that already existed. A slow preceding frame must not
   // consume a newly created strike/burst before it can be displayed once.

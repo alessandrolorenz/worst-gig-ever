@@ -29,6 +29,7 @@ import {
   returnToTitle,
   showBriefing,
   startStage,
+  toggleClick,
 } from '../state/appFlow.ts';
 import { advanceStory, clearStory, skipStory } from '../state/storyState.ts';
 import { clearRhythm } from '../state/rhythmState.ts';
@@ -148,6 +149,19 @@ export default function GameEngine() {
     refreshFlow();
   }, [entities, refreshFlow]);
 
+  /**
+   * The click switch (M16).
+   *
+   * It flips a flag on the flow and nothing else — no audio call, no round
+   * touched. `roundSystem` reads the flag at the moment it would play the
+   * sound, so this cannot get out of step with a round in progress and cannot
+   * affect one that is.
+   */
+  const handleToggleClick = useCallback(() => {
+    toggleClick(entities.scene.flow);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
   const handleBackToTitle = useCallback(() => {
     returnToTitle(entities.scene.flow);
     refreshFlow();
@@ -158,12 +172,15 @@ export default function GameEngine() {
    * round itself (M13.1). The music starts here rather than on `GO` because it
    * was never the rhythm clock and is not being made into one — it simply
    * plays under the count, exactly as it played under M10's count-in.
+   *
+   * The bed is the stage's own since M16: `grooveBed` under the stage that
+   * teaches the beat, the rock loop elsewhere.
    */
   const handleBeginRound = useCallback(() => {
     const scene = entities.scene;
     beginRound(scene.flow);
     startRound(scene.round);
-    audio.playMusic();
+    audio.playMusic(scene.stage.music);
     setUiState(scene.round.state);
     refreshFlow();
   }, [audio, entities, refreshFlow]);
@@ -289,6 +306,7 @@ export default function GameEngine() {
           onRestart={handleRestart}
           onNextStage={handleNextStage}
           onQuit={handleQuit}
+          onToggleClick={handleToggleClick}
         />
       </EngineComponent>
     </View>

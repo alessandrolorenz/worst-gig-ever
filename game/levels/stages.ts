@@ -22,7 +22,9 @@
  * round: `level01` is byte-for-byte the schedule the owner approved at M13.1
  * and M14, and everything M15 adds around it lives here instead.
  */
+import type { MusicKey } from '../audio/audioMix.ts';
 import { defenseDrill } from './defenseDrill.ts';
+import { findTheBeat } from './findTheBeat.ts';
 import { level01 } from './level01.ts';
 import type { LevelDefinition } from './levelDefinition.ts';
 
@@ -45,6 +47,15 @@ export interface StageDefinition {
    * would tell the player they had failed at a job they were never given.
    */
   readonly groove: boolean;
+  /**
+   * Which bed this stage plays (M16).
+   *
+   * Per stage rather than one track for the game, because the stages stopped
+   * wanting the same thing the moment one of them existed to *teach* the beat.
+   * A stage that scores beats wants a bed that agrees with the beat clock; a
+   * stage that scores none can play anything.
+   */
+  readonly music: MusicKey;
   /** The briefing card, one bullet per line, in the order they are read. */
   readonly briefing: readonly string[];
 }
@@ -65,36 +76,83 @@ const stageOne: StageDefinition = {
   subtitle: 'Defense only',
   level: defenseDrill,
   groove: false,
+  /*
+   * The rock loop, and its 417 ms-per-loop drift against 90 BPM does not
+   * matter here: no beat is scheduled, scored, or missed on this stage, so
+   * there is no clock for the music to disagree with.
+   */
+  music: 'showTheme',
   briefing: [
     'The crowd is throwing what it was drinking.',
     'Tap a bottle or a mug to smash it before it reaches your kit.',
     'Three things get through and the show is over.',
-    'No beat to keep yet. Just defend.',
+    'No beat to keep yet. That is the next stage. Just defend.',
   ],
 };
 
 /**
- * Stage 2 — both jobs at once.
+ * Stage 2 — the other job, on its own (M16).
  *
- * The validated round, unchanged. Its briefing names only what is *new*, since
- * the player has just spent a stage doing the rest.
+ * M15 taught the objects and then asked for both jobs at once, which meant the
+ * first round that ever asked the player to keep time was also the first round
+ * that asked them to do it under pressure. This is the missing middle step,
+ * and it is where the teaching order the owner asked for is actually
+ * satisfied: objects, then beats, then both.
+ *
+ * The Groove is on, and for twelve seconds it is the only thing on screen.
  */
 const stageTwo: StageDefinition = {
-  id: 'stage-2-groove',
+  id: 'stage-2-beat',
   number: 2,
+  name: 'Find the beat',
+  subtitle: 'Groove first',
+  level: findTheBeat,
+  groove: true,
+  /*
+   * The generated 90 BPM bed. This is the one stage where the music absolutely
+   * must not drift — twelve of its thirty-five seconds are nothing but the
+   * beat, and a bed sliding out of phase underneath would teach the player the
+   * opposite of the lesson.
+   */
+  music: 'grooveBed',
+  briefing: [
+    'You are the drummer. Before anything gets thrown, find the beat.',
+    'Two marks slide together on the pad. Tap the pad when they touch.',
+    'Count it: one, two, three, four.',
+    'Bottles start halfway through — smash them, or the show is over.',
+  ],
+};
+
+/**
+ * Stage 3 — both jobs at once.
+ *
+ * The validated round, unchanged. Its briefing names only what is *new*, since
+ * the player has now spent two stages doing the rest.
+ */
+const stageThree: StageDefinition = {
+  id: 'stage-3-groove',
+  number: 3,
   name: 'Keep the beat',
   subtitle: 'Groove + defense',
   level: level01,
   groove: true,
+  /*
+   * Still the rock loop, and this is the **one open piece of M16**: the show
+   * scores beats, so its bed should be tempo-locked too, and this one is not.
+   * The click carries the beat here in the meantime. Replacing it is a music
+   * choice that belongs to the owner rather than to a generator — see
+   * `docs/specs/M16-beat-clarity-and-progressive-teaching.md`, section E.
+   */
+  music: 'showTheme',
   briefing: [
-    'You are the drummer, so now you have to actually drum.',
-    'Tap the pulsing pad on the drum head, on every beat.',
-    'Keep smashing the bottles at the same time.',
+    'Now both jobs at once, and the crowd has warmed up.',
+    'Keep the beat on the pad while you smash what comes at the kit.',
     'A missed beat costs you the streak. A missed bottle costs the show.',
+    'Someone may get in your way. Deal with them.',
   ],
 };
 
-export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo];
+export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo, stageThree];
 
 /** The stage the game opens on. */
 export const FIRST_STAGE_INDEX = 0;
