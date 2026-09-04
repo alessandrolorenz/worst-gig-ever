@@ -499,10 +499,26 @@ reading, audio and the new stages and is explicitly not fine for judging frame
 pacing or tap latency (open item 5). **The M14.1 performance retest is still
 open and still needs a release build.**
 
-Not yet answered by this session, and worth asking before the next milestone:
-whether the click helps or nags across a whole round, whether the Encore reads
-as a climax or as noise, and whether the bar counter is now countable rather
-than merely visible.
+**All three follow-ups answered by the owner, same session:**
+
+1. **The click helps.** It stays on by default; the toggle stays for the player
+   who disagrees.
+2. **The bar counter is countable**, not merely visible — which is the whole
+   distinction the browser round could not settle and the reason the unlit
+   marks were raised from 0.22 to 0.5.
+3. **The Encore reads as challenging**, which is what it was for.
+
+The owner also flagged M18 ahead of time: *"pode ficar estranho quando ele for
+beber a cerveja."* Measured, and the risk sits somewhere other than where it
+looks — see `docs/specs/M18-mug-drink-reaction.md`. The **Encore is safe**: no
+two mugs ever arrive closer than 746 ms, comfortably outside the 480 ms drink.
+It is the **show** that lands two mugs 163 ms apart, twice a round. So M18 now
+specifies that a second mug mid-drink **cuts to the payoff frame** rather than
+restarting from the catch — restarting would show two beginnings and no
+punchline in exactly the two cases per round that matter.
+
+At one mug every 3.5 s in both rounds, the animation occupies about 14% of a
+round. A running gag, not a takeover.
 
 ### Browser round run, one defect found
 

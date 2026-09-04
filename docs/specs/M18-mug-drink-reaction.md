@@ -80,11 +80,41 @@ Drawn in the foreground, in the drummer's own view, as their hand and forearm:
 | 2 | `mug_drink_02_raise.png` | brought up and in, foam moving |
 | 3 | `mug_drink_03_drink.png` | tipped toward the camera, drinking, the base of the mug facing the player |
 
-120 ms per frame, then a 120 ms fade — **480 ms total**. Comfortably shorter
-than the shortest possible gap between two mugs (their fast window floors at
-1350 ms), so the animation never becomes a queue.
+120 ms per frame, then a 120 ms fade — **480 ms total**.
 
-**One slot.** A second mug hit restarts the animation rather than stacking.
+### Measured, because the owner flagged it
+
+Owner, after playing M16/M17 on device on 2026-09-04: *"pode ficar estranho
+quando ele for beber a cerveja."* Right instinct, and the measurement puts the
+risk somewhere other than where it looks:
+
+| | Show (`level01`) | Encore |
+|---|---|---|
+| mugs per round | 17 | 13 |
+| one every | 3.5 s | 3.5 s |
+| **closest two arrivals** | **163 ms** | **746 ms** |
+| pairs closer than the 480 ms drink | **2 of 16** | 0 of 12 |
+
+So the **Encore is safe** — no two mugs ever arrive closer than 746 ms, and its
+density never interrupts a drink. It is the **show** that can land two mugs
+163 ms apart, twice a round. The denser stage is the one with room, because
+the Encore leans on bottles and volleys while the show mixes mugs in more
+evenly.
+
+At one mug every 3.5 s the animation occupies about **14% of a round** in both.
+That is a running gag, not a takeover.
+
+### One slot, and it cuts to the punchline
+
+A second mug landing during a drink **jumps to frame 3** rather than restarting
+from the catch. Restarting would mean that in exactly the two cases a round
+gets a rapid pair, the player sees two beginnings and no payoff — the one shape
+of interruption that costs the joke instead of telling it. Cutting forward
+keeps the mug-at-the-camera frame, which is the whole point of the animation.
+
+The other kind of "weird" is worth naming and keeping: the drummer calmly
+drinking while glass is still in the air *is* the joke. The game is called
+Worst Gig Ever. It should look slightly wrong.
 
 ### C. Where it is drawn
 
@@ -162,7 +192,8 @@ Manifest: three entries in `assets/manifest/asset-manifest.json`,
    their pre-M18 values on a replayed seed; only the score differs, and only by
    `drinkBonus` per mug;
 4. the drink rect intersects neither `padBounds()` nor the lane corridor;
-5. a second mug within 480 ms restarts one animation and never runs two;
+5. a second mug within 480 ms runs one animation, never two, and cuts to the
+   payoff frame rather than restarting from the catch;
 6. the drink frames are excluded from the loop-continuity gate and present in
    the manifest;
 7. the animation and its SFX are cleared on quit, restart, and unmount

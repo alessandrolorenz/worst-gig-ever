@@ -27,7 +27,10 @@ a mug stays exactly what it was.
 1. **Stop breaking mugs.** On `TARGET_HIT` with `kind === 'beerMug'`: no glass
    shards, no `glassBreak`. The impact burst stays.
 2. **Three-frame POV drink**, 120 ms per frame plus a 120 ms fade — 480 ms
-   total. One slot; a second mug restarts it rather than stacking. Presentation
+   total. One slot; a second mug landing mid-drink **cuts to frame 3** rather
+   than restarting from the catch, so the payoff always lands. The show throws
+   two mugs closer than 480 ms apart twice a round (measured; the Encore never
+   does), and those are exactly the cases a restart would spoil. Presentation
    state only, aged in elapsed ms, cleared by `clearEffects`.
 3. **Placement**, bottom-right, proposed rect x 1380–1900 / y 640–1080. It must
    intersect neither `padBounds()` (x 640–1280, y 865–1075) nor the central
