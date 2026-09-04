@@ -30,9 +30,24 @@ signing key, so one installs over the other).
 | --- | --- | --- | --- |
 | `9d1dd65c-8c08-411b-80d4-aa89098df279` | 1.0.3 | M14.1 only, **no M15** | [apk](https://expo.dev/artifacts/eas/--xeDgVDdNhyNOsG_gWwV138fLjzO0Doco0U2R7Hvz4.apk) |
 | `62edf299-c0bb-4f5a-8512-22980fdfe64b` | **1.0.4** | M14.1 + M15, commit `5df6f0b` | [apk](https://expo.dev/artifacts/eas/pji0xP0kt4ebfNrLkbuspc8N7CFJGsxDoBR6lrlI6wA.apk) |
+| `f397efc9-954b-4b16-bea1-e28287440a64` | **1.1.0** | **the closed MVP** — all four stages, commit `c749f1f` | [apk](https://expo.dev/artifacts/eas/WdW0g-bfHBBVxgNyqv5rxHVhns3P6-dGO1H8NkLixuI.apk) |
 
 Both requested by the owner on 2026-09-03 and both finished. 1.0.4 is 126 MB
 and was built in ten minutes.
+
+**1.1.0 is the MVP-complete build**, requested by the owner on 2026-09-04 after
+he closed the MVP, and built in 11 minutes. It is the first EAS build since
+1.0.4 and the first one that contains M16, M17 and M18 at all.
+
+Two things about it are worth knowing before it is handed to anyone:
+
+- **EAS assigned it `versionCode` 1**, the same as 1.0.3 and 1.0.4, because
+  `cli.appVersionSource` is not set and remote versioning started over. They
+  install over each other on the shared signing key, so this is harmless today
+  and would not be in a store. Setting `appVersionSource` is v2 work.
+- **`RECORD_AUDIO` is still declared** in `app.json` and the game never
+  records. Left in deliberately so this APK is the build the owner approved,
+  rather than an untested variation of it. It moves before any submission.
 
 ### Local release builds — no EAS, no cost, no queue
 

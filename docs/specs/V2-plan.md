@@ -1,130 +1,135 @@
-# V2 — what comes after the MVP
+# V2 — Internationalization
 
 **Status:** proposed, 2026-09-04. Nothing here is started.
-**Decision needed before any of it:** what v2 is *for*. See the fork below.
+**Owner decision:** *"o foco da v2 será a internacionalização."*
 
-## Where the MVP left things
+## What this actually costs here
 
-Four stages, approved on device, closed on 1.0.11. Performance passed on a
-release build. Every mechanic the game has works and has been played.
+Surveyed rather than estimated, because the cost of i18n is almost entirely
+decided by two things — how the strings are stored, and whether text is baked
+into art.
 
-What the MVP is **not**: it has no memory. Nothing survives a cold start — no
-high score, no stage progress, no settings but the click toggle for one
-session. A player finishes the Encore and the game has no answer for what
-happens next. That is the honest gap between "the mechanics are fun" and "this
-is a game someone plays twice."
+| | State | Consequence |
+|---|---|---|
+| UI strings | **Hardcoded literals**, ~88 in `Overlays.tsx` alone, plus `stages.ts` briefings, `storyState.ts` captions, HUD and countdown labels | Every one has to be extracted. Mechanical, large, low-risk. |
+| i18n library | **None.** No `expo-localization`, no catalogue, no locale detection | Has to be introduced. One new dependency. |
+| Art with text | **One file.** `01_poster.jpg` has "WORST GIG EVER" hand-lettered into it, plus a background "BAR" sign | See below — cheap if the title stays English. |
+| Everything else in art | **Text-free**, because the V2 style bible forbids text, logos and readable branding (rule 12) | 33 production assets need no work at all. This is the expensive thing the project already avoided. |
+| Story | Five stills with **runtime captions**, not baked text | Translatable as strings. |
 
-## The fork, and it changes the order of everything
+**The art is the good news.** The one rule that looked like an art constraint —
+no text, no branding — is what makes this a string project rather than an
+asset-regeneration project.
 
-**Is v2 aimed at a store, or at more game?**
+### The title should not be translated
 
-- **Store.** Then the unglamorous work goes first, because two of the debts get
-  strictly more expensive with every person who installs a build, and one of
-  them invalidates every installed copy when it lands.
-- **More game.** Then persistence and content go first, the identity migration
-  waits, and v2 is judged on whether anyone plays it twice.
+`01_poster.jpg` is the only art that would need regenerating, and only if
+*Worst Gig Ever* becomes *Pior Show da História*. It should not. The title is
+the game's name and its store identity; translating it fragments the thing
+people search for and costs an art regeneration per locale. The background
+"BAR" sign reads the same in Portuguese and Spanish anyway.
 
-I recommend **store-shaped, in the order below** — not because a launch is
-urgent, but because the two blocking debts are cheapest to pay *now*, while the
-installed base is one phone, and neither gets easier by waiting. Content added
-on top of an unmigrated identity is content that has to be re-signed later.
+Recommendation: **the title stays English in every locale.** Everything else
+translates.
 
-## Recommended order
+## The bug that is about to happen four more times
 
-### M19 — Release identity (ADR 0010)
+On 2026-09-04 stage 1's briefing overflowed its card: about 300 px of content
+in a 150 px scroll with the indicator off, so the mug rule was on screen and
+unreadable. It was fixed by raising the scroll and shortening the copy.
 
-**The one whose cost only goes up.** The launcher says *Worst Gig Ever*; the
-Expo slug (`worst-band-ever`), the linked EAS project, the GitHub repository
-and `com.worstbandever.app` all still say the old name. Migrating means new
-signing credentials against the final package name, which **invalidates every
-installed build**.
+**That fix does not survive translation.** Portuguese runs roughly 15–25%
+longer than English for the same meaning; German and French are worse. Stage 1
+now fits its 200 px card *in English*, with little to spare. In pt-BR it
+overflows again, and the failure mode is silent — text that does not fit is
+absent and looks exactly like text that was never written.
 
-Right now that costs one reinstall on one phone. After any wider distribution
-it costs everyone's save data and everyone's patience — and after M21 below,
-there *is* save data to lose.
+This is the single most important thing i18n changes about this codebase, and
+it is a layout problem rather than a translation problem. **Every text surface
+has to become length-independent instead of tuned to English.** That is M20,
+and it is where the real work is.
 
-Not a player-facing milestone. Do it while it is free.
+## Order
 
-### M20 — Music on the beat clock
+### M19 — The locale layer
 
-**The owner already decided this and it is still open**: *"Drift is not
-accepted."* The game is a rhythm game whose music does not agree with its
-rhythm — the pad pulses at 90 BPM off gameplay time while the bed loops on its
-own clock, slipping about 417 ms per loop and landing in antiphase after two.
-Playtests have been told to ignore it.
+Every user-visible string into a catalogue, keyed and typed, with locale
+detection and an explicit in-game language switch. **No translations yet** —
+this milestone ends with the game running in English out of a catalogue,
+looking identical, with a test that fails if any user-visible literal is left
+behind.
 
-Open item 13 held this back on the grounds that syncing was "only worth
-building if the visual mechanic proves fun". **It proved fun.** The condition
-is met and the reason to wait is gone.
+The switch matters as much as the detection: the owner tests on one phone, and
+a language you cannot select is a language you cannot check.
 
-Every stage with a beat gets a bed whose loop is a whole number of 90 BPM
-beats. This is also the moment to fix the audio weight: `crowd_applause.wav` is
-still the untrimmed 39 s / 6.9 MB source and the five effects are not volume
-normalized (open item 2).
+### M20 — Layout that survives translation
 
-Biggest single quality jump available, and the only one that improves the thing
-the game is actually about.
+The milestone the briefing bug demands. Every text surface — briefing cards,
+results, title, story captions, HUD, buttons — measured against a **pseudo-
+locale** that is deliberately 30–40% longer than English, and required to stay
+readable without silent clipping.
 
-### M21 — Memory
+Concretely: the briefing card stops being a 200 px scroll with hand-trimmed
+copy and starts being a container that adapts, and the tests that guard it stop
+using an English character budget.
 
-High score and best combo per stage, stage completion, and the click toggle,
-surviving a cold start. Small, and it is what turns four rounds into a game
-with a reason to play them again.
+Do this **before** translating, not after. Translating into a layout that
+cannot hold it produces four broken languages instead of one.
 
-One constraint carried from M15 and not negotiable: **session progress must
-never gate a cold start.** Every stage stays reachable from the title on a
-fresh install; persistence records what happened, it does not lock anything.
+### M21 — The languages
 
-Deliberately *not* in scope: leaderboards, accounts, cloud sync. Local storage
-only.
+pt-BR first — it is the owner's own language, so it is the only one that can be
+judged rather than trusted. Others after, and each one is cheap once M19 and
+M20 exist.
 
-### M22 — Store readiness
+Open question below on which.
 
-The remaining debts, none of which are interesting and all of which are
-required:
+### M22 — Release identity (ADR 0010)
 
-- **`RECORD_AUDIO`** is declared in `app.json` and the game never records.
-- **`package-lock.json` is git-ignored** by the template, so dependency
-  resolution is not reproducible across machines — this already caused one
-  autolinking failure (ADR 0006).
-- Store assets: icon set, screenshots, description, privacy policy.
-- A **production** build profile run end to end, which has never been done.
+Must land **before v2 ships**, and the reason is now stronger than it was.
 
-### M23 — Content
+The launcher says *Worst Gig Ever*; the Expo slug (`worst-band-ever`), the EAS
+project, the GitHub repository and `com.worstbandever.app` still say the old
+name. Migrating means new signing credentials against the final package name,
+which **invalidates every installed build**.
 
-Only after the above, and only if v2 is still alive. More stages, more object
-kinds, a real ending rather than a summary card. Unscoped on purpose: what to
-build here depends on what M21 reveals about whether anyone replays it.
+Internationalizing a game is a decision to reach more people. Every one of them
+installs a build that the migration would later invalidate. Today it costs one
+reinstall on one phone; after v2 ships it costs the audience v2 was built to
+reach. It is not part of i18n and it is not optional to sequence.
 
-## Held back, with reasons
+## Not in v2, and why
 
-These are not rejected. Each is a separate decision with its own playtest.
-
-| | Why it is waiting |
+| | |
 |---|---|
-| **Drinking restores Show Integrity** | Thematically perfect and a direct change to the loss condition of a validated round. The owner asked for points, not health. |
-| **Drinking too much blurs the pad** | Funny, and a difficulty mechanic wearing a costume. |
-| **`level01` retune (M17.1)** | The owner is *leaning* yes and said so — *"acho que sim, nao estou certo"*. Retuning the validated round makes every earlier device observation incomparable, so it needs the measured before/after table and one explicit answer, not a leaning. |
-| **Hermes** | Named as the lever *if* performance failed. It did not. An optimization nobody has asked for, and it wants its own comparison. |
-| **A real art sequence gate** | `measure:art` is structurally blind to the drink frames; they were measured by hand. Worth fixing the next time a sequence is authored, not before. |
+| **Music on the beat clock** | The owner already decided this — *"drift is not accepted"* — and open item 13's condition ("only worth building if the mechanic proves fun") is met. It is the biggest quality jump available and it has nothing to do with i18n. It should be its own milestone, before or after v2, but not folded in. |
+| **Memory** | Nothing survives a cold start today — no high score, no progress. Real gap, unrelated to i18n. |
+| **Store readiness** | `RECORD_AUDIO` is declared and unused, `package-lock.json` is git-ignored, `crowd_applause.wav` is the untrimmed 6.9 MB source. All required for a store, none for v2. |
+| **Integrity healing, drunk meter** | Deferred at M18 with reasons; each needs its own playtest. |
+| **`level01` retune (M17.1)** | Owner is leaning yes — *"acho que sim, nao estou certo"* — and it makes every past device observation incomparable when it lands. Better decided than carried. |
+| **Hermes** | Named as the lever *if* performance failed. It passed. |
 
-## What I would cut
+## What I would not do
 
-**The `+25` flourish is not coming back**, and the same reasoning should be
-applied to anything proposed for the HUD in v2: feedback placed next to the
-thing it is about competes with it and loses. The game reads well because very
-little is on the screen.
+**Do not machine-translate and ship.** The game's voice is its whole
+personality — *"One night only. Nobody asked for it."*, *"You kept the groove
+alive. Somehow."* A literal translation of those lines produces a game that is
+correct and not funny, which is worse than English. pt-BR should be written by
+the owner, not generated; the other locales should at minimum be reviewed by
+someone who would laugh at them.
 
-**No leaderboards, no accounts, no ads in v2.** Each one is a product decision
-with a support burden, and none of them makes the game better at what the
-owner has said he likes about it.
+**Do not add a HUD flourish for the language switch.** It belongs on the title
+and in the pause overlay, nowhere else.
 
-## Open questions only the owner can answer
+## Open questions
 
-1. **Store or more game?** Everything above assumes store-shaped. Say
-   otherwise and M21 and M23 move to the front.
-2. **Is the Encore the ending?** The game currently stops. Whether v2 needs a
-   real ending is a content question with a real cost.
-3. **`level01` retune — yes or no?** It has been a leaning since M17 and it
-   blocks nothing, but it makes every past measurement incomparable the moment
-   it lands, so it is better decided than carried.
+1. **Which languages?** pt-BR is certain. Spanish is the cheapest next reach;
+   English is already there. Every added locale is ongoing cost on every copy
+   change, so this is a commitment, not a checkbox.
+2. **Does the title translate?** Recommended no — see above. Saying yes costs
+   an art regeneration of `01_poster.jpg` per locale and a store identity per
+   market.
+3. **Who writes pt-BR?** Recommended: the owner, because the jokes are the
+   product. If it is me, the lines need reviewing rather than accepting.
+4. **Does the music sync land before or after v2?** It is decided, unbuilt, and
+   unrelated — but it is the largest single improvement still on the table.
