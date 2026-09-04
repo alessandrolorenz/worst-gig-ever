@@ -9,13 +9,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  RESULTS_ARM_MS,
   createRound,
   resolveTap,
+  resultsArmed,
   startRound,
   targetViews,
   tickRound,
   type RoundState,
 } from '../game/state/roundState.ts';
+import { STAGES } from '../game/levels/stages.ts';
 import { DRINK_MIN_CLOSENESS, TARGET_DEFINITIONS } from '../game/config/targets.ts';
 import { SCORING } from '../game/config/scoring.ts';
 import { countdownDurationMs, padBounds } from '../game/config/rhythm.ts';
@@ -35,10 +38,18 @@ import {
   tickEffects,
 } from '../game/systems/effects.ts';
 
+/**
+ * A round at the first frame of actual play.
+ *
+ * Frame-sized steps, not one big tick: `tickRound` clamps a delta to
+ * `MAX_TICK_DELTA_MS`, so a single call asking for the whole pre-roll advances
+ * 100 ms and leaves the round in COUNTDOWN.
+ */
 function playing(): RoundState {
   const state = createRound();
   startRound(state);
-  tickRound(state, countdownDurationMs());
+  for (let left = countdownDurationMs(); left > 0; left -= 16) tickRound(state, 16);
+  assert.equal(state.state, 'PLAYING');
   return state;
 }
 
@@ -226,4 +237,62 @@ test('M18: the drink is drawn clear of the groove pad and the centre lanes', () 
     DRINK_RECT.y + DRINK_RECT.height >= 1080,
     'the arm must run off the bottom of the screen',
   );
+});
+
+/**
+ * M18.1: the results screen lands under the finger that is still drumming.
+ *
+ * A stage ends abruptly and the button row sits in the lower centre, over the
+ * groove pad. The owner skipped a stage this way on the 1.0.6 device build.
+ */
+test('M18.1: the results buttons are deaf until the screen settles', () => {
+  const state = playing();
+
+  // Let the kit take its three hits — nothing is tapped, so the show falls.
+  for (let guard = 0; guard < 20_000 && state.state === 'PLAYING'; guard += 1) {
+    tickRound(state, 16);
+  }
+  assert.equal(state.state, 'SHOW_RUINED');
+
+  assert.equal(state.settledMs, 0, 'the settle clock starts the instant the show ends');
+  assert.equal(resultsArmed(state), false, 'a tap arriving with the last beat must not land');
+
+  // Frame-sized steps: a single huge tick is clamped to MAX_TICK_DELTA_MS.
+  let elapsed = 0;
+  while (elapsed < RESULTS_ARM_MS - 16) {
+    tickRound(state, 16);
+    elapsed += 16;
+  }
+  assert.equal(resultsArmed(state), false, 'still settling just before the threshold');
+
+  tickRound(state, 32);
+  assert.equal(resultsArmed(state), true, 'and armed once the delay has passed');
+});
+
+test('M18.1: the settle clock does not run while the round is still being played', () => {
+  const state = playing();
+  tickRound(state, 16);
+  tickRound(state, 16);
+  assert.equal(state.state, 'PLAYING');
+  assert.equal(state.settledMs, 0, 'a live round is never "settling"');
+});
+
+test('M18.1: the mug rule is taught with pictures on the stage that introduces it', () => {
+  // Stage 1 is where a mug is first thrown, so it is where the two outcomes
+  // have to be explained — in words and, because one object behaving two ways
+  // is hard to write, in pictures.
+  const first = STAGES[0];
+  assert.ok(
+    first.briefing.some((line) => /drink/i.test(line)),
+    'the briefing must say a mug can be drunk',
+  );
+  assert.ok(first.briefingFigures, 'stage 1 must carry briefing pictures');
+  assert.deepEqual(
+    first.briefingFigures.map((figure) => figure.id),
+    ['smash', 'drink'],
+    'both outcomes are shown, in the order they are explained',
+  );
+  for (const figure of first.briefingFigures) {
+    assert.ok(figure.caption.trim().length > 0, `${figure.id} needs a caption`);
+  }
 });

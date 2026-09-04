@@ -109,11 +109,27 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
  * `STAGE.farDepth` at 4.2 the two diverge hard: at progress 0.60 a mug has
  * crossed only 26% of the visible distance, so a time gate would put the
  * drummer's forearm on screen to catch an object still up near the vanishing
- * point. 0.5 closeness is progress 0.808 — the mug at 62% of full size,
- * y 655 — and leaves 346-452 ms to land the hit on a normal mug, 260-298 ms
- * on a fastball.
+ * point.
+ *
+ * **Lowered from 0.5 to 0.35 after the first device build** (owner: *"pode
+ * acontecer um pouco antes, senão os mais afobados nunca vão nem ver"*). At
+ * 0.5 the drink only existed in the last 19% of the flight, so a player who
+ * taps as soon as a mug is reliably hittable — which the forgiveness rules
+ * actively encourage — never saw the animation at all, and the gag was gated
+ * behind a patience most players do not have.
+ *
+ * | | 0.5 (first build) | **0.35 (now)** |
+ * |---|---|---|
+ * | progress | 0.808 | **0.693** |
+ * | mug size | 62% | **50%** |
+ * | window, normal mug | 346-452 ms | **552-721 ms** |
+ * | window, fastball | 260-298 ms | **414-475 ms** |
+ *
+ * Roughly 60% more time to land the drink, with the mug still at half size and
+ * plainly on its way in rather than a speck at the vanishing point. 0.3 is the
+ * next stop if the hasty still miss it.
  */
-export const DRINK_MIN_CLOSENESS = 0.5;
+export const DRINK_MIN_CLOSENESS = 0.35;
 
 /**
  * Hit-resolution forgiveness (M5A, Priority 1).

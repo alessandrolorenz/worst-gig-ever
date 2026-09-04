@@ -11,22 +11,40 @@
  * them: story, title, briefing, then the round's own overlays.
  */
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
 
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
 import { THEME } from './theme.ts';
+import { MUG_DRINK_ART, TARGET_ART } from './artAssets.ts';
+
+/**
+ * Briefing pictures, resolved here rather than in `stages.ts` — a stage
+ * definition names what the player is taught, not which PNG says it.
+ *
+ * Both are art the game already ships, so the explanation shows the player the
+ * exact objects they are about to see rather than a diagram of them.
+ */
+const BRIEFING_FIGURE_ART: Record<BriefingFigureId, number> = {
+  smash: TARGET_ART.beerMug,
+  drink: MUG_DRINK_ART[1],
+};
 import { StoryIntro } from './StoryIntro.tsx';
 import type { GameState } from '../state/gameState.ts';
 import type { AppFlowState } from '../state/appFlow.ts';
 import { isStageCleared } from '../state/appFlow.ts';
 import type { StoryState } from '../state/storyState.ts';
-import { STAGES, hasNextStage, type StageDefinition } from '../levels/stages.ts';
+import {
+  STAGES,
+  hasNextStage,
+  type BriefingFigureId,
+  type StageDefinition,
+} from '../levels/stages.ts';
 import {
   judgedBeats,
   meanAbsTimingErrorMs,
   type RhythmState,
 } from '../state/rhythmState.ts';
-import type { RoundState } from '../state/roundState.ts';
+import { resultsArmed, type RoundState } from '../state/roundState.ts';
 
 interface OverlayProps {
   flow: AppFlowState;
@@ -59,22 +77,28 @@ function Button({
   tone = 'primary',
   icon = false,
   compact = false,
+  disabled = false,
 }: {
   label: string;
   onPress(): void;
   tone?: 'primary' | 'secondary';
   icon?: boolean;
   compact?: boolean;
+  /** Drawn, readable, and deaf. Used while the results screen is settling. */
+  disabled?: boolean;
 }) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={disabled ? undefined : onPress}
+      disabled={disabled}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
       style={({ pressed }) => [
         styles.button,
         tone === 'secondary' && styles.buttonSecondary,
         compact && styles.buttonCompact,
-        pressed && styles.buttonPressed,
+        pressed && !disabled && styles.buttonPressed,
+        disabled && styles.buttonDisabled,
       ]}
     >
       <View style={styles.buttonRow}>
@@ -272,6 +296,21 @@ export function Overlays(props: OverlayProps) {
           contentContainerStyle={styles.briefingList}
           showsVerticalScrollIndicator={false}
         >
+          {stage.briefingFigures !== undefined && (
+            <View style={styles.figureRow}>
+              {stage.briefingFigures.map((figure) => (
+                <View key={figure.id} style={styles.figure}>
+                  <Image
+                    source={BRIEFING_FIGURE_ART[figure.id]}
+                    style={styles.figureArt}
+                    resizeMode="contain"
+                    fadeDuration={0}
+                  />
+                  <Text style={styles.figureCaption}>{figure.caption}</Text>
+                </View>
+              ))}
+            </View>
+          )}
           {stage.briefing.map((line) => (
             <View key={line} style={styles.briefingItem}>
               <Text style={styles.briefingBullet}>▸</Text>
@@ -329,6 +368,7 @@ export function Overlays(props: OverlayProps) {
 
   const complete = state === 'SHOW_COMPLETE';
   const nextStageWaiting = complete && hasNextStage(flow.stageIndex);
+  const armed = resultsArmed(round);
 
   return (
     <View style={styles.scrim}>
@@ -337,13 +377,26 @@ export function Overlays(props: OverlayProps) {
       </Text>
       <Text style={styles.body}>{outcomeLine(stage, complete, nextStageWaiting)}</Text>
       <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
+      {/**
+       * The buttons are drawn immediately and deaf for a moment (M18.1).
+       *
+       * A stage ends abruptly, and this row lands in the lower centre — over
+       * the groove pad the player's finger is already tapping. The next tap of
+       * a beat that no longer exists was landing on "Next stage" and skipping
+       * a stage nobody chose to leave. The score is readable the whole time;
+       * only the presses wait.
+       */}
       <View style={styles.buttonRowLayout}>
         {nextStageWaiting ? (
-          <Button label="Next stage" onPress={props.onNextStage} />
+          <Button label="Next stage" onPress={props.onNextStage} disabled={!armed} />
         ) : (
-          <Button label={complete ? 'Play again' : 'Retry stage'} onPress={props.onRestart} />
+          <Button
+            label={complete ? 'Play again' : 'Retry stage'}
+            onPress={props.onRestart}
+            disabled={!armed}
+          />
         )}
-        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon disabled={!armed} />
       </View>
     </View>
   );
@@ -487,6 +540,21 @@ const styles = StyleSheet.create({
   },
   /* Scrolls rather than grows, so a longer briefing can never clip a button. */
   briefingScroll: { maxHeight: 150, alignSelf: 'stretch' },
+  /*
+   * Inside the scroll, so pictures cost the bullets nothing on the 411 dp
+   * viewport the whole results stack is measured against — the list scrolls
+   * rather than the card growing.
+   */
+  figureRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 8 },
+  figure: { alignItems: 'center', width: 128 },
+  figureArt: { width: 72, height: 62 },
+  figureCaption: {
+    color: THEME.hudDim,
+    fontSize: 10,
+    lineHeight: 13,
+    textAlign: 'center',
+    paddingTop: 3,
+  },
   briefingList: { alignItems: 'center', paddingBottom: 4 },
   briefingItem: {
     flexDirection: 'row',
@@ -566,6 +634,9 @@ const styles = StyleSheet.create({
   },
   buttonCompact: { minWidth: 150, paddingHorizontal: 20, paddingVertical: 8 },
   buttonPressed: { opacity: 0.75 },
+  /* Visibly not-yet-pressable, rather than invisible or absent: the player
+     should see the button arrive and understand it is settling. */
+  buttonDisabled: { opacity: 0.4 },
   buttonRow: {
     flexDirection: 'row',
     alignItems: 'center',

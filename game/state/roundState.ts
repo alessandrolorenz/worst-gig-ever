@@ -113,6 +113,16 @@ export interface RoundState {
    * zero and only goes forward.
    */
   countdownMs: number;
+  /**
+   * How long the round has been over, in ms (M18.1).
+   *
+   * A stage ends abruptly and the results buttons land in the lower centre —
+   * which is exactly where the player's finger already is, tapping the groove
+   * pad. Without this the first tap of the beat after the last one becomes
+   * "Next stage", and the player skips a stage they never chose to leave.
+   * Holds at 0 until the round reaches a terminal state.
+   */
+  settledMs: number;
   score: number;
   combo: number;
   bestCombo: number;
@@ -146,6 +156,7 @@ export function createRound(level: LevelDefinition = level01): RoundState {
     stateBeforePause: null,
     elapsedMs: 0,
     countdownMs: 0,
+    settledMs: 0,
     score: SCORING.startingScore,
     combo: SCORING.startingCombo,
     bestCombo: 0,
@@ -159,6 +170,20 @@ export function createRound(level: LevelDefinition = level01): RoundState {
     vocalist: { status: 'idle', triggered: false, startedAtMs: null, hitAtMs: null },
     rng: createRng(level.randomSeed),
   };
+}
+
+/**
+ * How long the results screen refuses its own buttons (M18.1).
+ *
+ * Long enough to outlast the tap already travelling toward the pad when the
+ * stage ended, short enough that a player who *means* to press Next never
+ * notices it. The score is readable the whole time — only the buttons wait.
+ */
+export const RESULTS_ARM_MS = 900;
+
+/** Whether the results buttons may be pressed yet. */
+export function resultsArmed(state: RoundState): boolean {
+  return state.settledMs >= RESULTS_ARM_MS;
 }
 
 /** The combo multiplier for a given combo count (M1, Score). */
@@ -241,6 +266,7 @@ export function startRound(state: RoundState): RoundEvent[] {
   if (state.state !== 'READY') return [];
   state.state = 'COUNTDOWN';
   state.countdownMs = 0;
+  state.settledMs = 0;
   return [];
 }
 
@@ -538,6 +564,12 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
      * function: no spawn, no target resolution, no Show Integrity, no vocalist
      * progression. The round is entered on the *next* tick, at elapsed 0.
      */
+    return events;
+  }
+  if (state.state === 'SHOW_COMPLETE' || state.state === 'SHOW_RUINED') {
+    // The results screen ages here and nowhere else: the round clock stopped
+    // when the show did, and it is entitled to stay stopped.
+    if (rawDeltaMs > 0) state.settledMs += Math.min(rawDeltaMs, MAX_TICK_DELTA_MS);
     return events;
   }
   if (state.state !== 'PLAYING' && state.state !== 'VOCALIST_EVENT') return events;

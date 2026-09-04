@@ -59,7 +59,25 @@ export interface StageDefinition {
   readonly music: MusicKey;
   /** The briefing card, one bullet per line, in the order they are read. */
   readonly briefing: readonly string[];
+  /**
+   * Pictures on the briefing, shown above the bullets (M18.1).
+   *
+   * The owner asked for the explanation screen to carry images, and the mug
+   * rule is why: it is the one rule in the game where the *same* object has
+   * two outcomes, and prose describing "close" against "far" is a worse
+   * teacher than two pictures of it. Optional, because a stage that teaches
+   * nothing new should not pay the vertical space.
+   */
+  readonly briefingFigures?: readonly BriefingFigure[];
 }
+
+/** One captioned picture on a briefing card. Art is resolved by the renderer. */
+export interface BriefingFigure {
+  readonly id: BriefingFigureId;
+  readonly caption: string;
+}
+
+export type BriefingFigureId = 'smash' | 'drink';
 
 /**
  * Stage 1 — one job.
@@ -86,8 +104,13 @@ const stageOne: StageDefinition = {
   briefing: [
     'The crowd is throwing what it was drinking.',
     'Tap a bottle or a mug to smash it before it reaches your kit.',
+    'A mug is different: let it get close and you drink it instead, for extra points.',
     'Three things get through and the show is over.',
     'No beat to keep yet. That is the next stage. Just defend.',
+  ],
+  briefingFigures: [
+    { id: 'smash', caption: 'Hit it early\nand it breaks' },
+    { id: 'drink', caption: 'Let it come close\nand you drink it' },
   ],
 };
 
