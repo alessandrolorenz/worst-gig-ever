@@ -21,16 +21,35 @@ rounds rather than one continuous one; how-to-play is a briefing card per stage
 rather than a single rulebook; and M14.1 was committed first so this is a
 separate diff.
 
-**M14.1 is now committed as `4571f30` on `main`.** The owner approved the M14
+## Installable builds
+
+Both are Android `preview:device` APKs (internal distribution, same EAS
+signing key, so one installs over the other).
+
+| Build | App version | Contents | APK |
+| --- | --- | --- | --- |
+| `9d1dd65c-8c08-411b-80d4-aa89098df279` | 1.0.3 | M14.1 only, **no M15** | [apk](https://expo.dev/artifacts/eas/--xeDgVDdNhyNOsG_gWwV138fLjzO0Doco0U2R7Hvz4.apk) |
+| `62edf299-c0bb-4f5a-8512-22980fdfe64b` | **1.0.4** | M14.1 + M15, commit `5df6f0b` | [apk](https://expo.dev/artifacts/eas/pji0xP0kt4ebfNrLkbuspc8N7CFJGsxDoBR6lrlI6wA.apk) |
+
+Both requested by the owner on 2026-09-03 and both finished. 1.0.4 is 126 MB
+and was built in ten minutes.
+
+The version numbers differ on purpose: every build before 1.0.4 reported 1.0.3,
+so two APKs on one phone could not be told apart from the app info — in a
+playtest whose point is comparing them. `versionCode` stays at 1, which is what
+the previous internal APKs installed over each other with.
+
+**Use 1.0.3 to answer the M14.1 performance question in isolation**, since it
+is the same tree without the new screens. 1.0.4 answers it too — no gameplay
+value moved and Stage 2 is the same round on the same art — but it is not the
+clean variable.
+
+**M14.1 is committed as `4571f30` on `main`.** The owner approved the M14
 APK visually but reported delayed taps on the Galaxy S23 FE and authorized
 investigation/correction. M14.1 keeps all art unchanged, crops the pad's SVG
 drawing surface, avoids unchanged pose-tree renders, uses fixed-layout sprite
 transforms, and preserves new hit feedback through a slow frame. See
-`docs/verification/M14.1-gate.md` for measurements. At the owner's request, the
-then-working tree was uploaded to Android EAS `preview:device` build
-`9d1dd65c-8c08-411b-80d4-aa89098df279` (confirmed queued on 2026-09-03). **That
-build predates this branch and does not contain M15**; the performance retest
-is unaffected by M15, because Stage 2 is the same round on the same art.
+`docs/verification/M14.1-gate.md` for measurements.
 
 M13.1 is closed. The owner tested the build on a physical phone on 2026-09-01,
 reported it as "very good", requested no tuning, and recorded
@@ -137,21 +156,21 @@ human device question.
 
 ## Exact next action
 
-**Review M15 on a device, then decide whether to merge `feat/m15-story-and-stages`
-into `main`.** The questions that a browser cannot answer: does the story read
-at arm's length and is 3.6 s per panel right; does Stage 1 teach the defense
-job well enough to be worth 40 seconds; and do the briefing cards say enough
-without saying too much.
+**Install 1.0.4 on the Galaxy S23 FE and answer two questions in one sitting.**
 
-Two things remain independently open and are not blocked by the review above:
+1. **Performance (M14.1).** Compare tap-to-feedback response from the first
+   target through repeated breaks. If it still reads as sluggish, fall back to
+   1.0.3 to confirm the new screens are not the cause. The visual direction is
+   approved; do not regenerate artwork or change difficulty. Browser results
+   are not device FPS.
+2. **M15 review.** Does the story read at arm's length, and is 3.6 s per panel
+   right? Does Stage 1 teach the defense job well enough to be worth 40
+   seconds? Do the briefing cards say enough without saying too much? Then
+   decide whether `feat/m15-story-and-stages` merges into `main`.
 
-1. **Retest M14.1 on the same Galaxy S23 FE** once EAS build
-   `9d1dd65c-8c08-411b-80d4-aa89098df279` is ready. Compare tap-to-feedback
-   response from the first target through repeated breaks. That APK is the
-   M14.1 tree without M15. The visual direction is approved; do not regenerate
-   artwork or change difficulty. Browser results are not device FPS.
-2. If the owner wants M15 in a device build instead, that is a new EAS build
-   and is the owner's call to make — builds cost money and are milestone-only.
+The one path never exercised outside an automated test is **clearing Stage 1
+and landing in Stage 2** — the results button should read "Next stage" and go
+straight to Stage 2's briefing without passing through the title.
 
 ## Known open items
 

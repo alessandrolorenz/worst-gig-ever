@@ -43,6 +43,13 @@ able to gate a cold start.
 succeed; three headless browser runs at 923x411 completed with zero page
 errors. The five stills add 2.3 MB rather than the sources' 11.5 MB.
 
+At the owner's request, M15 was built for a device as Android `preview:device`
+build `62edf299-c0bb-4f5a-8512-22980fdfe64b`, app version **1.0.4**, commit
+`5df6f0b` — finished 2026-09-04, 126 MB. The app version was raised from 1.0.3
+so this APK can be told apart from `9d1dd65c`, the M14.1 tree without M15,
+which also finished and is the clean build for the performance question. Both
+APKs are linked in `docs/handoff/CURRENT-STATE.md`.
+
 ### M14.1 performance correction — retest still open
 
 `PERFORMANCE_DEVICE_RETEST`. The owner approved the M14 APK visually but
