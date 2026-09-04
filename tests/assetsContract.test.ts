@@ -180,6 +180,12 @@ test('M6A: the live manifest retains the complete audio contract unchanged', () 
       origin: 'generated',
       requiredForMvp: true,
     },
+    mugDrink: {
+      path: 'assets/audio/sfx/mug_drink.wav',
+      generator: 'scripts/make-mug-gulp.mjs',
+      origin: 'generated',
+      requiredForMvp: false,
+    },
   });
 });
 

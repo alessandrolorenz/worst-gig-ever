@@ -174,6 +174,7 @@ function applyEvents(entities: GameEntities, round: RoundState, events: RoundEve
         if (event.drunk) {
           // Caught, not broken: no glass, no shards, and the drink plays.
           addDrink(effects);
+          audio.playSfx('mugDrink');
         } else {
           spawnShards(shards, event.x, event.y);
           audio.playSfx('glassBreak');

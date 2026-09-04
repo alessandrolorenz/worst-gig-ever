@@ -94,6 +94,19 @@ export const DRUM_KIT_DROP = 120;
 export const DRINK_RECT: Rect = { x: 1360, y: 585, width: 600, height: 510 };
 
 /**
+ * Where the drink bonus prints (M18.1).
+ *
+ * Directly above the drink rather than beside it: the mug occupies the upper
+ * *left* of the drink art, and the space to its left is the outer lane a
+ * target can still be falling down. Above the rect is empty in every frame.
+ *
+ * It rises `DRINK_AWARD_RISE` px over the animation's life, which is what
+ * separates an award from a label — the eye follows a thing that moves.
+ */
+export const DRINK_AWARD_ANCHOR = { x: DRINK_RECT.x + 210, y: DRINK_RECT.y - 34 };
+export const DRINK_AWARD_RISE = 38;
+
+/**
  * Foreground drum kit.
  *
  * `drumkit_pov.png` is authored 1920x700 at canvas width, so its native size

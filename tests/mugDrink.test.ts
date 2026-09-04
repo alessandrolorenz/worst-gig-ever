@@ -19,6 +19,11 @@ import {
   type RoundState,
 } from '../game/state/roundState.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 import { DRINK_MIN_CLOSENESS, TARGET_DEFINITIONS } from '../game/config/targets.ts';
 import { SCORING } from '../game/config/scoring.ts';
 import { countdownDurationMs, padBounds } from '../game/config/rhythm.ts';
@@ -295,4 +300,32 @@ test('M18.1: the mug rule is taught with pictures on the stage that introduces i
   for (const figure of first.briefingFigures) {
     assert.ok(figure.caption.trim().length > 0, `${figure.id} needs a caption`);
   }
+});
+
+test('M18.1: the drink has a sound, and it is one this repository generates', () => {
+  const manifest = JSON.parse(
+    readFileSync(join(repoRoot, 'assets/manifest/asset-manifest.json'), 'utf8'),
+  ) as { audio: Record<string, { path: string; origin?: string; generator?: string }> };
+
+  const gulp = manifest.audio.mugDrink;
+  assert.ok(gulp, 'the drink needs a registered sound');
+  // Generated rather than downloaded: no licence to verify and no source page
+  // that can go dead (AGENTS.md rules 12-14).
+  assert.equal(gulp.origin, 'generated');
+  assert.equal(gulp.generator, 'scripts/make-mug-gulp.mjs');
+  assert.ok(existsSync(join(repoRoot, gulp.path)), `missing ${gulp.path}`);
+  assert.ok(existsSync(join(repoRoot, gulp.generator)), 'the generator must be committed');
+
+  // It has to end before the arm does, or the sound outlives its own picture.
+  const wav = readFileSync(join(repoRoot, gulp.path));
+  const sampleRate = wav.readUInt32LE(24);
+  const durationMs = ((wav.length - 44) / 2 / sampleRate) * 1000;
+  assert.ok(durationMs <= DRINK_TTL_MS, `gulp is ${durationMs.toFixed(0)} ms, drink is ${DRINK_TTL_MS}`);
+
+  // Headroom, not the ceiling: it plays over music, the burst and the whoosh.
+  let peak = 0;
+  for (let i = 44; i + 1 < wav.length; i += 2) {
+    peak = Math.max(peak, Math.abs(wav.readInt16LE(i)) / 32_768);
+  }
+  assert.ok(peak > 0.5 && peak < 0.95, `gulp peak ${peak.toFixed(3)} should be loud but not clipping`);
 });

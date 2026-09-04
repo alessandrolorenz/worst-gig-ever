@@ -16,11 +16,11 @@ and their migration is pre-release debt tracked in ADR 0010.
 the Galaxy S23 FE and approved it on 2026-09-04. See
 `docs/verification/M18-gate.md`.
 
-The approval covers the milestone as built. It does not cover the two pieces
-left undone on purpose: the drink has no gulp SFX and no visible `+25` award,
-and both were open when the verdict was given (open item 20). The second one
-matters more now than it did when it was deferred — the drink is easy to see at
-0.35, so the player watches the joke land and is told nothing about the prize.
+The approval covered the milestone as built, at which point the drink had
+neither a sound nor a visible award. **Both were added afterwards and shipped
+as 1.0.8**, so the approved build and the current one are not the same: the
+drink now prints `+25 CHEERS` and plays a generated gulp. Those two additions
+have not themselves been played by the owner.
 
 **Four milestones are now approved and none of them are on `main`.** Merging
 `feat/m16-beat-clarity` is the outstanding structural step.
@@ -1082,10 +1082,13 @@ what caught the bottle's enlargement in the first place.
     arm swims sideways. The shipped pair was measured by hand (worst case 6 px).
     A real sequence check is open work — until it exists, a green
     `measure:art` says nothing about this family.
-20. **The drink has no sound and no visible award.** The gulp SFX needs a
-    licence-verified CC0 file (rules 13 and 14) and the `+25 CHEERS` flourish
-    needs a floating-award treatment that does not exist yet. The bonus reads
-    only in the Defense score.
+20. **CLOSED 2026-09-04 (1.0.8).** The drink now prints `+25 CHEERS` above the
+    arm, driven off the animation's own clock rather than a second lifetime, and
+    plays a gulp. The gulp is **generated** by `scripts/make-mug-gulp.mjs`
+    rather than downloaded — a stronger answer to rules 12-14 than a CC0 file,
+    since there is no source page to go dead and no licence to re-verify. Its
+    sound has not been judged by ear by the agent that made it; only its
+    structure was measured.
 
 16. **Groove scores are not comparable across the M13/M13.1 boundary.** A
     60-second round now has 89 scored beats rather than 88, because the two-beat

@@ -26,7 +26,8 @@
     "make:click": "node scripts/make-beat-click.mjs",
     "make:bed": "node scripts/make-groove-bed.mjs",
     "verify": "npm run type-check && npm run lint && npm test && npm run validate:art -- --require-ready && npm run measure:art -- --require-continuity",
-    "measure:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-art-bounds.mjs"
+    "measure:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-art-bounds.mjs",
+    "make:gulp": "node scripts/make-mug-gulp.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",

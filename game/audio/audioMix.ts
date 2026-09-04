@@ -19,7 +19,8 @@ export type SfxKey =
   | 'stickWhoosh'
   | 'impactThwack'
   | 'crowdApplause'
-  | 'beatClick';
+  | 'beatClick'
+  | 'mugDrink';
 
 /**
  * Which bed a stage plays (M16).
@@ -61,6 +62,12 @@ export const SFX_POOL_SIZE: Record<SfxKey, number> = {
    * beats at once.
    */
   beatClick: 2,
+  /*
+   * One. The drink has a single animation slot by design (M18) — a second mug
+   * mid-drink cuts the running one forward rather than starting another — so a
+   * second player could only ever double a sound the picture never doubles.
+   */
+  mugDrink: 1,
 };
 
 export const MIX = {
@@ -78,4 +85,10 @@ export const MIX = {
   crowdApplause: 0.7,
   /** Above the music, deliberately. It is the thing being taught. */
   beatClick: 0.85,
+  /*
+   * Under the glass it replaces. Drinking is the *quiet* outcome of a mug —
+   * that contrast is half the gag — and it plays while the burst and the
+   * whoosh are still sounding.
+   */
+  mugDrink: 0.62,
 } as const;
