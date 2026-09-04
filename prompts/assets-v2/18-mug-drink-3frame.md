@@ -168,12 +168,14 @@ off the bottom and right edges, crossing the bottom edge at the same horizontal
 position and the same thickness as in BOTH attached images. Same apparent arm
 scale. Same contour weight.
 
-WHAT CHANGES: the mug is now TIPPED HARD TOWARD THE CAMERA and the drummer is
-drinking from it. The BASE OF THE MUG FACES THE VIEWER almost straight on — we
-are looking up into the bottom of the glass as a bold pale grey-blue faceted
-disc, with the amber body foreshortened behind it. Beer is visibly draining,
-and a little foam escapes past the rim toward the camera. The wrist is rolled
-right over.
+WHAT CHANGES: the mug is now brought hard toward the drummer/camera so the
+drummer can drink from it. The OPEN TOP OF THE MUG FACES THE VIEWER as a large
+foreshortened oval: we clearly see the rim, amber beer inside, and foam along
+the near rim. The base recedes away toward the background and MUST NOT appear
+as a disc facing the camera. The near rim approaches the unseen drummer's
+mouth just below the camera. Beer drains toward the drummer; only a small foam
+dribble may escape at the near, camera-side rim. The wrist is rolled right
+over. Do not depict liquid spraying toward the stage or audience.
 
 This is the punchline frame and it must be the MOST EXAGGERATED of the three —
 bigger, closer and more committed than frame 2. Do not make it a small

@@ -149,7 +149,12 @@ Drawn in the foreground, in the drummer's own view, as their hand and forearm:
 |---|---|---|
 | 1 | `mug_drink_01_catch.png` | the hand closes on the mug, still tilted from flight |
 | 2 | `mug_drink_02_raise.png` | brought up and in, foam moving |
-| 3 | `mug_drink_03_drink.png` | tipped toward the camera, drinking, the base of the mug facing the player |
+| 3 | `mug_drink_03_drink.png` | brought to the drummer to drink, with the open rim, beer, and foam facing the player while the base recedes away |
+
+Owner perspective correction, 2026-09-04: this is the drummer's POV, so the
+payoff must show the **open top and beer inside the mug** approaching the
+player. The mug's bottom must not face the camera; that reverses the intended
+motion and makes it read as if the drink were being offered toward the crowd.
 
 120 ms per frame, then a 120 ms fade — **480 ms total**.
 

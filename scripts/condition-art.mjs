@@ -11,6 +11,15 @@
  *     --input-dir design-reference/m14-v2-raw/band \
  *     --output-dir design-reference/m14-v2-staging/band \
  *     --prefix vocalist_ --width 640 --height 900
+ *
+ * `--card-chroma` is how saturated a pixel may be and still be treated as
+ * card. It defaults to 30, which is what every V2 family before M18 was
+ * conditioned at. A generator that returns a warm beige card rather than a
+ * neutral gray one sits just over that line and the flood finds nothing, which
+ * surfaces as "Too few card pixels to condition image" rather than as a bad
+ * cut. Raise it only as far as the gap to the subject allows, and record the
+ * value used — the M18 drink frames needed 40 against a card measured at 27–35
+ * and foam at 47.
  */
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { basename, join, resolve } from 'node:path';
@@ -36,6 +45,10 @@ function parseArgs(argv) {
   if (!Number.isFinite(bgDistance) || bgDistance < 0) {
     throw new Error('Background distance must be a non-negative finite number');
   }
+  const cardChroma = Number(values.get('card-chroma') ?? 30);
+  if (!Number.isFinite(cardChroma) || cardChroma < 0 || cardChroma > 255) {
+    throw new Error('Card chroma must be between 0 and 255');
+  }
   if (!Number.isInteger(width) || width <= 0 || !Number.isInteger(height) || height <= 0) {
     throw new Error('Width and height must be positive integers');
   }
@@ -46,6 +59,7 @@ function parseArgs(argv) {
     width,
     height,
     bgDistance,
+    cardChroma,
     preserveCanvas: values.get('preserve-canvas') === 'true',
   };
 }
@@ -57,17 +71,17 @@ function colorDistanceSq(data, a, b) {
   return dr * dr + dg * dg + db * db;
 }
 
-function cardLike(data, offset) {
+function cardLike(data, offset, maxChroma) {
   const r = data[offset];
   const g = data[offset + 1];
   const b = data[offset + 2];
   const chroma = Math.max(r, g, b) - Math.min(r, g, b);
   const mean = (r + g + b) / 3;
-  return chroma <= 30 && mean >= 55 && mean <= 246;
+  return chroma <= maxChroma && mean >= 55 && mean <= 246;
 }
 
 /** Finds the slowly varying card connected to the image border. */
-function floodCard(png) {
+function floodCard(png, maxChroma) {
   const { width, height, data } = png;
   const seen = new Uint8Array(width * height);
   const queue = new Int32Array(width * height);
@@ -79,7 +93,7 @@ function floodCard(png) {
     queue[tail++] = index;
   };
   const pushIfCard = (index) => {
-    if (cardLike(data, index * 4)) push(index);
+    if (cardLike(data, index * 4, maxChroma)) push(index);
   };
   for (let x = 0; x < width; x += 1) {
     pushIfCard(x);
@@ -103,7 +117,7 @@ function floodCard(png) {
     for (const next of neighbors) {
       if (seen[next]) continue;
       const offset = next * 4;
-      if (!cardLike(data, offset)) continue;
+      if (!cardLike(data, offset, maxChroma)) continue;
       if (colorDistanceSq(data, current * 4, offset) > maxStepSq) continue;
       push(next);
     }
@@ -175,8 +189,8 @@ function modeledColor(model, x, y, width, height) {
   return model.map((channel) => channel.reduce((sum, coefficient, i) => sum + coefficient * f[i], 0));
 }
 
-function removeCard(png, bgDistance) {
-  const cardMask = floodCard(png);
+function removeCard(png, bgDistance, maxChroma) {
+  const cardMask = floodCard(png, maxChroma);
   const model = fitCard(png, cardMask);
   const output = new PNG({ width: png.width, height: png.height });
   const pixelCount = png.width * png.height;
@@ -200,7 +214,7 @@ function removeCard(png, bgDistance) {
       const dg = png.data[offset + 1] - bg[1];
       const db = png.data[offset + 2] - bg[2];
       distances[index] = Math.sqrt(dr * dr + dg * dg + db * db);
-      if (distances[index] <= bgDistance && cardLike(png.data, offset)) {
+      if (distances[index] <= bgDistance && cardLike(png.data, offset, maxChroma)) {
         backgroundCandidate[index] = 1;
       }
     }
@@ -380,7 +394,7 @@ if (files.length === 0) throw new Error(`No ${options.prefix}*.png files in ${op
 
 const conditioned = files.map((name) => {
   const source = PNG.sync.read(readFileSync(join(options.inputDir, name)));
-  const result = removeCard(source, options.bgDistance);
+  const result = removeCard(source, options.bgDistance, options.cardChroma);
   return { name, source, ...result };
 });
 
