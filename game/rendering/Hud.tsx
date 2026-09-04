@@ -25,7 +25,15 @@ import {
 } from '../state/rhythmState.ts';
 import { comboMultiplier, remainingMs, type RoundState } from '../state/roundState.ts';
 
-export function Hud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
+export function Hud({
+  round,
+  rhythm,
+  grooveEnabled,
+}: {
+  round: RoundState;
+  rhythm: RhythmState;
+  grooveEnabled: boolean;
+}) {
   const secondsLeft = Math.ceil(remainingMs(round) / 1000);
   const multiplier = comboMultiplier(round.combo);
   const timeFraction = 1 - remainingMs(round) / round.level.durationMs;
@@ -72,7 +80,12 @@ export function Hud({ round, rhythm }: { round: RoundState; rhythm: RhythmState 
         </View>
       </View>
 
-      <GrooveHud round={round} rhythm={rhythm} />
+      {/**
+       * One readout on a defense-only stage (M15). A GROOVE column reading 0
+       * with no pad on screen would tell the player they were failing a job
+       * nobody gave them.
+       */}
+      {grooveEnabled && <GrooveHud round={round} rhythm={rhythm} />}
     </>
   );
 }

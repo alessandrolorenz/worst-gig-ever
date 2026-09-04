@@ -90,7 +90,28 @@ export const THROW_ORIGIN = {
  * it is a tuning input like every other number in `config/`.
  */
 export const STAGE_MOTION = {
-  bpm: 132,
+  /**
+   * The venue's cadence, and it is deliberately `RHYTHM.bpm` (M16).
+   *
+   * It was 132 against the Groove's 90 until M16, which meant the band's pose
+   * loop and the stage glow beat against the Groove Pad at 22:15 — aligning
+   * once every fifteen groove beats, about every ten seconds, and sitting in
+   * antiphase for most of the time between. The player was being shown a stage
+   * where the lights, the guitarist and the pad each said a different "now",
+   * and the pad is the smallest of the three signals.
+   *
+   * Matching them turns the largest distractor on screen into the largest
+   * reinforcement: the band now steps a pose on the same beats the player is
+   * asked to tap. The loop lengthens from 1.36 s to 2.0 s, which is slower but
+   * still "alive enough", and the poses land on musical beats instead of
+   * between them.
+   *
+   * Written as a literal rather than imported from `config/rhythm.ts`, which
+   * imports `REFERENCE_CANVAS` from this file and would make the two modules
+   * circular. `tests/stageMotion.test.ts` asserts the equality instead, so the
+   * two cannot drift apart again without a red test.
+   */
+  bpm: 90,
   /** Pack 1 cycles idle, loopA, and loopB as a deliberately choppy loop. */
   loopFrames: 3,
   /**

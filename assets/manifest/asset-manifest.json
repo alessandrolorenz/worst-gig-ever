@@ -367,6 +367,90 @@
       "prompt": "prompts/assets/08-break-fx.md",
       "requiredForMvp": true,
       "requiredForM6B": true
+    },
+    "mugDrinkCatch": {
+      "path": "assets/art/effects/mug_drink_01_catch.png",
+      "kind": "effect",
+      "width": 640,
+      "height": 544,
+      "transparency": "transparent",
+      "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
+    },
+    "mugDrinkDrink": {
+      "path": "assets/art/effects/mug_drink_02_drink.png",
+      "kind": "effect",
+      "width": 640,
+      "height": 544,
+      "transparency": "transparent",
+      "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
+    }
+  },
+  "story": {
+    "_comment": "M15 opening story stills. Deliberately a separate section from `assets`: that map is the 33-file Pack 1 gameplay contract, asserted at exactly 35 production entries by tests/assetsContract.test.ts, and these five are flattened narrative illustrations rather than gameplay art. They are JPEG because they are opaque, full-bleed, and 11.5 MB as PNG; `validate:art` is a PNG contract and does not cover them. tests/storyIntro.test.ts does.",
+    "frame": {
+      "width": 1600,
+      "height": 900
+    },
+    "panels": {
+      "poster": {
+        "path": "assets/art/story/01_poster.jpg",
+        "kind": "story-still",
+        "width": 1600,
+        "height": 900,
+        "format": "jpeg",
+        "transparency": "opaque",
+        "source": "design-reference/intro-poster/band-alley-poster-v1.png",
+        "description": "The gig poster pasted in the alley.",
+        "provenance": "docs/assets/M15-STORY-ART-PROVENANCE.md"
+      },
+      "arrival": {
+        "path": "assets/art/story/02_arrival.jpg",
+        "kind": "story-still",
+        "width": 1600,
+        "height": 900,
+        "format": "jpeg",
+        "transparency": "opaque",
+        "source": "design-reference/intro-arrival/band-arrives-storm-v2-with-drummer.png",
+        "description": "All four members arrive at the bar in the storm.",
+        "provenance": "docs/assets/M15-STORY-ART-PROVENANCE.md"
+      },
+      "setup": {
+        "path": "assets/art/story/03_setup.jpg",
+        "kind": "story-still",
+        "width": 1600,
+        "height": 900,
+        "format": "jpeg",
+        "transparency": "opaque",
+        "source": "design-reference/intro-setup/band-stage-setup-v1.png",
+        "description": "The band loads in and assembles the kit.",
+        "provenance": "docs/assets/M15-STORY-ART-PROVENANCE.md"
+      },
+      "performance": {
+        "path": "assets/art/story/04_performance.jpg",
+        "kind": "story-still",
+        "width": 1600,
+        "height": 900,
+        "format": "jpeg",
+        "transparency": "opaque",
+        "source": "design-reference/intro-performance/band-performance-audience-v1.png",
+        "description": "The show working, seen from the audience.",
+        "provenance": "docs/assets/M15-STORY-ART-PROVENANCE.md"
+      },
+      "soundDesk": {
+        "path": "assets/art/story/05_sound_desk.jpg",
+        "kind": "story-still",
+        "width": 1600,
+        "height": 900,
+        "format": "jpeg",
+        "transparency": "opaque",
+        "source": "design-reference/intro-sound-disaster/beer-spill-mixing-desk-v2-accident.png",
+        "description": "A knocked-over beer floods the mixing desk. This is why the crowd turns.",
+        "provenance": "docs/assets/M15-STORY-ART-PROVENANCE.md"
+      }
     }
   },
   "audio": {
@@ -389,6 +473,20 @@
     },
     "crowdApplause": {
       "path": "assets/audio/sfx/crowd_applause.wav",
+      "requiredForMvp": true
+    },
+    "grooveBed90": {
+      "runtime": "assets/audio/music/runtime/groove_bed_90.wav",
+      "generator": "scripts/make-groove-bed.mjs",
+      "origin": "generated",
+      "tempoLockedBpm": 90,
+      "loopBeats": 16,
+      "requiredForMvp": true
+    },
+    "beatClick": {
+      "path": "assets/audio/sfx/beat_click.wav",
+      "generator": "scripts/make-beat-click.mjs",
+      "origin": "generated",
       "requiredForMvp": true
     }
   }

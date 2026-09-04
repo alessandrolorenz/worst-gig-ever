@@ -26,6 +26,19 @@ import {
 import { PERFORMER_IDS } from '../game/systems/stageMotion.ts';
 import { GAME_STATES, TARGET_KINDS, TARGET_STATUSES } from '../game/state/gameState.ts';
 
+/**
+ * `level01` is the full show, and the full show is the one that has the
+ * vocalist interruption. `vocalistEventAtMs` became nullable in M15 so that
+ * the Stage 1 drill could say it has none; narrowing it once here keeps every
+ * assertion below reading as it did, and fails loudly rather than silently
+ * skipping if the show ever loses its interruption.
+ */
+const VOCALIST_AT_MS = level01.vocalistEventAtMs;
+if (VOCALIST_AT_MS === null) {
+  throw new Error('level01 must keep its vocalist interruption');
+}
+
+
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 test('M1: level01 matches the MVP 01 round configuration', () => {
@@ -38,10 +51,10 @@ test('M1: level01 matches the MVP 01 round configuration', () => {
 
 test('M1: the vocalist event is scheduled inside the 38-45s window', () => {
   assert.ok(
-    level01.vocalistEventAtMs >= 38_000 && level01.vocalistEventAtMs <= 45_000,
-    `vocalistEventAtMs ${level01.vocalistEventAtMs} is outside the specified window`,
+    VOCALIST_AT_MS >= 38_000 && VOCALIST_AT_MS <= 45_000,
+    `vocalistEventAtMs ${VOCALIST_AT_MS} is outside the specified window`,
   );
-  assert.ok(level01.vocalistEventAtMs < level01.durationMs);
+  assert.ok(VOCALIST_AT_MS < level01.durationMs);
 });
 
 test('M1: spawn phases are ordered, non-overlapping, and inside the round', () => {

@@ -12,6 +12,7 @@ import { REFERENCE_CANVAS, STAGE, STAGE_MOTION, VOCALIST_BLOCKING_RECT } from '.
 import {
   DRUMSTICK_ART,
   GLASS_SHARD_ART,
+  MUG_DRINK_ART,
   HIT_BURST_ART,
   PERFORMER_ART,
   STAGE_ART,
@@ -21,6 +22,7 @@ import {
 import {
   CROWD_BACK_RECT,
   CROWD_FRONT_RECT,
+  DRINK_RECT,
   DRUM_KIT_RECT,
   TARGET_DRAW_SIZE,
   absolute,
@@ -31,7 +33,14 @@ import { Countdown } from './Countdown.tsx';
 import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
-import { effectProgress, type EffectsState, type TimedEffect } from '../systems/effects.ts';
+import {
+  drinkFrame,
+  drinkOpacity,
+  effectProgress,
+  type DrinkEffect,
+  type EffectsState,
+  type TimedEffect,
+} from '../systems/effects.ts';
 import { shardOpacity, type Shard, type ShardsState } from '../systems/shards.ts';
 import {
   ONE_SHOT_POSES,
@@ -46,12 +55,23 @@ import {
 } from '../systems/stageMotion.ts';
 import { isPadPulsing, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
+import type { StageDefinition } from '../levels/stages.ts';
 import { Hud } from './Hud.tsx';
 import { spriteTransform } from './spriteTransform.ts';
 
 export interface SceneRendererProps {
   round: RoundState;
   rhythm: RhythmState;
+  /**
+   * The stage the round belongs to (M15). Read for one thing only —
+   * `stage.groove`, which decides whether the pad and the Groove readout are
+   * drawn at all.
+   *
+   * It arrives as a prop because the engine's default renderer spreads the
+   * whole scene entity onto this component; every prop in this interface is a
+   * field of `SceneEntity` for that reason.
+   */
+  stage: StageDefinition;
   effects: EffectsState;
   shards: ShardsState;
   stageMotion: StageMotionState;
@@ -337,6 +357,30 @@ function Burst({ effect }: { effect: TimedEffect }) {
   );
 }
 
+/**
+ * The drummer's own arm, drawn last and largest (M18).
+ *
+ * Fixed layout with only opacity animating, in line with the M14.1 render
+ * pass: the frame swap is a source change, not a re-layout.
+ */
+function Drink({ drink }: { drink: DrinkEffect }) {
+  return (
+    <Image
+      source={MUG_DRINK_ART[drinkFrame(drink)]}
+      style={{
+        position: 'absolute',
+        left: DRINK_RECT.x,
+        top: DRINK_RECT.y,
+        width: DRINK_RECT.width,
+        height: DRINK_RECT.height,
+        opacity: drinkOpacity(drink),
+      }}
+      resizeMode="contain"
+      fadeDuration={0}
+    />
+  );
+}
+
 function Debris({ shards }: { shards: readonly Shard[] }) {
   return (
     <>
@@ -362,6 +406,7 @@ function Debris({ shards }: { shards: readonly Shard[] }) {
 export function SceneRenderer({
   round,
   rhythm,
+  stage,
   effects,
   shards,
   stageMotion,
@@ -384,6 +429,7 @@ export function SceneRenderer({
   );
 
   const fit = fitCanvas(viewport.width, viewport.height);
+  const grooveEnabled = stage.groove;
   const showHalos =
     SHOW_GRAYBOX_DEBUG && (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT');
 
@@ -437,12 +483,21 @@ export function SceneRenderer({
          * player's face is never obscured by a UI ring — the Defense read
          * still wins the foreground.
          */}
-        <GroovePad round={round} rhythm={rhythm} />
+        {/**
+         * Absent, not disabled, on a defense-only stage (M15). A pad drawn but
+         * dead is worse than no pad: it pulses like a thing to tap, and every
+         * tap on it does nothing.
+         */}
+        {grooveEnabled && <GroovePad round={round} rhythm={rhythm} />}
 
         {/**
          * Drawn with the pad, not with the HUD, so the numerals and the swell
          * they are counting read as one instruction. It sits above the pad and
          * renders nothing at all once `GO!` has aged out (M13.1).
+         *
+         * It runs on both stages. The pre-roll is the entry ritual for a
+         * *round*, not for the Groove — Stage 1 needs the same three beats of
+         * warning before bottles start arriving.
          */}
         <Countdown round={round} />
 
@@ -455,6 +510,11 @@ export function SceneRenderer({
           <Strike key={effect.id} effect={effect} />
         ))}
         {/**
+         * Above every projectile and every effect: it is the player's own arm,
+         * and nothing on stage is nearer to the camera than that.
+         */}
+        {effects.drink !== null && <Drink drink={effects.drink} />}
+        {/**
          * Only from the pre-roll to the final whistle. An overlay is always on
          * screen otherwise, and its scrim is not opaque — leaving the HUD up
          * put a dimmed second copy of both scores behind the results summary,
@@ -464,7 +524,9 @@ export function SceneRenderer({
          * the round starts rather than appearing on the `GO` beat, which is the
          * one moment the player's attention is committed elsewhere.
          */}
-        {isPadPulsing(round.state) && <Hud round={round} rhythm={rhythm} />}
+        {isPadPulsing(round.state) && (
+          <Hud round={round} rhythm={rhythm} grooveEnabled={grooveEnabled} />
+        )}
       </View>
     </View>
   );

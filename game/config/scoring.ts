@@ -26,4 +26,14 @@ export const SCORING = {
   startingCombo: 0,
   /** Fixed award for the vocalist interruption (M1, MVP special event). */
   vocalistEventBonus: 500,
+  /**
+   * Flat award for drinking a mug rather than smashing it (M18).
+   *
+   * Deliberately not multiplied by the combo. The mug is the *easier* target —
+   * a 120 px tap radius against the bottle's 104, slower at both ends of both
+   * windows — so a combo-multiplied premium would make the easy object the
+   * best scoring path at high combo. A mug smashed early pays base points and
+   * no bonus, which is what makes waiting for the drink a decision.
+   */
+  drinkBonus: 25,
 } as const;

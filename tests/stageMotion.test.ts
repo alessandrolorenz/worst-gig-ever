@@ -8,6 +8,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
+import { RHYTHM } from '../game/config/rhythm.ts';
+
 import {
   beatMs,
   beatPulse,
@@ -250,4 +252,27 @@ test('clearing the stage returns it to a fresh one', () => {
 
   clearStageMotion(stage);
   assert.deepEqual(stage, createStageMotion());
+});
+
+test('the venue and the Groove keep the same time', () => {
+  /*
+   * M16. `STAGE_MOTION.bpm` was 132 against the Groove's 90, so the band's
+   * pose loop and the stage glow beat against the pad at 22:15 — aligning once
+   * every fifteen groove beats, roughly every ten seconds, and sitting in
+   * antiphase for most of the time between. The player was shown a stage where
+   * the lights, the guitarist and the pad each said a different "now", and the
+   * pad is the smallest of the three signals.
+   *
+   * The two cannot be a single constant, because `config/rhythm.ts` imports
+   * `REFERENCE_CANVAS` from `config/stage.ts` and importing back would make the
+   * modules circular. So the equality is a test instead, and this is it.
+   */
+  assert.equal(
+    STAGE_MOTION.bpm,
+    RHYTHM.bpm,
+    'the stage and the Groove are on different tempos again',
+  );
+
+  // And the consequence worth pinning: a band pose lands on a groove beat.
+  assert.equal(beatMs() % (60_000 / RHYTHM.bpm), 0);
 });

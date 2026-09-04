@@ -154,6 +154,76 @@ export const GROOVE_PULSE = {
   judgementTextMs: 620,
 } as const;
 
+/**
+ * The converging beat markers (M16).
+ *
+ * ## Why markers and not an approach ring
+ *
+ * M16 was specified with the standard rhythm-game cue: a ring that shrinks
+ * onto the pad and coincides with its rim on the beat. Two facts about *this*
+ * pad ruled it out once the geometry was measured.
+ *
+ * The pad is a wide ellipse whose bottom edge sits at y 1075 on a 1080 px
+ * canvas. Any concentric ring larger than 1.03x is therefore cut off by the
+ * bottom of the screen — a converging ring here could only ever converge from
+ * above and the sides, which is exactly the half of the shape the drum kit art
+ * is busiest behind.
+ *
+ * And it would have cost the surface M14.1 just bought back. A 1.45x ring
+ * needs a 952x329 SVG against the current 664x234 — 2x the rasterized area, on
+ * the same device whose tap responsiveness is still under an open retest. A
+ * readability fix that reopens a performance question answers neither.
+ *
+ * So the cue converges *inside* the pad instead: two markers slide along its
+ * horizontal axis, from just inside the rim to touching at the centre, and
+ * they touch exactly on the beat. The coincidence is what makes it legible —
+ * two shapes meeting is unambiguous in a way that one shape being at its
+ * largest is not — and the whole thing lives inside the existing surface, so
+ * `PAD_SURFACE` does not move by a pixel.
+ *
+ * They travel at **constant velocity** on purpose. An eased approach is
+ * prettier and useless: a timing cue has to let the eye extrapolate where the
+ * marker will be, and only a straight line does that.
+ */
+export const BEAT_MARKERS = {
+  /** Starting offset from the centre, as a fraction of `halfWidthPx`. */
+  startFraction: 0.86,
+  widthPx: 34,
+  heightPx: 52,
+  /**
+   * Fraction of the travel spent fading in.
+   *
+   * The markers restart at the rim the instant they have met, and a hard
+   * reappearance at full brightness reads as a strobe — the defect M6B fixed
+   * in the stage overlay for the same reason. Fading the first sixth of the
+   * journey keeps the arrival sharp and the departure quiet.
+   */
+  fadeInFraction: 0.15,
+} as const;
+
+/**
+ * The bar counter (M16).
+ *
+ * Four marks inside the pad, above its horizontal axis, filled by the beat's
+ * position in the bar. Eighty-nine identical pulses are a texture; twenty-two
+ * bars of four are a phrase the player can count, predict, and recover into
+ * after looking away to smash a bottle.
+ *
+ * `offsetY` is negative — *above* the axis — for two reasons, both measured.
+ * Below it would collide with the markers, which own the axis itself; and the
+ * canvas band from y 1020 to 1080 is where a phone's gesture pill sits (open
+ * item 15), so a row of dots down there would be half-covered on the very
+ * device this milestone is for. At y 908 the row is inside the pad, clear of
+ * the markers, and below the target corridor, which ends at y 880.
+ */
+export const BEAT_BAR = {
+  /** Beats per bar. Four, because the game is a rock show. */
+  beats: 4,
+  offsetY: -62,
+  spacingPx: 80,
+  radiusPx: 11,
+} as const;
+
 /** Milliseconds in one beat. Everything about the clock derives from this. */
 export function beatIntervalMs(): number {
   return 60_000 / RHYTHM.bpm;

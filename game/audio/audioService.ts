@@ -9,7 +9,14 @@
  * absent — the show must still run silently rather than crash on launch
  * (ADR 0002).
  */
-import { MIX, MUSIC_SOURCE, SFX_POOL_SIZE, SFX_SOURCES, type SfxKey } from './audioAssets.ts';
+import {
+  MIX,
+  MUSIC_SOURCES,
+  SFX_POOL_SIZE,
+  SFX_SOURCES,
+  type MusicKey,
+  type SfxKey,
+} from './audioAssets.ts';
 
 interface PlayerLike {
   play(): void;
@@ -24,7 +31,14 @@ interface PlayerLike {
 export interface AudioService {
   readonly available: boolean;
   readonly failureReason: string | null;
-  playMusic(): void;
+  /**
+   * Starts a stage's bed from the top, stopping whatever was playing (M16).
+   *
+   * The key is required rather than defaulted: every caller knows which stage
+   * it is starting, and a default is how the teaching stage would silently
+   * come up on the drifting rock loop the day someone adds a fourth stage.
+   */
+  playMusic(key: MusicKey): void;
   pauseMusic(): void;
   resumeMusic(): void;
   stopMusic(): void;
@@ -58,6 +72,16 @@ export function createAudioService(): AudioService {
     return createSilentService(`expo-audio module unavailable: ${String(error)}`);
   }
 
+  /**
+   * One player per track, and a reference to whichever is playing.
+   *
+   * Two players rather than one player re-pointed at a new source: swapping a
+   * source is asynchronous on both platforms, so a stage transition would
+   * start the round before its bed had loaded and the first bars would be
+   * silent. Preloading both costs a few hundred kilobytes of decoder state and
+   * removes the race entirely.
+   */
+  const tracks = new Map<MusicKey, PlayerLike>();
   let music: PlayerLike | null = null;
   const pools = new Map<SfxKey, { players: PlayerLike[]; next: number }>();
   let disposed = false;
@@ -69,9 +93,12 @@ export function createAudioService(): AudioService {
         /* Non-fatal: playback still works with the default session. */
       });
 
-    music = expoAudio.createAudioPlayer(MUSIC_SOURCE) as unknown as PlayerLike;
-    music.loop = true;
-    music.volume = MIX.music;
+    for (const key of Object.keys(MUSIC_SOURCES) as MusicKey[]) {
+      const player = expoAudio.createAudioPlayer(MUSIC_SOURCES[key]) as unknown as PlayerLike;
+      player.loop = true;
+      player.volume = MIX.music;
+      tracks.set(key, player);
+    }
 
     for (const key of Object.keys(SFX_SOURCES) as SfxKey[]) {
       const players: PlayerLike[] = [];
@@ -99,9 +126,17 @@ export function createAudioService(): AudioService {
     available: true,
     failureReason: null,
 
-    playMusic() {
+    playMusic(key: MusicKey) {
       safely(() => {
-        if (!music) return;
+        const next = tracks.get(key);
+        if (!next) return;
+        // Silence the outgoing stage's bed before the incoming one starts, or
+        // "Next stage" plays two loops at once.
+        if (music && music !== next) {
+          music.pause();
+          void music.seekTo(0).catch(() => {});
+        }
+        music = next;
         void music.seekTo(0).catch(() => {});
         music.play();
       });
@@ -124,7 +159,11 @@ export function createAudioService(): AudioService {
     },
 
     restartMusic() {
-      this.playMusic();
+      safely(() => {
+        if (!music) return;
+        void music.seekTo(0).catch(() => {});
+        music.play();
+      });
     },
 
     playSfx(key: SfxKey) {
@@ -141,12 +180,15 @@ export function createAudioService(): AudioService {
     dispose() {
       if (disposed) return;
       disposed = true;
-      try {
-        music?.pause();
-        music?.remove();
-      } catch {
-        /* Already released. */
+      for (const player of tracks.values()) {
+        try {
+          player.pause();
+          player.remove();
+        } catch {
+          /* Already released. */
+        }
       }
+      tracks.clear();
       for (const pool of pools.values()) {
         for (const player of pool.players) {
           try {

@@ -1,19 +1,96 @@
 # Current Continuation State
 
 - Last reconciled: 2026-09-03
-- Branch: `main`; M14 merge: `f277e0430ece4bcd7f429e3529fd33e801bdb61f`
-- Pre-M14 implementation baseline: `7aa058b799e29e646dbba6442226d679d38d5de3`
-- Active stage: **M14.1 render performance — device retest pending**
-- Gate outcome: `PERFORMANCE_DEVICE_RETEST`
+- Branch: `feat/m15-story-and-stages`, **not yet merged to `main`**
+- M15 baseline: `4571f30` (M14.1), which sits on `main`
+- M14 merge: `f277e0430ece4bcd7f429e3529fd33e801bdb61f`
+- Active stage: **M15 story, briefings, and two stages — device review pending**
+- Gate outcome: `M15_DEVICE_REVIEW`
 
-The owner approved the M14 APK visually but reported delayed taps on the
-Galaxy S23 FE and authorized investigation/correction. M14.1 keeps all art
-unchanged, crops the pad's SVG drawing surface, avoids unchanged pose-tree
-renders, uses fixed-layout sprite transforms, and preserves new hit feedback
-through a slow frame. See `docs/verification/M14.1-gate.md` for measurements.
-The changes remain uncommitted. At the owner's request, the working tree was
-uploaded to Android EAS `preview:device` build
-`9d1dd65c-8c08-411b-80d4-aa89098df279` (confirmed queued on 2026-09-03).
+The owner supplied five narrative illustrations on 2026-09-03 and asked for a
+story before the game starts, a how-to-play screen, and two stages beginning
+with a defense-only one. All three are implemented and the automated gate is
+green: 299 tests, both art gates, web and Android exports, and three headless
+browser runs at 923x411 with zero page errors. See
+`docs/verification/M15-gate.md` and
+`docs/specs/M15-story-briefings-and-two-stages.md`.
+
+Four design decisions were taken with the owner before implementation: the
+story auto-plays and is skippable and replayable; the stages are two separate
+rounds rather than one continuous one; how-to-play is a briefing card per stage
+rather than a single rulebook; and M14.1 was committed first so this is a
+separate diff.
+
+## Installable builds
+
+Both are Android `preview:device` APKs (internal distribution, same EAS
+signing key, so one installs over the other).
+
+| Build | App version | Contents | APK |
+| --- | --- | --- | --- |
+| `9d1dd65c-8c08-411b-80d4-aa89098df279` | 1.0.3 | M14.1 only, **no M15** | [apk](https://expo.dev/artifacts/eas/--xeDgVDdNhyNOsG_gWwV138fLjzO0Doco0U2R7Hvz4.apk) |
+| `62edf299-c0bb-4f5a-8512-22980fdfe64b` | **1.0.4** | M14.1 + M15, commit `5df6f0b` | [apk](https://expo.dev/artifacts/eas/pji0xP0kt4ebfNrLkbuspc8N7CFJGsxDoBR6lrlI6wA.apk) |
+
+Both requested by the owner on 2026-09-03 and both finished. 1.0.4 is 126 MB
+and was built in ten minutes.
+
+### Local release builds — no EAS, no cost, no queue
+
+Since 2026-09-04 the project builds its own release APKs.
+`./android/gradlew -p android assembleRelease` succeeds in ~25 s and produces
+`android/app/build/outputs/apk/release/app-release.apk` — 116 MB, all four ABIs,
+`assets/index.android.bundle` embedded, JSC, signed with the debug keystore
+through the stock `signingConfig`. **`npx expo run:android --variant release` is
+the thing that does not work**; it dies on the `lintVitalAnalyze` tasks, and the
+gradlew invocation does not run them. That distinction is why the project
+carried a "local release builds are broken" note for four days that was never
+true of this command.
+
+These install over each other but **not** over the EAS APKs above — different
+signing key. Uninstall first when switching.
+
+| App version | versionCode | Contents | Commit |
+| --- | --- | --- | --- |
+| 1.0.5 | 2 | M14.1 + M15 + M16 + M17, the first release build | `02b1345` |
+| 1.0.6 | 3 | + M18 as first specified (closeness 0.5, rect 520x440) | `6826894` |
+| **1.0.7** | **4** | + the five 1.0.6 playtest corrections | `d3ee675` |
+
+Every version number is distinct on purpose: six builds now exist across two
+signing keys, and none of them can be mistaken for another from the app info.
+
+Before handing any of these over, two checks are worth the thirty seconds they
+cost, because "it installed" is not "it shipped what you think":
+
+```sh
+# 1. the bundle really contains what the build was supposed to add
+unzip -o -q app-release.apk assets/index.android.bundle -d /tmp/apk
+grep -c YOUR_NEW_SYMBOL /tmp/apk/assets/index.android.bundle
+
+# 2. it launches without a runtime error
+adb shell monkey -p com.worstbandever.app -c android.intent.category.LAUNCHER 1
+adb logcat -d -t 300 | grep -iE "AndroidRuntime|FATAL|redbox"
+```
+
+If autolinking is ever suspect, `npx expo-modules-autolinking resolve -p android`
+must report **15** modules (ADR 0006).
+
+The version numbers differ on purpose: every build before 1.0.4 reported 1.0.3,
+so two APKs on one phone could not be told apart from the app info — in a
+playtest whose point is comparing them. `versionCode` stays at 1, which is what
+the previous internal APKs installed over each other with.
+
+~~**Use 1.0.3 to answer the M14.1 performance question in isolation**~~ —
+**moot.** The question was answered on 2026-09-04 against **1.0.7**, which
+carries M14.1 plus four further milestones and therefore strictly more work per
+frame than this isolated build. It passed. An isolation run can no longer
+improve on that answer; do not request one.
+
+**M14.1 is committed as `4571f30` on `main`.** The owner approved the M14
+APK visually but reported delayed taps on the Galaxy S23 FE and authorized
+investigation/correction. M14.1 keeps all art unchanged, crops the pad's SVG
+drawing surface, avoids unchanged pose-tree renders, uses fixed-layout sprite
+transforms, and preserves new hit feedback through a slow frame. See
+`docs/verification/M14.1-gate.md` for measurements.
 
 M13.1 is closed. The owner tested the build on a physical phone on 2026-09-01,
 reported it as "very good", requested no tuning, and recorded
@@ -35,7 +112,19 @@ family. The kit has no resting sticks. All four ambient triplets pass with
 
 ## Current playable candidate
 
-The current build is a 60-second **Groove + Defense** round:
+The build now opens on a five-panel story (poster, stormy arrival, load-in, the
+show working, the beer that hits the mixing desk) and then a title screen with
+two stages. Each stage opens with its own briefing card.
+
+**Stage 1 — "Hold the line", 40 s, defense only.** No Groove Pad, no Groove
+readout, no beat scheduled, scored or missed, one summary column, and no
+vocalist interruption. Its first two spawn phases are identical to the show's
+(1800 ms bottles, then 1300 ms with mugs) so it teaches the round the player is
+about to play; only the last phase is gentler, 950 ms against the show's 850 ms.
+Seed 2, so it does not spoil the show's opening throws.
+
+**Stage 2 — "Keep the beat", `level01`, unchanged.** The 60-second
+**Groove + Defense** round:
 
 - tap one visual Groove Pad at 90 BPM;
 - break approaching bottles and mugs before they hit the kit;
@@ -70,6 +159,9 @@ vocalist timing, and round duration remain frozen for the re-test.
   visuals on device. M14 runtime changes were limited to enabling validated ambient
   bitmaps and updating measured prop-content bounds. Manifest keys, geometry,
   hitboxes, input, timing, scoring, and difficulty remain unchanged.
+- M14.1 render performance: committed as `4571f30`; device retest still open.
+- M15 story, briefings and two stages: implemented, gate green, awaiting the
+  owner's physical review.
 
 ## Verification
 
@@ -105,19 +197,30 @@ human device question.
 
 ## Exact next action
 
-The owner requested a commit, merge, and EAS build on 2026-09-03. The selected
-playtest profile is Android `preview:device` (installable internal APK), not a
-store submission. This request does not close the visual-review gate.
+**Install 1.0.4 on the Galaxy S23 FE and answer two questions in one sitting.**
 
-**Retest M14.1 on the same Galaxy S23 FE once the requested EAS APK is ready.**
-Compare tap-to-feedback response from the first
-target through repeated breaks. The visual direction is approved; do not
-regenerate artwork or change difficulty. Browser results are not device FPS.
+1. **Performance (M14.1).** Compare tap-to-feedback response from the first
+   target through repeated breaks. If it still reads as sluggish, fall back to
+   1.0.3 to confirm the new screens are not the cause. The visual direction is
+   approved; do not regenerate artwork or change difficulty. Browser results
+   are not device FPS.
+2. **M15 review.** Does the story read at arm's length, and is 3.6 s per panel
+   right? Does Stage 1 teach the defense job well enough to be worth 40
+   seconds? Do the briefing cards say enough without saying too much? Then
+   decide whether `feat/m15-story-and-stages` merges into `main`.
+
+The one path never exercised outside an automated test is **clearing Stage 1
+and landing in Stage 2** — the results button should read "Next stage" and go
+straight to Stage 2's briefing without passing through the title.
 
 ## Known open items
 
 1. M14.1 physical-device performance retest is pending. Visual direction is
    approved; all triplets pass and loops remain enabled.
+2. M15 physical-device review is pending; the branch is unmerged.
+3. Stage progression is not persisted across launches, and no stage is locked.
+   A real unlock needs storage, which is an MVP non-goal — lifting it is an
+   owner decision, not an implementation detail.
 2. The bottom of the reference canvas can sit under the Android gesture area.
    The owner reported no swallowed taps during the M13.1 re-test; keep watching
    bottom-edge Groove Pad taps on other devices.

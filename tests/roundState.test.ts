@@ -31,6 +31,19 @@ import { SCORING } from '../game/config/scoring.ts';
 import { countdownDurationMs } from '../game/config/rhythm.ts';
 import { level01 } from '../game/levels/level01.ts';
 
+/**
+ * `level01` is the full show, and the full show is the one that has the
+ * vocalist interruption. `vocalistEventAtMs` became nullable in M15 so that
+ * the Stage 1 drill could say it has none; narrowing it once here keeps every
+ * assertion below reading as it did, and fails loudly rather than silently
+ * skipping if the show ever loses its interruption.
+ */
+const VOCALIST_AT_MS = level01.vocalistEventAtMs;
+if (VOCALIST_AT_MS === null) {
+  throw new Error('level01 must keep its vocalist interruption');
+}
+
+
 /** Advances the round in frame-sized steps, collecting every event. */
 function advance(state: RoundState, totalMs: number, stepMs = 16) {
   const events = [];
@@ -127,7 +140,7 @@ test('READY -> COUNTDOWN -> PLAYING -> PAUSED -> PLAYING -> VOCALIST_EVENT -> SH
   assert.equal(state.state, 'PAUSED');
   resumeRound(state);
   assert.equal(state.state, 'PLAYING');
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   assert.equal(state.state, 'VOCALIST_EVENT');
   playPerfectlyUntil(state, level01.durationMs);
   assert.equal(state.state, 'SHOW_COMPLETE');
@@ -350,7 +363,7 @@ test('a terminal round ignores further ticks and taps', () => {
 
 test('the vocalist event triggers exactly once, at the scheduled time', () => {
   const state = playing();
-  const before = playPerfectlyUntil(state, level01.vocalistEventAtMs - 500);
+  const before = playPerfectlyUntil(state, VOCALIST_AT_MS - 500);
   assert.equal(before.filter((e) => e.type === 'VOCALIST_EVENT_STARTED').length, 0);
   assert.notEqual(state.state, 'VOCALIST_EVENT');
 
@@ -362,7 +375,7 @@ test('the vocalist event triggers exactly once, at the scheduled time', () => {
 
 test('the vocalist event pauses spawning and awards a fixed bonus when hit', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   assert.equal(state.state, 'VOCALIST_EVENT');
   assert.equal(state.vocalist.status, 'blocking');
 
@@ -396,7 +409,7 @@ test('the vocalist event pauses spawning and awards a fixed bonus when hit', () 
 
 test('normal play resumes after the vocalist reacts', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   resolveTap(state, {
     x: VOCALIST_BLOCKING_RECT.x + VOCALIST_BLOCKING_RECT.width / 2,
     y: VOCALIST_BLOCKING_RECT.y + VOCALIST_BLOCKING_RECT.height / 2,
@@ -410,7 +423,7 @@ test('normal play resumes after the vocalist reacts', () => {
 
 test('an ignored vocalist gives up so the round cannot stall', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   const events = playPerfectlyUntil(state, state.elapsedMs + VOCALIST_TIMEOUT_MS + 100);
   const ended = events.find((e) => e.type === 'VOCALIST_EVENT_ENDED');
   assert.ok(ended && ended.type === 'VOCALIST_EVENT_ENDED' && !ended.wasHit);
@@ -419,13 +432,13 @@ test('an ignored vocalist gives up so the round cannot stall', () => {
 
 test('targets already in flight stay hittable during the interruption', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   assert.equal(state.state, 'VOCALIST_EVENT');
 
   // Force a target into the air so there is something to defend against.
   const withTarget = playing();
   advanceToFirstTarget(withTarget);
-  withTarget.elapsedMs = level01.vocalistEventAtMs - 1;
+  withTarget.elapsedMs = VOCALIST_AT_MS - 1;
   tickRound(withTarget, 16);
   assert.equal(withTarget.state, 'VOCALIST_EVENT');
 
@@ -439,7 +452,7 @@ test('targets already in flight stay hittable during the interruption', () => {
 
 test('the blocking vocalist takes tap priority over anything behind them', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   assert.equal(state.vocalist.status, 'blocking');
   const destroyedBefore = state.targetsDestroyed;
 
@@ -487,6 +500,7 @@ import { effectiveHitRadius, isRoundOver, type ActiveTarget } from '../game/stat
 import { throwPoseAt } from '../game/systems/approach.ts';
 import { HIT_FORGIVENESS } from '../game/config/targets.ts';
 import { STAGE, THROW_ORIGIN } from '../game/config/stage.ts';
+
 
 /** Runs the round until exactly one target is in the air, then returns it. */
 function oneTargetInFlight(): { state: RoundState; view: ReturnType<typeof targetViews>[number] } {
@@ -739,7 +753,7 @@ test('forgiveness does not resurrect a resolved target', () => {
 
 test('forgiveness does not outrank the blocking vocalist', () => {
   const state = playing();
-  playPerfectlyUntil(state, level01.vocalistEventAtMs);
+  playPerfectlyUntil(state, VOCALIST_AT_MS);
   assert.equal(state.vocalist.status, 'blocking');
   const events = resolveTap(state, {
     x: VOCALIST_BLOCKING_RECT.x + VOCALIST_BLOCKING_RECT.width / 2,

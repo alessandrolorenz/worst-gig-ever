@@ -4,8 +4,14 @@
 
 A small mobile arcade game: you are the drummer at a chaotic rock show. Keep a
 simple groove on the pulsing lower-centre drum pad while the crowd throws things at your kit.
-Smash them before they land, survive sixty seconds, and try not to let the
-singer ruin your night.
+Smash them before they land, survive the set, and try not to let the singer
+ruin your night.
+
+It opens on a five-panel story — the poster, the band arriving in a storm, the
+load-in, the show actually working, and the beer that lands on the mixing desk
+— which is the reason the crowd turns. Then two stages: **Hold the line**, forty
+seconds of defense only, and **Keep the beat**, the full sixty-second round
+where you have to drum and defend at the same time.
 
 Built with Expo, React Native Game Engine, and Matter.js, using
 specification-driven development.
@@ -17,11 +23,16 @@ specification-driven development.
 > technical identifiers with remote state attached, and migrating them is a
 > pre-release task tracked in ADR 0010.
 
-> **Status:** M14 V2 art is integrated: 33/33 canonical assets, distinct
-> performers facing the audience, a clear snare, and enabled ambient loops.
-> Visuals approved on device. Current checkpoint: `PERFORMANCE_DEVICE_RETEST`;
-> M14.1 reduces rendering overhead and fixes slow-frame hit feedback, pending
-> a new APK test. See `docs/verification/M14.1-gate.md`.
+> **Status:** current checkpoint `M15_DEVICE_REVIEW`, on the unmerged branch
+> `feat/m15-story-and-stages`. M15 adds the opening story, a briefing card per
+> stage, and the two-stage structure, without changing a single gameplay value —
+> Stage 2 is the validated round untouched. See
+> `docs/verification/M15-gate.md`.
+>
+> M14 V2 art is integrated (33/33 canonical assets, distinct performers facing
+> the audience, a clear snare, enabled ambient loops) and was approved on
+> device. M14.1 reduces rendering overhead and fixes slow-frame hit feedback;
+> its device retest is still open. See `docs/verification/M14.1-gate.md`.
 
 ## Running it
 
@@ -68,7 +79,7 @@ audio device faked.
 ```
 game/
   config/      tuning data — hitboxes, arcs, scoring, stage geometry and cadence
-  levels/      round schedules (level01)
+  levels/      round schedules (defenseDrill, level01) and the stage table
   state/       the round domain: clock, spawning, hit resolution, scoring, state machine
   systems/     approach and throw math, effects, debris, stage motion, the engine bridge
   entities/    the engine entity map
