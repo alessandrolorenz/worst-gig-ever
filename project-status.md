@@ -485,6 +485,25 @@ made a mug fly at bottle speed, and the mug being the slow wide object is
 something the player spends three stages learning. Arrival spacing is exact
 either way — held by a test at 16, 33 and 97 ms steps.
 
+### Device review passed — owner approved 2026-09-04
+
+**"Ficou muito legal."** Played on the Galaxy S23 FE (SM-S711B, Android 16),
+the same handset as the M13/M14 playtests, installed as the local development
+client over USB with Metro reached through `adb reverse tcp:8081`. The device
+had no previous build on it, so nothing was uninstalled. Zero errors in logcat.
+Stage 1 cleared first attempt: 5300 defense, 29 destroyed, 1 through, combo 19.
+
+`M16_M17_DEVICE_REVIEW` is therefore satisfied *for direction*. Read the scope
+of that carefully: it was a **debug build on JSC**, which is fine for judging
+reading, audio and the new stages and is explicitly not fine for judging frame
+pacing or tap latency (open item 5). **The M14.1 performance retest is still
+open and still needs a release build.**
+
+Not yet answered by this session, and worth asking before the next milestone:
+whether the click helps or nags across a whole round, whether the Encore reads
+as a climax or as noise, and whether the bar counter is now countable rather
+than merely visible.
+
 ### Browser round run, one defect found
 
 Driven headless at 923 x 411 against the real web export, the same rig M15

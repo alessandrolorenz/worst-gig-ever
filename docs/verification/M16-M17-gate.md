@@ -59,6 +59,23 @@ This is exactly what the browser round is for. Nothing in the test suite could
 have caught it: the geometry was correct and asserted, and the geometry was
 never the problem.
 
+## Device review — owner verdict
+
+**Played on the Galaxy S23 FE (SM-S711B, Android 16) on 2026-09-04. Owner's
+verdict: "Ficou muito legal."** Direction approved.
+
+Installed as the local development client over USB, with Metro reached through
+`adb reverse tcp:8081` rather than the network. Nothing was uninstalled — the
+device had no previous build on it. Zero errors in logcat across the session.
+The owner cleared Stage 1 on the first attempt: 5300 defense, 29 objects
+destroyed, 1 through, best combo 19.
+
+**What this verdict does and does not cover.** It is an approval of the
+direction, taken on a **debug build running JSC**. That is enough to judge
+reading, audio, and the new stages. It is *not* enough to judge frame pacing or
+tap latency, which is precisely the open M14.1 question (open item 5). That
+retest still needs a release build and is still open.
+
 ## What a device still has to answer
 
 1. **Is the beat readable now?** The whole of M16. The markers, the bar
