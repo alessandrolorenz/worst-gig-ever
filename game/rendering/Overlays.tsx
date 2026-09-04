@@ -291,10 +291,15 @@ export function Overlays(props: OverlayProps) {
       <View style={styles.scrim}>
         <Text style={styles.briefingKicker}>STAGE {stage.number}</Text>
         <Text style={styles.briefingTitle}>{stage.name}</Text>
+        {/**
+         * The indicator is on, deliberately. A briefing that silently hides its
+         * second half teaches nothing — and at the MVP playtest this card was
+         * doing exactly that with the one rule it exists to explain.
+         */}
         <ScrollView
           style={styles.briefingScroll}
           contentContainerStyle={styles.briefingList}
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator
         >
           {stage.briefingFigures !== undefined && (
             <View style={styles.figureRow}>
@@ -538,8 +543,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: 8,
   },
-  /* Scrolls rather than grows, so a longer briefing can never clip a button. */
-  briefingScroll: { maxHeight: 150, alignSelf: 'stretch' },
+  /*
+   * Scrolls rather than grows, so a longer briefing can never clip a button.
+   *
+   * Raised from 150 after the MVP playtest. At 150 a stage that carries figures
+   * *and* the mug rule measured about 300 px of content, so half the card sat
+   * below a fold with `showsVerticalScrollIndicator` off — the rule was on the
+   * screen and unreadable, which is indistinguishable from absent. 200 fits
+   * stage 1 whole and still leaves the 411 dp viewport its heading, its button
+   * row and room to spare.
+   */
+  briefingScroll: { maxHeight: 200, alignSelf: 'stretch' },
   /*
    * Inside the scroll, so pictures cost the bullets nothing on the 411 dp
    * viewport the whole results stack is measured against — the list scrolls
@@ -548,12 +562,17 @@ const styles = StyleSheet.create({
   figureRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 8 },
   figure: { alignItems: 'center', width: 128 },
   figureArt: { width: 72, height: 62 },
+  /*
+   * 12, not 10. These two captions are the tightest statement of the mug rule
+   * anywhere in the game — "still far away: it smashes" against "within arm's
+   * reach: he drinks it" — and they were the smallest text on the card.
+   */
   figureCaption: {
-    color: THEME.hudDim,
-    fontSize: 10,
-    lineHeight: 13,
+    color: THEME.hudText,
+    fontSize: 12,
+    lineHeight: 15,
     textAlign: 'center',
-    paddingTop: 3,
+    paddingTop: 4,
   },
   briefingList: { alignItems: 'center', paddingBottom: 4 },
   briefingItem: {

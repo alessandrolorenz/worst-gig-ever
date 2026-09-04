@@ -62,6 +62,32 @@ toma a cerveja se acertar quando o copo estiver perto dele, ao alcance da mão"*
 is. Stage 1 now says exactly that in four lines and two captioned pictures, and
 stage 3 repeats it.
 
+### The rule was on screen and unreadable (1.0.11)
+
+The owner asked, after the MVP call, that stage 1 explain that close mugs are
+caught and distant ones smash. **It already did**, and that is the point worth
+recording: the text was there and could not be read.
+
+Two faults, both mine, both invisible to every test:
+
+1. The rule was written as **four separate briefing entries**. The renderer
+   gives each entry its own `▸`, so a single sentence came out as four bulleted
+   fragments.
+2. Stage 1's card measured about **300 px of content in a 150 px scroll** with
+   `showsVerticalScrollIndicator` off. Half the briefing sat below a fold that
+   gave no sign of existing, and the mug rule was in the hidden half.
+
+Fixed by making the rule one entry, raising the scroll to 200 px, turning the
+indicator on, and setting the figure captions in 12 rather than 10 — those two
+captions are the tightest statement of the rule anywhere in the game and they
+were the smallest text on the card.
+
+**Content that does not fit is not a smaller version of content that does.** It
+is absent, and it looks identical to never having been written. Two tests now
+guard it: every briefing entry must be a whole sentence, and no briefing may
+exceed what its card can show. The first was checked against the exact copy
+that shipped and fails on it.
+
 ### What is deferred, not forgotten
 
 Nothing here blocks the MVP; all of it blocks a store release. See open items

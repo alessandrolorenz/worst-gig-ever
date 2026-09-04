@@ -381,3 +381,62 @@ test('M18.1: the drink has a sound, and it is one this repository generates', ()
   }
   assert.ok(peak > 0.5 && peak < 0.95, `gulp peak ${peak.toFixed(3)} should be loud but not clipping`);
 });
+
+/**
+ * The MVP playtest found the mug rule missing from stage 1. It was not missing
+ * — it was written as four separate briefing entries, so the renderer gave each
+ * fragment its own bullet, and the card overflowed a 150 px scroll with no
+ * indicator. The rule was on screen and unreadable, which the player cannot
+ * tell apart from absent.
+ *
+ * Both halves of that are guarded here: one idea per entry, and a budget the
+ * card can actually show.
+ */
+test('M18.1: every briefing entry is a whole sentence, not a fragment', () => {
+  for (const stage of STAGES) {
+    for (const line of stage.briefing) {
+      assert.match(
+        line,
+        /[.!?]$/,
+        `stage ${stage.number}: "${line}" does not end a sentence — the renderer ` +
+          'gives every entry its own bullet, so a fragment reads as a broken list',
+      );
+      assert.ok(
+        line.trim().length > 0 && /^[A-Z“"]/.test(line.trim()),
+        `stage ${stage.number}: "${line}" does not start a sentence`,
+      );
+    }
+  }
+});
+
+test('M18.1: no briefing asks the card to show more than it can', () => {
+  /*
+   * Mirrors `styles.briefingScroll` in Overlays.tsx: 200 px of viewport, text
+   * at 20 px per line with 5 px between entries, figures at about 105 px when
+   * a stage has them. Wrapping is estimated at 62 characters per line, which
+   * is 560 px of maxWidth at 15 px text.
+   *
+   * A proxy, and deliberately a loose one — it exists to catch a briefing that
+   * has doubled in length, not to lay the card out.
+   */
+  const VIEWPORT_PX = 200;
+  const LINE_PX = 20;
+  const ENTRY_GAP_PX = 5;
+  const FIGURE_ROW_PX = 105;
+  const CHARS_PER_LINE = 62;
+
+  for (const stage of STAGES) {
+    const text = stage.briefing.reduce(
+      (total, line) => total + Math.ceil(line.length / CHARS_PER_LINE) * LINE_PX + ENTRY_GAP_PX,
+      0,
+    );
+    const figures = stage.briefingFigures ? FIGURE_ROW_PX : 0;
+    const height = text + figures;
+    assert.ok(
+      height <= VIEWPORT_PX * 1.6,
+      `stage ${stage.number}: about ${height} px of briefing against a ${VIEWPORT_PX} px ` +
+        'card. Past this the end of it is only reachable by scrolling, and the ' +
+        'briefing is the one place a rule is ever explained.',
+    );
+  }
+});

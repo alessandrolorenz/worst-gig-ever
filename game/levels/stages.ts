@@ -104,10 +104,7 @@ const stageOne: StageDefinition = {
   briefing: [
     'The crowd is throwing what it was drinking.',
     'Tap a bottle or a mug to smash it before it reaches your kit.',
-    'A mug is different, and the timing is the whole rule: hit it while it is',
-    'still far away and it smashes like anything else. Let it come all the way',
-    'in — close enough to reach — and the drummer catches it and drinks it,',
-    'which is worth more.',
+    'Mugs are the exception, and the distance is the whole rule: hit one far away and it smashes like anything else, but let it come within arm’s reach and the drummer catches it and drinks it, which is worth more.',
     'Three things get through and the show is over.',
     'No beat to keep yet. That is the next stage. Just defend.',
   ],
