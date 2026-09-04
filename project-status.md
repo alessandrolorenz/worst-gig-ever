@@ -1065,6 +1065,20 @@ what caught the bottle's enlargement in the first place.
     pad reached y 1078 and the owner played a full round on hardware — and the
     pad's centre band sits well clear. Worth watching in the re-test: if taps
     near the bottom edge feel swallowed, this is why.
+17a. **The fix for item 17 shipped its own bug, and that one is worth
+    remembering more.** In 1.0.8 the results buttons never armed: `RoundState`
+    is mutated in place and the overlay is React, so the results screen rendered
+    once when the show ended, read the buttons as not-yet-armed, and never
+    re-rendered to discover they since were. **The stage could not be
+    advanced.** Fixed in 1.0.9 with a `RESULTS_ARMED` round event that tells the
+    overlay to look again.
+
+    Every domain test passed while the game was unplayable, because they drive
+    `tickRound` directly and never ask what the UI was told. **Anything the
+    overlay reads out of mutable round state must be announced by an event, not
+    left to be discovered** — a value that becomes true in silence is invisible
+    to React, and the failure mode is a dead button rather than a wrong number.
+
 17. **The results screen used to steal the last beat, and the shape of that
     bug is worth remembering.** A stage ends abruptly and the results button row
     sits in the lower centre — over the groove pad the player is still tapping —

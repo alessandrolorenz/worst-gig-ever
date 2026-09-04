@@ -27,4 +27,14 @@ export type RoundEvent =
   | { type: 'VOCALIST_HIT'; points: number }
   | { type: 'VOCALIST_EVENT_ENDED'; wasHit: boolean }
   | { type: 'SHOW_COMPLETED' }
-  | { type: 'SHOW_RUINED' };
+  | { type: 'SHOW_RUINED' }
+  /**
+   * The results screen's buttons may now be pressed (M18.1).
+   *
+   * Emitted once, on the tick `settledMs` crosses `RESULTS_ARM_MS`. It exists
+   * because `RoundState` is mutated in place and the overlay is React: without
+   * an event the results screen renders once when the show ends, reads the
+   * buttons as not-yet-armed, and never re-renders to discover they since
+   * were — which leaves the stage permanently unadvanceable.
+   */
+  | { type: 'RESULTS_ARMED' };

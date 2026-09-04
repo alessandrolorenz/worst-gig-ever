@@ -569,7 +569,13 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
   if (state.state === 'SHOW_COMPLETE' || state.state === 'SHOW_RUINED') {
     // The results screen ages here and nowhere else: the round clock stopped
     // when the show did, and it is entitled to stay stopped.
-    if (rawDeltaMs > 0) state.settledMs += Math.min(rawDeltaMs, MAX_TICK_DELTA_MS);
+    if (rawDeltaMs > 0) {
+      const wasArmed = resultsArmed(state);
+      state.settledMs += Math.min(rawDeltaMs, MAX_TICK_DELTA_MS);
+      // Announced rather than merely become true. Nothing polls this state, so
+      // a silent transition leaves the buttons drawn and dead forever.
+      if (!wasArmed && resultsArmed(state)) events.push({ type: 'RESULTS_ARMED' });
+    }
     return events;
   }
   if (state.state !== 'PLAYING' && state.state !== 'VOCALIST_EVENT') return events;

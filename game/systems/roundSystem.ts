@@ -181,6 +181,12 @@ function applyEvents(entities: GameEntities, round: RoundState, events: RoundEve
         }
         break;
       }
+      case 'RESULTS_ARMED': {
+        // Presentation-only, and the whole reason the event exists: the
+        // results overlay has to be told to look at the round again.
+        entities.scene.onFlowChange?.();
+        break;
+      }
       case 'TARGET_MISSED': {
         // Something got through and hit the kit.
         audio.playSfx('impactThwack');

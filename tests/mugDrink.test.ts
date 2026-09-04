@@ -19,6 +19,7 @@ import {
   type RoundState,
 } from '../game/state/roundState.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import type { RoundEvent } from '../game/state/roundEvents.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -272,6 +273,47 @@ test('M18.1: the results buttons are deaf until the screen settles', () => {
 
   tickRound(state, 32);
   assert.equal(resultsArmed(state), true, 'and armed once the delay has passed');
+});
+
+/**
+ * The bug this test exists for shipped in 1.0.8 and made the game
+ * unadvanceable.
+ *
+ * `resultsArmed` being *true* is not enough. `RoundState` is mutated in place
+ * and the overlay is React, so the results screen renders once when the show
+ * ends, reads the buttons as not-yet-armed, and — with nothing to tell it
+ * otherwise — never renders again. The buttons stayed dead forever and the
+ * owner could not leave the stage.
+ *
+ * The domain tests above all passed while that was true, because they drive
+ * `tickRound` directly and never ask what the UI was told. The observable
+ * contract is the *event*, so that is what is asserted here.
+ */
+test('M18.1: arming is announced, not merely become true', () => {
+  const state = playing();
+  for (let guard = 0; guard < 20_000 && state.state === 'PLAYING'; guard += 1) {
+    tickRound(state, 16);
+  }
+  assert.equal(state.state, 'SHOW_RUINED');
+
+  const armings: RoundEvent[] = [];
+  for (let elapsed = 0; elapsed < RESULTS_ARM_MS * 3; elapsed += 16) {
+    armings.push(...tickRound(state, 16).filter((e) => e.type === 'RESULTS_ARMED'));
+  }
+
+  assert.equal(armings.length, 1, 'exactly once — not never, and not every frame after');
+  assert.equal(resultsArmed(state), true);
+});
+
+test('M18.1: a live round never announces arming', () => {
+  const state = playing();
+  const events: RoundEvent[] = [];
+  for (let i = 0; i < 200; i += 1) events.push(...tickRound(state, 16));
+  assert.equal(
+    events.filter((e) => e.type === 'RESULTS_ARMED').length,
+    0,
+    'a round still being played has no results screen to arm',
+  );
 });
 
 test('M18.1: the settle clock does not run while the round is still being played', () => {
