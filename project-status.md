@@ -12,9 +12,18 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M18 mug drink reaction — `M18_DRINK_DEVICE_REVIEW`.** Implemented, built, and
-installed on the Galaxy S23 FE as **1.0.7**; the owner's verdict on the motion
-is the only thing outstanding. See `docs/verification/M18-gate.md`.
+**M18 mug drink reaction — `M18_DRINK_APPROVED`.** The owner played 1.0.7 on
+the Galaxy S23 FE and approved it on 2026-09-04. See
+`docs/verification/M18-gate.md`.
+
+The approval covers the milestone as built. It does not cover the two pieces
+left undone on purpose: the drink has no gulp SFX and no visible `+25` award,
+and both were open when the verdict was given (open item 20). The second one
+matters more now than it did when it was deferred — the drink is easy to see at
+0.35, so the player watches the joke land and is told nothing about the prize.
+
+**Four milestones are now approved and none of them are on `main`.** Merging
+`feat/m16-beat-clarity` is the outstanding structural step.
 
 A mug caught near the drummer is caught and drunk for a flat 25; a mug swatted
 while it is still far away breaks with the stick for exactly what it always
@@ -39,9 +48,10 @@ screen stopped stealing the last beat — see open item 17.
 
 ### Approved and stacked, not merged
 
-M15, M16, M17 and M18 all live on `feat/m16-beat-clarity`, **18 commits ahead
-of `main`**. M15, M16 and M17 have owner device approval; M18 is awaiting it.
-Merging is the next structural step and has not been done.
+M15, M16, M17 and M18 all live on `feat/m16-beat-clarity`, **20 commits ahead
+of `main`**, and all four now have owner device approval. Merging is the next
+structural step and has not been done. Until it is, every approved milestone in
+this project exists on exactly one branch.
 
 ### M15, M16 and M17 — approved on device
 

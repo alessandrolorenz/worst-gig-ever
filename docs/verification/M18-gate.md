@@ -1,8 +1,14 @@
 # M18 gate — mug drink reaction
 
 **Branch:** `feat/m16-beat-clarity`, at `d3ee675`.
-**Outcome:** `M18_DRINK_DEVICE_REVIEW`. Implemented, built, and installed; the
-owner's verdict on the motion is the only thing left.
+**Outcome:** `M18_DRINK_APPROVED`. The owner played 1.0.7 on the Galaxy S23 FE
+and approved it on 2026-09-04.
+
+The approval covers the milestone as built: the 0.35 threshold, the two-frame
+drink at 120/240/120, the enlarged arm, the taught rule, and the 900 ms results
+delay. It does **not** cover the two things listed as deliberately undone below
+— the drink still has no sound and no visible award, and both were open when
+the verdict was given.
 
 ## Automated
 
