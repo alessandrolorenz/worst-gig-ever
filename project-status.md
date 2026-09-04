@@ -485,6 +485,39 @@ made a mug fly at bottle speed, and the mug being the slow wide object is
 something the player spends three stages learning. Arrival spacing is exact
 either way — held by a test at 16, 33 and 97 ms steps.
 
+### Local release builds work — the M14.1 retest no longer needs EAS
+
+**Corrected 2026-09-04.** The project has carried a note since 2026-08-31 that
+a local release build fails. That note is about
+`npx expo run:android --variant release`, which dies on the `lintVitalAnalyze`
+tasks. **`./android/gradlew -p android assembleRelease` succeeds in 45 seconds**
+— it does not run those tasks — and produces a standalone APK:
+`android/app/build/outputs/apk/release/app-release.apk`, 115 MB, all four ABIs,
+`assets/index.android.bundle` embedded, JSC, signed with the debug keystore
+through the stock `signingConfig signingConfigs.debug`.
+
+Before blaming any native build, run
+`npx expo-modules-autolinking resolve -p android` and confirm **15** modules
+(ADR 0006). It reports 15 today.
+
+**This unblocks the oldest open item in the project.** The M14.1 tap
+responsiveness retest has been waiting since 2026-09-03 for a release build,
+and every device session since has run the development client — a debug build
+on JSC, which open item 5 says not to judge frame pacing on. No EAS build is
+needed for it, so no cost and no queue.
+
+Built and installed on the Galaxy S23 FE as **version 1.0.5, versionCode 2** —
+deliberately distinct from 1.0.3 (EAS `9d1dd65c`, M14.1 without M15) and 1.0.4
+(EAS `62edf299`, M15). `app.json` carries 1.0.5 now; the matching edit to
+`android/app/build.gradle` is temporary, since `android/` is generated and
+git-ignored.
+
+It replaced the development client on the device, so JS changes no longer
+hot-reload. Going back is one command:
+`adb install -r android/app/build/outputs/apk/debug/app-debug.apk`.
+
+The retest is scripted in `docs/specs/M14.1-release-retest-checklist.md`.
+
 ### Device review passed — owner approved 2026-09-04
 
 **"Ficou muito legal."** Played on the Galaxy S23 FE (SM-S711B, Android 16),
