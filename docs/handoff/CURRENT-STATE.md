@@ -34,6 +34,46 @@ signing key, so one installs over the other).
 Both requested by the owner on 2026-09-03 and both finished. 1.0.4 is 126 MB
 and was built in ten minutes.
 
+### Local release builds — no EAS, no cost, no queue
+
+Since 2026-09-04 the project builds its own release APKs.
+`./android/gradlew -p android assembleRelease` succeeds in ~25 s and produces
+`android/app/build/outputs/apk/release/app-release.apk` — 116 MB, all four ABIs,
+`assets/index.android.bundle` embedded, JSC, signed with the debug keystore
+through the stock `signingConfig`. **`npx expo run:android --variant release` is
+the thing that does not work**; it dies on the `lintVitalAnalyze` tasks, and the
+gradlew invocation does not run them. That distinction is why the project
+carried a "local release builds are broken" note for four days that was never
+true of this command.
+
+These install over each other but **not** over the EAS APKs above — different
+signing key. Uninstall first when switching.
+
+| App version | versionCode | Contents | Commit |
+| --- | --- | --- | --- |
+| 1.0.5 | 2 | M14.1 + M15 + M16 + M17, the first release build | `02b1345` |
+| 1.0.6 | 3 | + M18 as first specified (closeness 0.5, rect 520x440) | `6826894` |
+| **1.0.7** | **4** | + the five 1.0.6 playtest corrections | `d3ee675` |
+
+Every version number is distinct on purpose: six builds now exist across two
+signing keys, and none of them can be mistaken for another from the app info.
+
+Before handing any of these over, two checks are worth the thirty seconds they
+cost, because "it installed" is not "it shipped what you think":
+
+```sh
+# 1. the bundle really contains what the build was supposed to add
+unzip -o -q app-release.apk assets/index.android.bundle -d /tmp/apk
+grep -c YOUR_NEW_SYMBOL /tmp/apk/assets/index.android.bundle
+
+# 2. it launches without a runtime error
+adb shell monkey -p com.worstbandever.app -c android.intent.category.LAUNCHER 1
+adb logcat -d -t 300 | grep -iE "AndroidRuntime|FATAL|redbox"
+```
+
+If autolinking is ever suspect, `npx expo-modules-autolinking resolve -p android`
+must report **15** modules (ADR 0006).
+
 The version numbers differ on purpose: every build before 1.0.4 reported 1.0.3,
 so two APKs on one phone could not be told apart from the app info — in a
 playtest whose point is comparing them. `versionCode` stays at 1, which is what

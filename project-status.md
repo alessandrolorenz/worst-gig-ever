@@ -12,45 +12,63 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M15 story, briefings, and two stages — `M15_DEVICE_REVIEW`.** The owner
-supplied five new narrative illustrations on 2026-09-03 and asked for three
-things: a story shown before the game starts, a screen explaining how to play,
-and two stages beginning with a defense-only one. All three are implemented on
-`feat/m15-story-and-stages`; the automated gate is green and physical review is
-pending. See `docs/verification/M15-gate.md`.
+**M18 mug drink reaction — `M18_DRINK_DEVICE_REVIEW`.** Implemented, built, and
+installed on the Galaxy S23 FE as **1.0.7**; the owner's verdict on the motion
+is the only thing outstanding. See `docs/verification/M18-gate.md`.
 
-The game now opens on a five-panel story — the poster, the arrival in the
-storm, the load-in, the show working, and the beer that hits the mixing desk —
-which is the only place the game ever explains why a crowd is throwing glass at
-the drummer. It auto-advances, takes a tap to skip ahead, has a Skip button,
-runs once per launch, and is replayable from the title.
+A mug caught near the drummer is caught and drunk for a flat 25; a mug swatted
+while it is still far away breaks with the stick for exactly what it always
+paid. The bottle breaks at every distance, and that contrast is the joke. The
+break path was not deleted — it is the default and the drink is the branch — so
+nothing already validated changed shape.
 
-**Stage 1 "Hold the line"** is 40 seconds of defense only: no Groove Pad, no
-Groove readout, no beat scheduled, scored, or missed, and one summary column.
-Its first two spawn phases are identical to the show's, so it teaches the round
-the player is about to play rather than an easier variant of it; only the final
-phase is gentler, at 950 ms against the show's 850 ms. **Stage 2 "Keep the
-beat"** is `level01`, the validated round, unchanged. Each stage opens with its
-own briefing card, which is where the how-to-play copy now lives.
+The gate is `closenessAt(progress) >= DRINK_MIN_CLOSENESS`, and the axis is the
+feature. `progress` is linear in time, but depth runs from `farDepth` 4.2 down
+to 1, so at progress 0.60 a mug has crossed only 26% of the visible distance. A
+time gate would have put the drummer's forearm on screen to catch an object
+still near the vanishing point. A test taps a mug at progress 0.60 and asserts
+it *breaks*, so moving the comparison onto time fails loudly.
 
-No gameplay value moved. `game/config/rhythm.ts`, `scoring.ts`, `stage.ts`,
-`targets.ts` and `game/systems/approach.ts` have no diff, and `level01.ts`
-keeps every number it had — `tests/stageFlow.test.ts` asserts the whole
-schedule field by field. Nothing is locked: session-only progress must not be
-able to gate a cold start.
+The owner played 1.0.6 and returned five items, all answered in 1.0.7: the
+threshold dropped from 0.5 to 0.35 because the drink was gated behind a patience
+most players do not have; the arm grew 15% and moved 68 px further into frame;
+the mug rule is now taught on stage 1 in words and in pictures; and the results
+screen stopped stealing the last beat — see open item 17.
 
-`npm run verify` passes 299 tests plus both art gates; web and Android exports
-succeed; three headless browser runs at 923x411 completed with zero page
-errors. The five stills add 2.3 MB rather than the sources' 11.5 MB.
+`npm run verify` passes **360 tests** plus both art gates.
 
-At the owner's request, M15 was built for a device as Android `preview:device`
-build `62edf299-c0bb-4f5a-8512-22980fdfe64b`, app version **1.0.4**, commit
-`5df6f0b` — finished 2026-09-04, 126 MB. The app version was raised from 1.0.3
-so this APK can be told apart from `9d1dd65c`, the M14.1 tree without M15,
-which also finished and is the clean build for the performance question. Both
-APKs are linked in `docs/handoff/CURRENT-STATE.md`.
+### Approved and stacked, not merged
 
-### M14.1 performance correction — retest still open
+M15, M16, M17 and M18 all live on `feat/m16-beat-clarity`, **18 commits ahead
+of `main`**. M15, M16 and M17 have owner device approval; M18 is awaiting it.
+Merging is the next structural step and has not been done.
+
+### M15, M16 and M17 — approved on device
+
+**M15 story, briefings, and two stages** was approved, as were **M16 beat
+clarity** and **M17 difficulty curve and throw patterns** (owner device session,
+2026-09-04: the click helps and stays on by default, the bar counter is
+countable rather than merely visible, and the Encore reads as challenging).
+Gates: `docs/verification/M15-gate.md`, `docs/verification/M16-M17-gate.md`.
+
+The game opens on a five-panel story — the poster, the arrival in the storm, the
+load-in, the show working, and the beer that hits the mixing desk — which is the
+only place the game ever explains why a crowd is throwing glass at the drummer.
+It auto-advances, takes a tap to skip ahead, has a Skip button, runs once per
+launch, and is replayable from the title.
+
+There are four stages: **1 "Hold the line"** (defense only), **2 "Keep the
+beat"** (the beat alone for twelve seconds, then bottles), **3** the validated
+`level01` show, and **4** the Encore. `level01` keeps every number it had.
+
+### M14.1 performance correction — answered, pending confirmation
+
+**Reported OK on 2026-09-04, not yet formally closed.** The owner played the
+1.0.5 local release build and said *"a performance me pareceu ok"*. That is the
+answer this item has been waiting for since 2026-09-03 — but it is recorded as
+reported rather than as closed, because the verdict is only meaningful if the
+build in hand was the release APK and not the development client, and that has
+not been confirmed. Ask once, then close it or re-run it.
 
 `PERFORMANCE_DEVICE_RETEST`. The owner approved the M14 APK visually but
 reported slow taps on the Galaxy S23 FE. The fix preserves every art file and
@@ -1016,6 +1034,28 @@ what caught the bottle's enlargement in the first place.
     pad reached y 1078 and the owner played a full round on hardware — and the
     pad's centre band sits well clear. Worth watching in the re-test: if taps
     near the bottom edge feel swallowed, this is why.
+17. **The results screen used to steal the last beat, and the shape of that
+    bug is worth remembering.** A stage ends abruptly and the results button row
+    sits in the lower centre — over the groove pad the player is still tapping —
+    so the next tap of a beat that no longer exists landed on "Next stage". Fixed
+    at M18.1 with a 900 ms arming delay (`RESULTS_ARM_MS`, `settledMs`). The
+    general lesson outlives the fix: **any overlay that appears without warning
+    inherits whatever the finger was already doing**, and the lower centre is
+    where the finger lives in this game.
+18. **Defense scores are not comparable across the M18 boundary**, as Groove
+    scores are not across M13/M13.1. A round with mugs scores higher after M18
+    for the same play, and the gap widens with how many mugs are drunk.
+19. **The 8 px art anchor gate is blind to the drink frames.**
+    `measure-art-bounds.mjs` anchors on the lowest opaque row, and the forearm
+    runs to the frame edge in both frames, so the drift reads 0 however far the
+    arm swims sideways. The shipped pair was measured by hand (worst case 6 px).
+    A real sequence check is open work — until it exists, a green
+    `measure:art` says nothing about this family.
+20. **The drink has no sound and no visible award.** The gulp SFX needs a
+    licence-verified CC0 file (rules 13 and 14) and the `+25 CHEERS` flourish
+    needs a floating-award treatment that does not exist yet. The bonus reads
+    only in the Defense score.
+
 16. **Groove scores are not comparable across the M13/M13.1 boundary.** A
     60-second round now has 89 scored beats rather than 88, because the two-beat
     count-in became the single unscored `GO` beat (ADR 0012). Do not read the
