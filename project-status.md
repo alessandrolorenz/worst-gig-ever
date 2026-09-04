@@ -485,6 +485,31 @@ made a mug fly at bottle speed, and the mug being the slow wide object is
 something the player spends three stages learning. Arrival spacing is exact
 either way — held by a test at 16, 33 and 97 ms steps.
 
+### Browser round run, one defect found
+
+Driven headless at 923 x 411 against the real web export, the same rig M15
+used. **Zero page errors.** Gate written up in
+`docs/verification/M16-M17-gate.md`, evidence in
+`docs/verification/m16-evidence/`.
+
+It answered the one M16 item no test could: **the four-stage picker and the
+click toggle fit the smallest real target viewport** — `scrollWidth` 923
+against `innerWidth` 923, `scrollHeight` 411 against `innerHeight` 411, no
+scrolling in either axis. The picker wraps 3 + 1 with Stage 4 centred on a
+second row.
+
+And it caught a real defect. **The bar counter was invisible.** At that
+viewport each mark is about four pixels across, and the unlit ones were drawn
+at 0.22 opacity over the kit art — the lit mark read, the other three did not,
+so the row showed a single dot drifting sideways rather than a position within
+a bar. Raised to 0.5 with a dark contour on every mark, because the row crosses
+the snare's cream head, the black kick head and the red shell inside its own
+width and no single fill survives that. Before and after crops are in the
+evidence directory.
+
+Nothing in the suite could have caught it: the geometry was correct, asserted,
+and never the problem.
+
 Still open before the stop checkpoint:
 
 - **the show's bed.** Every stage that scores beats should play music whose

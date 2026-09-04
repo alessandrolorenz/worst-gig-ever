@@ -171,7 +171,23 @@ function BarCounter({ beatIndex, lit }: { beatIndex: number; lit: boolean }) {
             cy={cy}
             r={BEAT_BAR.radiusPx * (isDownbeat ? 1.35 : 1)}
             fill={isCurrent ? THEME.cymbal : THEME.hudText}
-            opacity={isCurrent ? 0.95 : 0.22}
+            /*
+             * The unlit marks were 0.22 and effectively invisible on a device.
+             * Verified headless at 923x411 — the smallest real target viewport
+             * — where each mark is about four pixels across: the lit one read,
+             * the other three did not, so the row showed a single dot drifting
+             * rather than a position in a bar. A counter you cannot see the
+             * empty slots of is not a counter.
+             */
+            opacity={isCurrent ? 1 : 0.5}
+            /*
+             * The row crosses the snare's cream head, the black kick head and
+             * the red shell inside its own width, so no single fill survives
+             * the whole run. A dark contour does.
+             */
+            stroke={THEME.letterbox}
+            strokeWidth={2.5}
+            strokeOpacity={isCurrent ? 0.9 : 0.55}
           />
         );
       })}
