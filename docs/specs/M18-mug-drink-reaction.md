@@ -141,22 +141,43 @@ already written to avoid.
 It also thins the density problem measured below: two mugs can only contend
 for the one drink slot if the player lets *both* run past `closeness` 0.5.
 
-### B. A three-frame POV drink
+### B. A two-frame POV drink
 
 Drawn in the foreground, in the drummer's own view, as their hand and forearm:
 
-| Frame | File | Beat |
-|---|---|---|
-| 1 | `mug_drink_01_catch.png` | the hand closes on the mug, still tilted from flight |
-| 2 | `mug_drink_02_raise.png` | brought up and in, foam moving |
-| 3 | `mug_drink_03_drink.png` | brought to the drummer to drink, with the open rim, beer, and foam facing the player while the base recedes away |
+| Frame | File | Beat | Hold |
+|---|---|---|---|
+| 1 | `mug_drink_01_catch.png` | the hand closes on the mug, beer still slopping from the impact | 120 ms |
+| 2 | `mug_drink_02_drink.png` | brought to the drummer to drink, with the open rim, beer, and foam facing the player while the base recedes away | 240 ms |
+
+Then a 120 ms fade — **480 ms total, unchanged**.
 
 Owner perspective correction, 2026-09-04: this is the drummer's POV, so the
 payoff must show the **open top and beer inside the mug** approaching the
 player. The mug's bottom must not face the camera; that reverses the intended
 motion and makes it read as if the drink were being offered toward the crowd.
 
-120 ms per frame, then a 120 ms fade — **480 ms total**.
+**Two frames, not three, decided by the owner on 2026-09-04 after seeing the
+renders** — *"Acho que daria pra simplificar para apenas dois frames"* — and
+the measurement agrees for a reason the eye had already reached. A `raise`
+frame was generated and dropped. It read as the catch with the splash removed,
+which at 120 ms is a disappearance rather than a movement; and it was the one
+frame whose arm did not hold. Measured on the conditioned 640x544 output, at
+matched rows:
+
+| Pair | arm edge drift | thickness drift |
+|---|---|---|
+| **catch → drink** | **2–6 px** | **2–6 px** |
+| catch → raise | 14–15 px | 14–15 px |
+
+The project's anchor budget is 8 px. The pair the owner picked is the only pair
+that meets it; the dropped frame is what would have made the arm swim.
+
+**The 480 ms total is deliberately preserved.** Every density number in this
+spec is measured against it, so redistributing the time rather than shortening
+it keeps the measurement below valid, and it gives the payoff frame twice the
+screen time — which is what a two-frame sequence needs, since frame 2 now
+carries the whole joke with nothing after it.
 
 ### Measured, because the owner flagged it
 
@@ -184,8 +205,8 @@ the ceiling, reached only by a player who drinks every single mug.
 
 ### One slot, and it cuts to the punchline
 
-A second mug landing during a drink **jumps to frame 3** rather than restarting
-from the catch. Restarting would mean that in exactly the two cases a round
+A second mug landing during a drink **jumps to the drink frame** rather than
+restarting from the catch. Restarting would mean that in exactly the two cases a round
 gets a rapid pair, the player sees two beginnings and no payoff — the one shape
 of interruption that costs the joke instead of telling it. Cutting forward
 keeps the mug-at-the-camera frame, which is the whole point of the animation.
@@ -242,13 +263,26 @@ is written first and the milestone waits on it:
 One measurement rule needs care. `npm run measure:art` enforces, for animation
 triplets, under 8 px anchor drift and under 25% frame-to-frame change — because
 an *ambient loop* that moves more than that reads as flicker. The drink is a
-**sequence, not a loop**: it is supposed to change a lot, and its last frame is
-supposed not to match its first. It must be registered as a sequence and
+**sequence, not a loop**: it is supposed to change a lot, and its second frame
+is supposed not to match its first. It must be registered as a sequence and
 excluded from the loop-continuity gate, or the gate will reject correct art.
-The wrist anchor should still hold within 8 px so the arm does not swim.
 
-Manifest: three entries in `assets/manifest/asset-manifest.json`,
+The 8 px arm anchor still applies, and **the existing gate cannot check it**.
+`measure-art-bounds.mjs` anchors on the lowest opaque row, which for this
+family is the frame edge in both frames whatever the arm does sideways, so the
+drift would read 0 without having looked. The delivered pair was measured by
+hand instead — arm edge and thickness at matched rows, worst case 6 px against
+the 8 px budget. M18 should turn that measurement into a real sequence check
+rather than leave the family covered by a gate that cannot see it.
+
+Manifest: two entries in `assets/manifest/asset-manifest.json`,
 `requiredForMvp: false`, `kind: "effect"`, pointing at the prompt file.
+
+**Conditioning is not reproducible without its flag.** The renders came back on
+a warm beige card measuring 27–35 chroma against `condition-art.mjs`'s ≤30 card
+model, so the family conditions at `--card-chroma 40` — chosen against the gap
+to the nearest subject colour, the foam at 47. The command is in the art brief
+and the value belongs in the provenance record.
 
 ## Non-goals
 
@@ -283,7 +317,7 @@ Manifest: three entries in `assets/manifest/asset-manifest.json`,
    differs, and only by `drinkBonus` per mug actually drunk;
 5. the drink rect intersects neither `padBounds()` nor the lane corridor;
 6. a second mug drunk within 480 ms runs one animation, never two, and cuts to
-   the payoff frame rather than restarting from the catch;
+   the drink frame rather than restarting from the catch;
 7. the drink frames are excluded from the loop-continuity gate and present in
    the manifest;
 8. the animation and its SFX are cleared on quit, restart, and unmount

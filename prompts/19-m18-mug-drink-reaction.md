@@ -41,9 +41,15 @@ else about a mug stays exactly what it was.
    avoid. `closeness` 0.5 is `progress` 0.808, mug at 62% size, y 655, leaving
    346–452 ms to land the hit on a normal mug and 260–298 ms on a fastball.
    The spec's section A carries the full table.
-2. **Three-frame POV drink**, 120 ms per frame plus a 120 ms fade — 480 ms
-   total. One slot; a second mug landing mid-drink **cuts to frame 3** rather
-   than restarting from the catch, so the payoff always lands. The show throws
+2. **Two-frame POV drink** — `mug_drink_01_catch.png` held 120 ms, then
+   `mug_drink_02_drink.png` held 240 ms, then a 120 ms fade: **480 ms total,
+   the same as the three-frame version**. The owner cut the middle `raise`
+   frame on 2026-09-04 after seeing the renders, and the measurement backs it:
+   catch→drink holds the arm to 2–6 px, catch→raise drifts 14–15 px against an
+   8 px budget. Keeping the total at 480 ms preserves every density number in
+   the spec and doubles the payoff frame's screen time. One slot; a second mug
+   landing mid-drink **cuts to the drink frame** rather than restarting from
+   the catch, so the payoff always lands. The show throws
    two mugs closer than 480 ms apart twice a round (measured; the Encore never
    does), and those are exactly the cases a restart would spoil. Presentation
    state only, aged in elapsed ms, cleared by `clearEffects`.
@@ -67,10 +73,20 @@ else about a mug stays exactly what it was.
    (rule 14).
 7. **Register the frames as a sequence, not a loop.** `npm run measure:art`
    enforces under 25% frame-to-frame change on ambient triplets; a drink is
-   supposed to change more than that and its last frame is supposed not to
-   match its first. Exclude it from the loop-continuity gate, keep the 8 px
-   wrist-anchor check, and add three manifest entries with
-   `requiredForMvp: false`.
+   supposed to change more than that and its second frame is supposed not to
+   match its first. Exclude it from the loop-continuity gate and add **two**
+   manifest entries with `requiredForMvp: false`.
+
+   **Do not claim the 8 px anchor is covered by the existing gate — it is not.**
+   `measure-art-bounds.mjs` anchors on the lowest opaque row, and the arm runs
+   to the frame edge in both frames, so the drift reads 0 however far the arm
+   swims sideways. Add a real sequence check that measures the arm's edge
+   position and thickness at matched rows; the delivered pair's worst case is
+   6 px and it should stay a passing case.
+
+8. **Record the conditioning flag.** The family conditions at
+   `--card-chroma 40` (card measured 27–35, foam 47), not at the default 30.
+   Put it in the provenance record, or nobody can reproduce the staging output.
 8. **Record the score discontinuity** in `project-status.md`: Defense scores
    are not comparable across the M18 boundary, as Groove scores are not across
    M13/M13.1.

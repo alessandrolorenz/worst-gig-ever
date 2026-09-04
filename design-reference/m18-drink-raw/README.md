@@ -33,11 +33,54 @@ Nothing in this folder is a runtime asset, and nothing here may be copied into
   by `prompts/assets-v2/18-mug-drink-3frame.md`.
 - All three raw renders are 1254x1254 RGB images. No runtime asset was replaced.
 
-### Conditioning result
+### Conditioning result — resolved 2026-09-04
 
-The mandated shared conditioning command was attempted, but stopped with
-`Too few card pixels to condition image`. Although the background reads as a
-warm-grey card, the generator introduced enough chromatic edge variation to
-violate the conditioning script's strict card model. No partial staging output
-was accepted and no threshold was weakened. Resolve the card before production
-promotion; owner review of the raw motion remains the current checkpoint.
+The first attempt stopped with `Too few card pixels to condition image`. The
+cause was not a shortage of card: `cardLike` in `condition-art.mjs` gated on
+chroma <= 30, and this generator's card measures **27-35**, straddling the line.
+Frame 1 passed 1229 of its 1254 top-border pixels; frames 2 and 3 passed 137
+and 343. The border flood had almost nothing to seed from.
+
+The threshold is now the `--card-chroma` flag, **default 30 and unchanged for
+every family conditioned before M18** — re-conditioning the bassist family with
+the modified script produces byte-identical PNGs to the original under default
+flags. This family uses **40**, chosen against the measured gap rather than by
+taste:
+
+| | chroma |
+|---|---|
+| card | 27-35 |
+| **threshold used** | **40** |
+| foam (nearest subject colour) | 47 |
+| skin | 97-112 |
+| beer | 153-205 |
+
+The interior handle grey reads at 23 and is card-like at any threshold, but the
+flood is border-connected and never reaches it — as true before the change as
+after.
+
+## Selection — two frames, 2026-09-04
+
+The owner cut the sequence to two frames after seeing the renders. Measured on
+the conditioned 640x544 output, at matched rows, this is also the only pair
+that meets the project's 8 px arm-anchor budget:
+
+| Pair | arm edge drift | thickness drift |
+|---|---|---|
+| **catch -> drink (shipping)** | **2-6 px** | **2-6 px** |
+| catch -> raise | 14-15 px | 14-15 px |
+
+`mug_drink_02_raise.png` is kept here as part of the generation record and is
+not a shipping frame. The production pair lives in `../m18-drink-pair/`, where
+frame 3 is renamed `mug_drink_02_drink.png`, and conditions to
+`../m18-drink-staging-pair/`:
+
+```sh
+node scripts/condition-art.mjs \
+  --input-dir design-reference/m18-drink-pair \
+  --output-dir design-reference/m18-drink-staging-pair \
+  --prefix mug_drink_ --width 640 --height 544 --card-chroma 40
+```
+
+Owner review of the motion remains the checkpoint; nothing here has been
+promoted into `assets/art/`.
