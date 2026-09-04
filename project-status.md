@@ -379,6 +379,77 @@ M7 and M8 (`prompts/08`, `prompts/09`) are **superseded for now** by the
 rhythm pivot: the owner chose to test whether Groove + Defense is fun before
 adding more stage chaos. They are not cancelled, just not next.
 
+## Planned next — M16, M17, M18 (owner playtest 2026-09-04)
+
+The owner played the M15 build and asked for four things. They are specified as
+three milestones, sequenced so that nothing is judged before the thing it
+depends on is readable.
+
+| # | Milestone | Owner's request | Spec |
+|---|---|---|---|
+| M16 | Beat Clarity and Progressive Teaching | *"a representação das batidas… não estão claras"*; teach beats progressively, clearer visual, few objects | `docs/specs/M16-beat-clarity-and-progressive-teaching.md` |
+| M17 | Difficulty Curve and Throw Patterns | gradual speed and frequency; authored combos — three bottles in one lane, side to side | `docs/specs/M17-difficulty-curve-and-throw-patterns.md` |
+| M18 | Mug Drink Reaction | the drummer drinks the mug instead of smashing it, three frames, and it scores | `docs/specs/M18-mug-drink-reaction.md` |
+
+Execution prompts: `prompts/18-m16-beat-clarity-and-progressive-teaching.md`
+and `prompts/19-m18-mug-drink-reaction.md`. M17's is written after M16 is
+judged on a device, because the shape of a difficulty ramp depends on whether
+the beat became readable.
+
+**Sequence, and why.**
+
+1. Close the two open device reviews first — M15 and the M14.1 tap
+   responsiveness retest. Both APKs are already built and waiting, and every
+   milestone below changes something they measure.
+2. **M16 next.** It is the only one of the three the owner reported as broken
+   rather than missing, and both of the others are hard to judge without it: a
+   difficulty ramp cannot be evaluated by a player who cannot find the beat.
+3. **M18's art prompt goes to the owner immediately** —
+   `prompts/assets-v2/18-mug-drink-3frame.md`. Art is rendered outside this
+   repository, so it is the long pole and it runs in parallel. M18 itself is
+   independent of M16 and M17 and its execution prompt is already written
+   (`prompts/19-m18-mug-drink-reaction.md`), so it can run the moment the owner
+   approves the three frames as a sequence.
+4. **M17 last**, and its retune of `level01` is split into M17.1, gated on the
+   M14.1 retest closing. M17 itself leaves `level01` and `defenseDrill` byte
+   for byte and proves the ramp on a new Stage 4.
+
+**Four defects behind "the beats are not clear"**, each fixed separately in M16:
+
+- the pad *grows* into the beat and growth has no readable instant — nothing
+  meets anything, so M16 adds a ring that converges onto the rim;
+- `STAGE_MOTION.bpm` is 132 against the Groove's 90, so the lights and the band
+  beat against the pad and align only once every 10 seconds;
+- no beat cue is audible, on the one screen the player must also scan for glass;
+- the music loop is 21.75 s, which is 32.625 beats at 90 BPM, so it slips about
+  417 ms per loop — more than twice the GOOD window. Open item 13 calls this
+  harmless; it is not, because a player who listens for the beat is being given
+  a clock that is wrong.
+
+**Owner decisions, answered 2026-09-04.** All four were put to the owner and
+three are settled; they are folded into the specs above.
+
+1. **The click ships in the whole game, with a switch.** On by default in every
+   stage that has a beat, toggled from the title screen and the pause overlay.
+   Session-only, like `bestStageCleared`, because storage is an MVP non-goal.
+2. **Re-acquire the music.** Drift is not accepted. Every stage with a beat
+   gets a bed whose loop is a whole number of 90 BPM beats, routed per stage —
+   sparse for the teaching stage, full for the show. This closes open item 13
+   and is the moment to close open item 2 as well (`crowd_applause.wav` is
+   still the untrimmed 6.9 MB source and the mix is unnormalized).
+3. **Drinking a mug scores.** M18 adds a flat `SCORING.drinkBonus` of 25 on
+   top of `75 x multiplier`, unmultiplied — the mug is the *easier* target
+   (120 px radius against 104, slower at both ends), so a multiplied premium
+   would make the easy object the best scoring path at high combo. At x1 a
+   drunk mug equals a bottle; at x4 it is still worth less. Integrity healing
+   stays deferred: the owner asked for points, not for health.
+   **Defense scores are therefore not comparable across the M18 boundary**, in
+   the same way Groove scores are not across M13/M13.1 (open item 16).
+4. **`level01` retune: leaning yes, not decided** — *"acho que sim, nao estou
+   certo"*. Recorded as a leaning. M17.1 asks once more with the measured
+   before/after table in hand, because retuning `level01` is what makes every
+   earlier device observation incomparable.
+
 ## Gates
 
 - M0–M2 Fast Track: **COMPLETE** (2026-08-30)
