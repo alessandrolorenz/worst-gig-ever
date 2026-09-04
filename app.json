@@ -2,7 +2,7 @@
   "expo": {
     "name": "Worst Gig Ever",
     "slug": "worst-band-ever",
-    "version": "1.0.11",
+    "version": "1.1.0",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
