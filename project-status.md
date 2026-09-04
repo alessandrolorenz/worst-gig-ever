@@ -71,14 +71,27 @@ There are four stages: **1 "Hold the line"** (defense only), **2 "Keep the
 beat"** (the beat alone for twelve seconds, then bottles), **3** the validated
 `level01` show, and **4** the Encore. `level01` keeps every number it had.
 
-### M14.1 performance correction — answered, pending confirmation
+### M14.1 performance correction — PASSED, closed 2026-09-04
 
-**Reported OK on 2026-09-04, not yet formally closed.** The owner played the
-1.0.5 local release build and said *"a performance me pareceu ok"*. That is the
-answer this item has been waiting for since 2026-09-03 — but it is recorded as
-reported rather than as closed, because the verdict is only meaningful if the
-build in hand was the release APK and not the development client, and that has
-not been confirmed. Ask once, then close it or re-run it.
+**`PERFORMANCE_OK`.** The owner played **1.0.7** on the Galaxy S23 FE and
+reported it passed on performance. This closes the project's oldest open item,
+which had been waiting since 2026-09-03 for a build it could legitimately be
+judged on.
+
+The verdict is **stronger than the test that was designed for it.** The plan was
+to run 1.0.3 in isolation — the M14.1 tree with none of the new screens — so the
+render fix could be measured as the only variable. 1.0.7 instead carries M14.1
+*plus* M15, M16, M17 and M18: the story, four stages, the beat clock, the
+difficulty ramp, authored volleys, and a two-frame drink animation. It is
+strictly more work per frame than the isolated build would have been, and it
+passed anyway. A clean-variable comparison could not have produced a better
+answer than "it holds under more load than we were going to test it with", so
+the 1.0.3 isolation run is now moot and should not be requested.
+
+What this does *not* establish is a number. No FPS was measured on the device at
+any point; the 36.3% figure below is browser JavaScript time, not Galaxy frame
+pacing. The claim closed here is the one that was actually asked — taps feel
+responsive on the owner's phone — and it should not be quoted as anything more.
 
 `PERFORMANCE_DEVICE_RETEST`. The owner approved the M14 APK visually but
 reported slow taps on the Galaxy S23 FE. The fix preserves every art file and
@@ -997,16 +1010,23 @@ what caught the bottle's enlargement in the first place.
 
 ## Open items carried into the next playtest
 
-1. **M14.1 awaits physical-device performance retest.** The owner approved M14
-   visuals after installing its APK. Rendering and feedback corrections are
-   uncommitted; the owner requested a new EAS APK, now submitted (see gate).
+1. **CLOSED 2026-09-04 — `PERFORMANCE_OK`.** The owner played the 1.0.7 local
+   release build on the Galaxy S23 FE and reported it passed on performance.
+   This was the project's oldest open item, waiting since 2026-09-03.
 2. `crowd_applause.wav` is still the full 39 s / 6.9 MB source, and volume normalization across the five files has not been done. Both are audible in the current build and are deliberately left alone until after observation.
 3. The current tuning is playtest-informed but remains provisional. The M13
    physical playtest found the dual-task difficulty desirable, so every
    difficulty value is frozen through the M13.1 re-test. Tune only after the
    owner records one of the explicit M13.1 decision outcomes.
 4. The hit-radius halo and the danger line are tuning affordances, now behind `SHOW_GRAYBOX_DEBUG` in `game/rendering/SceneRenderer.tsx`. Turn the flag on if the next playtest needs to see what the player was aiming at.
-5. The development client is a **debug** build and `jsEngine` is still `jsc`, not Hermes. Both add overhead; do not judge frame pacing without re-checking a release build (ADR 0006).
+5. `jsEngine` is still `jsc`, not Hermes, and the development client is a
+   **debug** build — both add overhead, so frame pacing is still only
+   judgeable on a release APK (ADR 0006). **The rule was followed and the
+   verdict is in:** the 2026-09-04 pass was measured on 1.0.7, a release build.
+   Hermes was named as the next lever *if* performance failed. It did not, so
+   migrating to it is now an optimization nobody has asked for rather than a
+   remedy, and it should not be attempted without a reason and its own
+   comparison.
 6. The generated manifest requests `RECORD_AUDIO`, pulled in by expo-audio's config plugin even though the game never records. Harmless for a playtest; must be removed before any store submission.
 7. `com.worstbandever.app` is a provisional application identifier (ADR 0004). Confirm before any store submission.
    - **Technical identifiers still carry the old product name** (ADR 0010).
@@ -1018,7 +1038,8 @@ what caught the bottle's enlargement in the first place.
      the final package name — while there is still no installed base, because
      that last step invalidates every installed build.
 8. `package-lock.json` is git-ignored by the template, so dependency resolution is not reproducible across machines — this directly caused the autolinking failure documented in ADR 0006.
-9. **M14 visuals are approved; M14.1 tap responsiveness remains to be tested.**
+9. **CLOSED 2026-09-04.** M14 visuals were approved on 2026-09-03 and M14.1 tap
+   responsiveness passed on 1.0.7. See open item 1.
 10. **Ambient loop defect resolved 2026-09-03:** all four V2 triplets pass;
     `AMBIENT_LOOP_ART_READY = true`. No frame-count or timing changes.
 11. `npm run validate:art` checks PNG signature, dimensions, and alpha, so it passed art that is not a usable loop. **Addressed 2026-09-01:** `npm run measure:art` (`scripts/measure-art-bounds.mjs`) decodes pixels and reports per-triplet feet-anchor drift and frame-to-frame change, plus measured target bounds against the tap-circle rule. Historical Pack 1 scored 10–51 px drift and 43–88% change. V2 passes the unchanged 8 px/25% gates, including wrap; the strict check is now in `npm run verify`.

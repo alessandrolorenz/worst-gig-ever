@@ -79,10 +79,11 @@ so two APKs on one phone could not be told apart from the app info — in a
 playtest whose point is comparing them. `versionCode` stays at 1, which is what
 the previous internal APKs installed over each other with.
 
-**Use 1.0.3 to answer the M14.1 performance question in isolation**, since it
-is the same tree without the new screens. 1.0.4 answers it too — no gameplay
-value moved and Stage 2 is the same round on the same art — but it is not the
-clean variable.
+~~**Use 1.0.3 to answer the M14.1 performance question in isolation**~~ —
+**moot.** The question was answered on 2026-09-04 against **1.0.7**, which
+carries M14.1 plus four further milestones and therefore strictly more work per
+frame than this isolated build. It passed. An isolation run can no longer
+improve on that answer; do not request one.
 
 **M14.1 is committed as `4571f30` on `main`.** The owner approved the M14
 APK visually but reported delayed taps on the Galaxy S23 FE and authorized
