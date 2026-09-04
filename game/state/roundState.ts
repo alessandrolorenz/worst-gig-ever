@@ -15,7 +15,8 @@ import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
 import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
 import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { level01 } from '../levels/level01.ts';
-import type { LevelDefinition, SpawnPhase } from '../levels/levelDefinition.ts';
+import type { LevelDefinition, RoundCurve, SpawnPhase } from '../levels/levelDefinition.ts';
+import { laneDriftRange, volleyTemplate, type VolleyTemplate } from '../levels/volleys.ts';
 import {
   hitRadiusAt,
   progressAt,
@@ -36,11 +37,37 @@ export const RESOLVED_LINGER_MS = 260;
  */
 export const MAX_TICK_DELTA_MS = 100;
 
+/**
+ * Floor on any approach duration, however hard a level's curve ramps (M17).
+ *
+ * The same bound `tests/contracts.test.ts` already holds the fast window to.
+ * A ramp is a tuning dial and a dial with no stop eventually authors a throw
+ * nobody can see, which is not difficulty — it is a different game.
+ */
+export const MIN_APPROACH_MS = 1000;
+
 /** The vocalist gives up and leaves if the player never swings at them. */
 export const VOCALIST_TIMEOUT_MS = 7000;
 
 /** How long the vocalist's reaction plays before normal flow resumes. */
 export const VOCALIST_EXIT_MS = 900;
+
+/**
+ * A throw that has been fully authored but is not in the air yet (M17).
+ *
+ * Volleys exist so three bottles *arrive* 360 ms apart, and members therefore
+ * have to leave the crowd at different times. Everything about them — kind,
+ * lane, duration, trajectory — is drawn at the instant the volley is rolled, so
+ * the whole figure is decided by one contiguous run of the round's generator
+ * and a seed replays it exactly. Only the release is deferred.
+ */
+export interface PendingSpawn {
+  readonly atMs: number;
+  readonly kind: TargetKind;
+  readonly laneX: number;
+  readonly durationMs: number;
+  readonly trajectory: Trajectory;
+}
 
 export interface ActiveTarget {
   readonly id: number;
@@ -87,6 +114,14 @@ export interface RoundState {
   targetsDestroyed: number;
   misses: number;
   targets: ActiveTarget[];
+  /**
+   * Volley members authored but not yet released, in ascending time (M17).
+   *
+   * They count against `maxConcurrentTargets` exactly as targets in flight do,
+   * so the ordinary cadence cannot fill the screen in the gap a volley has
+   * already reserved.
+   */
+  pendingSpawns: PendingSpawn[];
   nextTargetId: number;
   nextSpawnAtMs: number | null;
   vocalist: VocalistState;
@@ -112,6 +147,7 @@ export function createRound(level: LevelDefinition = level01): RoundState {
     targetsDestroyed: 0,
     misses: 0,
     targets: [],
+    pendingSpawns: [],
     nextTargetId: 1,
     nextSpawnAtMs: null,
     vocalist: { status: 'idle', triggered: false, startedAtMs: null, hitAtMs: null },
@@ -136,6 +172,38 @@ export function phaseAt(level: LevelDefinition, elapsedMs: number): SpawnPhase |
   return null;
 }
 
+/** Linear interpolation of a round curve, clamped to its endpoints (M17). */
+function curveAt(curve: RoundCurve | undefined, fallback: number, progress: number): number {
+  if (curve === undefined) return fallback;
+  const t = Math.max(0, Math.min(1, progress));
+  return curve.start + t * (curve.end - curve.start);
+}
+
+/**
+ * The spawn interval a phase is asking for at a given moment (M17).
+ *
+ * Constant when `spawnEveryToMs` is absent, which is every phase authored
+ * before M17 — so this returns exactly `phase.spawnEveryMs` for them and the
+ * validated levels keep their schedule throw for throw.
+ */
+export function spawnIntervalAt(phase: SpawnPhase, atMs: number): number {
+  if (phase.spawnEveryToMs === undefined) return phase.spawnEveryMs;
+  const span = phase.toMs - phase.fromMs;
+  if (!(span > 0)) return phase.spawnEveryMs;
+  const progress = (atMs - phase.fromMs) / span;
+  return curveAt({ start: phase.spawnEveryMs, end: phase.spawnEveryToMs }, phase.spawnEveryMs, progress);
+}
+
+/** Multiplier applied to a drawn approach duration at a round time (M17). */
+export function speedScaleAt(level: LevelDefinition, atMs: number): number {
+  return curveAt(level.speedCurve, 1, atMs / level.durationMs);
+}
+
+/** Probability that a throw is drawn from the fast window at a round time (M17). */
+export function fastballChanceAt(level: LevelDefinition, atMs: number): number {
+  return curveAt(level.fastballCurve, FASTBALL_CHANCE, atMs / level.durationMs);
+}
+
 export function isRoundOver(state: RoundState): boolean {
   return state.state === 'SHOW_COMPLETE' || state.state === 'SHOW_RUINED';
 }
@@ -143,6 +211,18 @@ export function isRoundOver(state: RoundState): boolean {
 /** Targets still in flight, i.e. hittable. */
 export function activeTargets(state: RoundState): ActiveTarget[] {
   return state.targets.filter((target) => target.status === 'active');
+}
+
+/**
+ * Everything the concurrency cap has to account for: what is in the air, plus
+ * what a volley has already committed to putting there (M17).
+ *
+ * Counting the pending members is what stops the ordinary cadence from filling
+ * the screen inside the gap a volley has reserved, which would leave the
+ * figure's last bottle dropped by the cap and the pattern unreadable.
+ */
+export function committedTargetCount(state: RoundState): number {
+  return activeTargets(state).length + state.pendingSpawns.length;
 }
 
 /**
@@ -171,7 +251,7 @@ function beginPlaying(state: RoundState): void {
   state.state = 'PLAYING';
   state.countdownMs = 0;
   const phase = phaseAt(state.level, 0);
-  state.nextSpawnAtMs = phase ? phase.spawnEveryMs : null;
+  state.nextSpawnAtMs = phase ? spawnIntervalAt(phase, 0) : null;
 }
 
 /**
@@ -229,26 +309,167 @@ function authorTrajectory(rng: RngState, kind: TargetKind, laneX: number): Traje
   };
 }
 
-function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundEvent {
-  const kind = pick(state.rng, phase.kinds);
-  const laneX = STAGE.laneXs[nextInt(state.rng, STAGE.laneXs.length)];
-  // Rolled before the duration is drawn, and always rolled, so the sequence of
-  // generator calls per spawn is fixed and a seed replays a round exactly.
+/**
+ * Draws one approach duration, ramped and floored (M17).
+ *
+ * The curve is applied to the *result* of the draw rather than to the window,
+ * so the normal and fast windows ramp together and the deliberate gap between
+ * them survives at every point — that gap is what makes a fastball read as a
+ * different object rather than an ordinary one arriving early.
+ */
+function drawDuration(state: RoundState, kind: TargetKind, atMs: number, fast: boolean): number {
   const definition = TARGET_DEFINITIONS[kind];
-  const window =
-    nextFloat(state.rng) < FASTBALL_CHANCE ? definition.fastApproachMs : definition.approachMs;
+  const window = fast ? definition.fastApproachMs : definition.approachMs;
+  const drawn = between(state.rng, window.minMs, window.maxMs);
+  return Math.max(MIN_APPROACH_MS, drawn * speedScaleAt(state.level, atMs));
+}
+
+function pushTarget(
+  state: RoundState,
+  kind: TargetKind,
+  laneX: number,
+  spawnAtMs: number,
+  durationMs: number,
+  trajectory: Trajectory,
+): RoundEvent {
   const target: ActiveTarget = {
     id: state.nextTargetId++,
     kind,
-    spawnAtMs: atMs,
-    durationMs: between(state.rng, window.minMs, window.maxMs),
+    spawnAtMs,
+    durationMs,
     laneX,
-    trajectory: authorTrajectory(state.rng, kind, laneX),
+    trajectory,
     status: 'active',
     resolvedAtMs: null,
   };
   state.targets.push(target);
   return { type: 'TARGET_SPAWNED', targetId: target.id, kind };
+}
+
+function spawnTarget(state: RoundState, phase: SpawnPhase, atMs: number): RoundEvent {
+  const kind = pick(state.rng, phase.kinds);
+  const laneX = STAGE.laneXs[nextInt(state.rng, STAGE.laneXs.length)];
+  // Rolled before the duration is drawn, and always rolled, so the sequence of
+  // generator calls per spawn is fixed and a seed replays a round exactly.
+  const fast = nextFloat(state.rng) < fastballChanceAt(state.level, atMs);
+  const durationMs = drawDuration(state, kind, atMs, fast);
+  return pushTarget(state, kind, laneX, atMs, durationMs, authorTrajectory(state.rng, kind, laneX));
+}
+
+/**
+ * Authors a whole volley, or reports that it did not fit (M17).
+ *
+ * ## Arrival time, not spawn time
+ *
+ * The members are staggered so they **arrive** at the authored spacing. Each
+ * one keeps its own kind's speed window — a mug still flies like a mug — and
+ * its spawn time is worked backwards from the arrival it owes:
+ *
+ *     spawnAt = baseArrival + arriveAfterMs - durationMs
+ *
+ * with `baseArrival` set a full slowest-member duration after the scheduled
+ * slot, so no member is ever asked to have left before the volley was rolled.
+ *
+ * This is a deliberate improvement on the M17 spec, which called for one
+ * duration shared by the whole volley. Sharing would have made a mug fly at
+ * bottle speed; solving for the spawn time instead gives the same exact
+ * arrival spacing *and* keeps each object moving the way the player has
+ * already learned it moves.
+ *
+ * ## Whole or nothing
+ *
+ * If the concurrency cap cannot take every member, nothing is queued and the
+ * caller falls back to an ordinary single throw. Half a figure is not an
+ * easier figure — it is a different, unreadable one.
+ */
+function authorVolley(
+  state: RoundState,
+  template: VolleyTemplate,
+  atMs: number,
+): PendingSpawn[] | null {
+  const laneCount = STAGE.laneXs.length;
+  const drift = laneDriftRange(template, laneCount);
+  // Always drawn for a drifting template, never for a fixed one, so the call
+  // sequence depends only on which template was picked.
+  const offset = template.driftLanes
+    ? drift.min + nextInt(state.rng, drift.max - drift.min + 1)
+    : 0;
+
+  // One roll for the figure rather than one per member: a volley where two
+  // bottles are fastballs and one is not does not read as a figure at all.
+  const fast = nextFloat(state.rng) < fastballChanceAt(state.level, atMs);
+
+  const durations = template.members.map((member) =>
+    drawDuration(state, member.kind, atMs, fast),
+  );
+  const baseArrivalMs = atMs + Math.max(...durations);
+
+  return template.members.map((member, index) => {
+    const laneX = STAGE.laneXs[member.lane + offset];
+    return {
+      atMs: baseArrivalMs + member.arriveAfterMs - durations[index],
+      kind: member.kind,
+      laneX,
+      durationMs: durations[index],
+      trajectory: authorTrajectory(state.rng, member.kind, laneX),
+    };
+  });
+}
+
+/**
+ * One scheduled slot: a volley if the phase offers them and the roll lands and
+ * it fits, otherwise a single throw (M17).
+ *
+ * The volley roll happens **only when the phase declares volleys**. A phase
+ * without them therefore makes exactly the generator calls it always did,
+ * which is what lets `level01` and the other validated levels replay
+ * identically rather than merely similarly.
+ */
+function fillSpawnSlot(state: RoundState, phase: SpawnPhase, atMs: number): RoundEvent[] {
+  const volleys = phase.volleys;
+  if (volleys !== undefined && nextFloat(state.rng) < volleys.chance) {
+    const template = volleyTemplate(pick(state.rng, volleys.templates));
+    if (template !== null) {
+      const room = state.level.maxConcurrentTargets - committedTargetCount(state);
+      if (template.members.length <= room) {
+        const members = authorVolley(state, template, atMs);
+        if (members !== null) {
+          state.pendingSpawns.push(...members);
+          state.pendingSpawns.sort((a, b) => a.atMs - b.atMs);
+          return [];
+        }
+      }
+    }
+  }
+
+  if (committedTargetCount(state) >= state.level.maxConcurrentTargets) return [];
+  return [spawnTarget(state, phase, atMs)];
+}
+
+/**
+ * Releases volley members whose moment has come (M17).
+ *
+ * The target is created with its **scheduled** spawn time rather than the
+ * current clock, so a long frame cannot shift a figure's spacing: the arrival
+ * the volley promised is the arrival the player gets, at any tick size.
+ */
+function releasePendingSpawns(state: RoundState, events: RoundEvent[]): void {
+  if (state.pendingSpawns.length === 0) return;
+  const due = state.pendingSpawns.filter((pending) => pending.atMs <= state.elapsedMs);
+  if (due.length === 0) return;
+  state.pendingSpawns = state.pendingSpawns.filter((pending) => pending.atMs > state.elapsedMs);
+  for (const pending of due) {
+    events.push(
+      pushTarget(
+        state,
+        pending.kind,
+        pending.laneX,
+        pending.atMs,
+        pending.durationMs,
+        pending.trajectory,
+      ),
+    );
+  }
 }
 
 function registerMiss(state: RoundState, target: ActiveTarget, events: RoundEvent[]): void {
@@ -271,7 +492,9 @@ function endVocalistEvent(state: RoundState, wasHit: boolean, events: RoundEvent
   if (state.state === 'VOCALIST_EVENT') state.state = 'PLAYING';
   // Resume the spawn cadence from the current phase rather than catching up.
   const phase = phaseAt(state.level, state.elapsedMs);
-  state.nextSpawnAtMs = phase ? state.elapsedMs + phase.spawnEveryMs : null;
+  state.nextSpawnAtMs = phase
+    ? state.elapsedMs + spawnIntervalAt(phase, state.elapsedMs)
+    : null;
   events.push({ type: 'VOCALIST_EVENT_ENDED', wasHit });
 }
 
@@ -325,6 +548,14 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
     state.vocalist.status = 'blocking';
     state.vocalist.startedAtMs = state.elapsedMs;
     state.state = 'VOCALIST_EVENT';
+    /*
+     * A volley in mid-flight is abandoned along with the cadence (M17). M1
+     * pauses spawning during the interruption, and holding the queue instead
+     * would dump the remainder of a figure the instant the singer stepped
+     * aside — arriving in a clump, at spacing that no longer means anything,
+     * against a player who has just been looking somewhere else.
+     */
+    state.pendingSpawns = [];
     events.push({ type: 'VOCALIST_EVENT_STARTED' });
   }
 
@@ -341,21 +572,30 @@ export function tickRound(state: RoundState, rawDeltaMs: number): RoundEvent[] {
 
   // Spawning pauses while the vocalist blocks the sightline (M1).
   if (state.state === 'PLAYING') {
+    // Volley members first, so the cadence below sees them in the count.
+    releasePendingSpawns(state, events);
+
     const phase = phaseAt(state.level, state.elapsedMs);
     if (phase === null) {
       state.nextSpawnAtMs = null;
     } else {
-      if (state.nextSpawnAtMs === null) state.nextSpawnAtMs = state.elapsedMs + phase.spawnEveryMs;
+      if (state.nextSpawnAtMs === null) {
+        state.nextSpawnAtMs = state.elapsedMs + spawnIntervalAt(phase, state.elapsedMs);
+      }
       // A long tick can owe more than one spawn; the cap keeps the screen readable.
       while (
         state.nextSpawnAtMs !== null &&
         state.elapsedMs >= state.nextSpawnAtMs &&
         state.nextSpawnAtMs < phase.toMs
       ) {
-        if (activeTargets(state).length < state.level.maxConcurrentTargets) {
-          events.push(spawnTarget(state, phase, state.nextSpawnAtMs));
-        }
-        state.nextSpawnAtMs += phase.spawnEveryMs;
+        // Annotated because the assignment below feeds back into the property
+        // this reads, and TypeScript cannot infer through that cycle.
+        const slotAtMs: number = state.nextSpawnAtMs;
+        events.push(...fillSpawnSlot(state, phase, slotAtMs));
+        // The interval is read at the slot's own time rather than at the
+        // clock's, so a ramped phase advances by the same amounts whatever
+        // frame rate the round happened to run at (AGENTS.md rule 5).
+        state.nextSpawnAtMs = slotAtMs + spawnIntervalAt(phase, slotAtMs);
       }
     }
   }

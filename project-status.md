@@ -441,6 +441,50 @@ Two decisions worth carrying forward:
 
 Audio footprint: **5.7 MB**, down from 10.7 MB, with two new files in it.
 
+### M17 implemented too — same branch
+
+Built on 2026-09-04 after M16's audio landed, and **before** the M16 device
+review on purpose: M17 as specified is a no-op on every existing level, so it
+cannot disturb the M14.1 performance retest or M16's own. What waits for a
+device is *judging* the encore, not building it.
+
+| Item | State |
+|---|---|
+| A cadence ramps inside a phase | done — `SpawnPhase.spawnEveryToMs`, absent means constant |
+| B approach speed ramps across the round | done — `LevelDefinition.speedCurve`, floored at 1000 ms |
+| C fastball chance ramps | done — `LevelDefinition.fastballCurve` |
+| D volleys — the authored figures | done — four templates, arrival-time authored, whole or nothing |
+| E Stage 4 "Encore" | done — where the ramp and the figures are actually played |
+| **M17.1 retune of `level01`** | **not started, still gated** on the M14.1 retest and an explicit go-ahead |
+
+**The no-op is proven, not asserted.** `tests/difficultyCurve.test.ts` replays
+`level01`, `defenseDrill` and `findTheBeat` and hashes each one's *entire*
+spawn stream — time, kind, duration to six decimals, lane — against signatures
+recorded from the tree immediately before the scheduler was rewritten. It also
+pins each level's final RNG state, which is a fingerprint of every draw taken.
+The mechanism: the volley roll happens only when a phase declares volleys, so a
+phase without them consumes exactly the generator run it always did.
+
+Measured over a full round, encore against the show:
+
+| | Show (`level01`) | Encore |
+|---|---|---|
+| spawns | 37 | 55 |
+| mean gap, thirds | 1700 / 1300 / 850 | 1508 / 769 / 564 |
+| mean approach, thirds | 1641 / 1640 / 1898 | 1691 / 1633 / 1388 |
+| fastest throw | 1115 ms | 1000 ms *(the floor)* |
+| volleys | — | 8 |
+
+The show's row is identical to the August figures recorded further down this
+document, which is the point.
+
+One deviation from the M17 spec, recorded there under rule 23: volley members
+draw **their own** approach duration and have their spawn time solved backwards
+from the arrival they owe, rather than sharing one duration. Sharing would have
+made a mug fly at bottle speed, and the mug being the slow wide object is
+something the player spends three stages learning. Arrival spacing is exact
+either way — held by a test at 16, 33 and 97 ms steps.
+
 Still open before the stop checkpoint:
 
 - **the show's bed.** Every stage that scores beats should play music whose

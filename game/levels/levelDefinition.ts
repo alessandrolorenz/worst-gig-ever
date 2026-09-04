@@ -10,11 +10,53 @@
  */
 import type { TargetKind } from '../state/gameState.ts';
 
+export type { VolleyMember, VolleyTemplate } from './volleys.ts';
+
 export interface SpawnPhase {
   readonly fromMs: number;
   readonly toMs: number;
   readonly spawnEveryMs: number;
+  /**
+   * Interval at the *end* of the phase, interpolated linearly from
+   * `spawnEveryMs` across it (M17).
+   *
+   * Optional, and absent means constant — which is exactly the behaviour every
+   * phase had before M17, so the levels that do not opt in keep their schedule
+   * throw for throw. `tests/stageFlow.test.ts` replays them to prove it.
+   *
+   * Until M17 the difficulty curve was a staircase: `level01` steps 1800 to
+   * 1300 to 850 as three flat blocks, so the transitions are cliffs and inside
+   * a block nothing gets harder at all. A player at second 14 and a player at
+   * second 1 face identical pressure.
+   */
+  readonly spawnEveryToMs?: number;
   readonly kinds: readonly TargetKind[];
+  /**
+   * Authored figures this phase may throw instead of a single object (M17).
+   *
+   * `chance` is rolled once per scheduled spawn, and **only when this field is
+   * present**. A phase without volleys therefore makes exactly the generator
+   * calls it always did, which is what lets the validated levels replay
+   * identically rather than merely similarly.
+   */
+  readonly volleys?: {
+    readonly chance: number;
+    /** Ids into `VOLLEY_TEMPLATES`. */
+    readonly templates: readonly string[];
+  };
+}
+
+/**
+ * A value that ramps across a round, from `start` at time zero to `end` at the
+ * final whistle (M17).
+ *
+ * Linear, and a pure function of the spawn's own time — so it is applied to
+ * the *result* of the existing generator calls rather than changing which
+ * calls are made, and a seed still replays a round exactly (AGENTS.md rule 6).
+ */
+export interface RoundCurve {
+  readonly start: number;
+  readonly end: number;
 }
 
 export interface LevelDefinition {
@@ -37,5 +79,24 @@ export interface LevelDefinition {
    * reproducible during tuning (AGENTS.md rule 6).
    */
   readonly randomSeed: number;
+  /**
+   * Multiplier on every drawn approach duration, ramped across the round
+   * (M17). Absent means a flat 1, which is what every level had before.
+   *
+   * Speed never ramped at all until M17: a bottle spawned at second 2 and one
+   * spawned at second 58 were drawn from the same window with the same
+   * fastball chance. The round's last minute was denser but not faster.
+   *
+   * Applied *after* the window is drawn, so the normal and fast windows ramp
+   * together and the deliberate gap between them survives at every point on
+   * the curve — that gap is what makes a fastball read as a different object
+   * rather than an ordinary one arriving early.
+   */
+  readonly speedCurve?: RoundCurve;
+  /**
+   * Fastball probability, ramped across the round (M17). Absent means the flat
+   * `FASTBALL_CHANCE`. Rare early, common late.
+   */
+  readonly fastballCurve?: RoundCurve;
   readonly phases: readonly SpawnPhase[];
 }

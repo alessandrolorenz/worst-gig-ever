@@ -24,6 +24,7 @@
  */
 import type { MusicKey } from '../audio/audioMix.ts';
 import { defenseDrill } from './defenseDrill.ts';
+import { encore } from './encore.ts';
 import { findTheBeat } from './findTheBeat.ts';
 import { level01 } from './level01.ts';
 import type { LevelDefinition } from './levelDefinition.ts';
@@ -152,7 +153,42 @@ const stageThree: StageDefinition = {
   ],
 };
 
-export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo, stageThree];
+/**
+ * Stage 4 — the escalation (M17).
+ *
+ * Where the difficulty curve and the throw patterns actually get played. It
+ * exists as its own stage rather than as a retune of the show because
+ * `level01` is still the subject of an open performance retest, and changing
+ * it mid-measurement would cost the project its only physical baseline.
+ *
+ * It is the first round that gets harder *continuously* — cadence ramps inside
+ * every phase, throws speed up across the whole round, fastballs go from one in
+ * twenty to better than one in three — and the first that throws authored
+ * figures instead of independent objects.
+ */
+const stageFour: StageDefinition = {
+  id: 'stage-4-encore',
+  number: 4,
+  name: 'Encore',
+  subtitle: 'It keeps escalating',
+  level: encore,
+  groove: true,
+  /*
+   * The teaching bed, because it is the only tempo-locked one that exists and
+   * a stage that scores beats must not play music that drifts against them.
+   * It is the wrong music for an encore and it is the right *property*; when
+   * the show gets a tempo-locked bed of its own, this stage takes it.
+   */
+  music: 'grooveBed',
+  briefing: [
+    'The crowd wants one more song. They brought more bottles.',
+    'It starts easy and it does not stay that way: faster, and closer together.',
+    'They come in threes now — same spot, or side to side. Smash all of them.',
+    'Keep the beat on the pad. Three through the kit and the show is over.',
+  ],
+};
+
+export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo, stageThree, stageFour];
 
 /** The stage the game opens on. */
 export const FIRST_STAGE_INDEX = 0;

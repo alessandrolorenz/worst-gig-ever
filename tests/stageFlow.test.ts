@@ -36,6 +36,7 @@ import {
   stageAt,
 } from '../game/levels/stages.ts';
 import { defenseDrill } from '../game/levels/defenseDrill.ts';
+import { encore } from '../game/levels/encore.ts';
 import { findTheBeat } from '../game/levels/findTheBeat.ts';
 import { level01 } from '../game/levels/level01.ts';
 import { createRound, phaseAt, tickRound } from '../game/state/roundState.ts';
@@ -46,17 +47,20 @@ import { beatTimeMs } from '../game/config/rhythm.ts';
 // The stages
 // ---------------------------------------------------------------------------
 
-test('there are three stages: objects, then the beat, then both', () => {
+test('the four stages run objects, beat, both, escalation', () => {
   // The teaching order the owner asked for at M16, asserted as a sequence
-  // rather than as three separate facts: one job, the other job, both.
-  assert.equal(stageCount(), 3);
+  // rather than as separate facts: one job, the other job, both, then the
+  // escalation M17 added on the end.
+  assert.equal(stageCount(), 4);
   assert.equal(STAGES[0].level, defenseDrill);
   assert.equal(STAGES[1].level, findTheBeat);
   assert.equal(STAGES[2].level, level01);
+  assert.equal(STAGES[3].level, encore);
 
   assert.equal(STAGES[0].groove, false, 'stage 1 teaches objects with no beat');
   assert.equal(STAGES[1].groove, true, 'stage 2 teaches the beat');
   assert.equal(STAGES[2].groove, true, 'stage 3 is the show');
+  assert.equal(STAGES[3].groove, true, 'stage 4 asks for everything');
 });
 
 test('the beat stage opens on the beat alone, and only then adds objects', () => {
