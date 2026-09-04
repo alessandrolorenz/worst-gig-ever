@@ -12,39 +12,82 @@ and their migration is pre-release debt tracked in ADR 0010.
 
 ## Current phase
 
-**M18 mug drink reaction — `M18_DRINK_APPROVED`.** The owner played 1.0.7 on
-the Galaxy S23 FE and approved it on 2026-09-04. See
-`docs/verification/M18-gate.md`.
+**MVP CLOSED — owner declaration, 2026-09-04.** After playing 1.0.9 on the
+Galaxy S23 FE: *"achei que esta tudo massa... Daí acho que fechou o mvp."*
 
-The approval covered the milestone as built, at which point the drink had
-neither a sound nor a visible award. **Both were added afterwards and shipped
-as 1.0.8**, so the approved build and the current one are not the same: the
-drink now prints `+25 CHEERS` and plays a generated gulp. Those two additions
-have not themselves been played by the owner.
+This is the first time the project has had a build the owner played end to end
+and asked nothing further of. Everything below is either done or deliberately
+deferred; nothing is in progress.
 
-**Four milestones are now approved and none of them are on `main`.** Merging
-`feat/m16-beat-clarity` is the outstanding structural step.
+### What the MVP is
 
-A mug caught near the drummer is caught and drunk for a flat 25; a mug swatted
-while it is still far away breaks with the stick for exactly what it always
-paid. The bottle breaks at every distance, and that contrast is the joke. The
-break path was not deleted — it is the default and the drink is the branch — so
-nothing already validated changed shape.
+A drummer-POV arcade game in four stages. The player keeps a beat on a groove
+pad while smashing what a hostile crowd throws at their kit — and a mug caught
+close enough to reach is drunk rather than smashed, which is the joke the game
+is named for. It opens on a five-panel story, teaches its two jobs one stage at
+a time, ramps difficulty within a round, and ends on a two-column summary.
 
-The gate is `closenessAt(progress) >= DRINK_MIN_CLOSENESS`, and the axis is the
-feature. `progress` is linear in time, but depth runs from `farDepth` 4.2 down
-to 1, so at progress 0.60 a mug has crossed only 26% of the visible distance. A
-time gate would have put the drummer's forearm on screen to catch an object
-still near the vanishing point. A test taps a mug at progress 0.60 and asserts
-it *breaks*, so moving the comparison onto time fails loudly.
+Shipping build: **1.0.9**, versionCode 6, local release APK.
 
-The owner played 1.0.6 and returned five items, all answered in 1.0.7: the
-threshold dropped from 0.5 to 0.35 because the drink was gated behind a patience
-most players do not have; the arm grew 15% and moved 68 px further into frame;
-the mug rule is now taught on stage 1 in words and in pictures; and the results
-screen stopped stealing the last beat — see open item 17.
+### Owner verdicts, in the order they were given
 
-`npm run verify` passes **360 tests** plus both art gates.
+| | |
+|---|---|
+| Performance | `PERFORMANCE_OK` on 1.0.7 — the oldest open item, closed |
+| M15 story and stages | approved on device |
+| M16 beat clarity | approved on device |
+| M17 difficulty curve | approved on device |
+| M18 mug drink | approved on 1.0.7 |
+| Gulp SFX | *"o som do gole esta massa"* (1.0.8) |
+| The `+25` flourish | **removed.** Never noticed, not missed |
+| MVP | **closed** on 1.0.9 |
+
+### The one thing that changed after "approved"
+
+The `+25 CHEERS` flourish was built to answer a real objection — a flat bonus
+nobody sees is a number in a log — and it lost to its own neighbour. It printed
+beside a 600 px moving arm in the same corner of the screen, at the moment that
+arm was the most interesting thing on it. The owner never saw it and did not
+miss it, so it is gone.
+
+The bonus itself is untouched: drinking still pays 25 and it still reads in the
+Defense score and the results summary. Only the mid-round announcement is gone.
+The lesson is worth keeping if a HUD flourish is ever proposed again — **feedback
+placed next to the thing it is about competes with it, and loses.**
+
+The instructions absorbed what the flourish could not teach. The owner's last
+correction was that the briefing must state the *condition* rather than the
+outcome: saying a mug can be drunk is not a rule a player can act on, and *"só
+toma a cerveja se acertar quando o copo estiver perto dele, ao alcance da mão"*
+is. Stage 1 now says exactly that in four lines and two captioned pictures, and
+stage 3 repeats it.
+
+### What is deferred, not forgotten
+
+Nothing here blocks the MVP; all of it blocks a store release. See open items
+2, 6, 7, 8 and 19 in full below.
+
+- **Release identity (ADR 0010).** The Expo slug, the EAS project, the GitHub
+  repository and `com.worstbandever.app` all still carry the old product name.
+  The migration invalidates every installed build, so it wants doing while
+  there is still no installed base.
+- **`RECORD_AUDIO`** is requested by expo-audio's config plugin and the game
+  never records. Harmless in a playtest, not in a submission.
+- **`package-lock.json` is git-ignored**, so dependency resolution is not
+  reproducible across machines.
+- **`crowd_applause.wav`** is still the untrimmed 6.9 MB source and the five
+  SFX are not volume-normalized.
+- **The art sequence gate is blind to the drink frames**, which were measured
+  by hand.
+
+### Never done, and never claimed
+
+**No FPS was ever measured on the device.** The performance verdict is the
+owner's judgement that taps feel responsive, on a release build, under the full
+four-stage game. The 36.3% figure in the M14.1 gate is browser JavaScript time.
+Do not quote either as a frame-rate result.
+
+**Nothing has been pushed.** Every commit in this project is local.
 
 ### Approved and stacked, not merged
 

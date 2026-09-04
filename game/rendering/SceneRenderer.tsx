@@ -22,8 +22,6 @@ import {
 import {
   CROWD_BACK_RECT,
   CROWD_FRONT_RECT,
-  DRINK_AWARD_ANCHOR,
-  DRINK_AWARD_RISE,
   DRINK_RECT,
   DRUM_KIT_RECT,
   TARGET_DRAW_SIZE,
@@ -35,9 +33,7 @@ import { Countdown } from './Countdown.tsx';
 import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
-import { SCORING } from '../config/scoring.ts';
 import {
-  DRINK_TTL_MS,
   drinkFrame,
   drinkOpacity,
   effectProgress,
@@ -385,41 +381,6 @@ function Drink({ drink }: { drink: DrinkEffect }) {
   );
 }
 
-/**
- * The drink bonus, printed where it is earned (M18.1).
- *
- * The owner approved M18 with the award invisible, and it was the first thing
- * that looked wrong once the drink became easy to see at closeness 0.35: the
- * player watches the joke land and is told nothing about the prize. A flat
- * bonus nobody sees is a number in a log.
- *
- * Driven off the drink's own clock rather than a slot of its own — it is the
- * same event, and two lifetimes for one moment is two things to keep in sync.
- * It fades in fast, holds, and leaves with the arm.
- */
-function DrinkAward({ drink }: { drink: DrinkEffect }) {
-  const life = Math.min(1, drink.ageMs / DRINK_TTL_MS);
-  const appear = Math.min(1, drink.ageMs / 90);
-
-  return (
-    <View
-      pointerEvents="none"
-      style={{
-        position: 'absolute',
-        left: DRINK_AWARD_ANCHOR.x - 130,
-        top: DRINK_AWARD_ANCHOR.y - 30,
-        width: 260,
-        alignItems: 'center',
-        opacity: appear * drinkOpacity(drink),
-        transform: [{ translateY: -DRINK_AWARD_RISE * life }],
-      }}
-    >
-      <Text style={styles.awardValue}>{`+${SCORING.drinkBonus}`}</Text>
-      <Text style={styles.awardLabel}>CHEERS</Text>
-    </View>
-  );
-}
-
 function Debris({ shards }: { shards: readonly Shard[] }) {
   return (
     <>
@@ -552,8 +513,15 @@ export function SceneRenderer({
          * Above every projectile and every effect: it is the player's own arm,
          * and nothing on stage is nearer to the camera than that.
          */}
+        {/**
+         * The arm is the whole feedback. A `+25` flourish was built here and
+         * removed after the owner played it: they never noticed it and did not
+         * miss it. It was competing with a 600 px moving arm for the same
+         * corner of the screen, and losing. The bonus is still paid — it is in
+         * the Defense score and the results summary — it simply is not
+         * announced mid-round.
+         */}
         {effects.drink !== null && <Drink drink={effects.drink} />}
-        {effects.drink !== null && <DrinkAward drink={effects.drink} />}
         {/**
          * Only from the pre-roll to the final whistle. An overlay is always on
          * screen otherwise, and its scrim is not opaque — leaving the HUD up
@@ -573,30 +541,6 @@ export function SceneRenderer({
 }
 
 const styles = StyleSheet.create({
-  /*
-   * Sized against the burst it prints beside, not against the HUD: this is
-   * feedback at the moment of a hit, and it has to win over a 600 px arm and a
-   * lit stage for the third of a second it exists.
-   */
-  awardValue: {
-    color: THEME.burst,
-    fontSize: 54,
-    fontWeight: '800',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(8, 7, 12, 0.9)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
-  },
-  awardLabel: {
-    color: THEME.beerMugFoam,
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: 5,
-    marginTop: -4,
-    textShadowColor: 'rgba(8, 7, 12, 0.9)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 5,
-  },
   root: {
     /**
      * Filled explicitly rather than with `flex: 1`. The engine's web container

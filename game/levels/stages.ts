@@ -104,13 +104,16 @@ const stageOne: StageDefinition = {
   briefing: [
     'The crowd is throwing what it was drinking.',
     'Tap a bottle or a mug to smash it before it reaches your kit.',
-    'A mug is different: let it get close and you drink it instead, for extra points.',
+    'A mug is different, and the timing is the whole rule: hit it while it is',
+    'still far away and it smashes like anything else. Let it come all the way',
+    'in — close enough to reach — and the drummer catches it and drinks it,',
+    'which is worth more.',
     'Three things get through and the show is over.',
     'No beat to keep yet. That is the next stage. Just defend.',
   ],
   briefingFigures: [
-    { id: 'smash', caption: 'Hit it early\nand it breaks' },
-    { id: 'drink', caption: 'Let it come close\nand you drink it' },
+    { id: 'smash', caption: 'Still far away:\nit smashes' },
+    { id: 'drink', caption: 'Within arm’s reach:\nhe drinks it' },
   ],
 };
 
@@ -170,7 +173,8 @@ const stageThree: StageDefinition = {
   music: 'showTheme',
   briefing: [
     'Now both jobs at once, and the crowd has warmed up.',
-    'Keep the beat on the pad while you smash what comes at the kit.',
+    'Keep the beat on the pad while you clear what comes at the kit.',
+    'Mugs are back: let one reach you and you drink it instead of smashing it.',
     'A missed beat costs you the streak. A missed bottle costs the show.',
     'Someone may get in your way. Deal with them.',
   ],

@@ -329,9 +329,19 @@ test('M18.1: the mug rule is taught with pictures on the stage that introduces i
   // have to be explained — in words and, because one object behaving two ways
   // is hard to write, in pictures.
   const first = STAGES[0];
+  const copy = first.briefing.join(' ');
+  assert.ok(/drink/i.test(copy), 'the briefing must say a mug can be drunk');
+  // The owner's correction after the MVP playtest: saying a mug *can* be drunk
+  // is not the rule. The rule is the condition — it has to be close enough to
+  // reach — and without that the player has no way to make it happen on
+  // purpose.
   assert.ok(
-    first.briefing.some((line) => /drink/i.test(line)),
-    'the briefing must say a mug can be drunk',
+    /reach|close/i.test(copy),
+    'the briefing must state the condition, not just the outcome',
+  );
+  assert.ok(
+    /smash|break/i.test(copy),
+    'and the other outcome, or the condition has nothing to contrast with',
   );
   assert.ok(first.briefingFigures, 'stage 1 must carry briefing pictures');
   assert.deepEqual(
