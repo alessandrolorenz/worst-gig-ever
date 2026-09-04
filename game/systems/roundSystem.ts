@@ -29,7 +29,7 @@ import {
   type Point2D,
   type RoundState,
 } from '../state/roundState.ts';
-import { addBurst, addStrike, tickEffects } from './effects.ts';
+import { addBurst, addDrink, addStrike, tickEffects } from './effects.ts';
 import { spawnShards, tickShards } from './shards.ts';
 import { reactToImpact, tickStageMotion } from './stageMotion.ts';
 
@@ -166,12 +166,18 @@ function applyEvents(entities: GameEntities, round: RoundState, events: RoundEve
     switch (event.type) {
       case 'TARGET_HIT': {
         addStrike(effects, event.x, event.y);
+        // The mug was still struck, so the impact burst stays either way.
         addBurst(effects, event.x, event.y);
-        spawnShards(shards, event.x, event.y);
-        // Anyone standing near the break flinches (M5A, Priority 3).
+        // Anyone standing near it flinches (M5A, Priority 3).
         reactToImpact(stageMotion, event.x, event.y);
         audio.playSfx('stickWhoosh');
-        audio.playSfx('glassBreak');
+        if (event.drunk) {
+          // Caught, not broken: no glass, no shards, and the drink plays.
+          addDrink(effects);
+        } else {
+          spawnShards(shards, event.x, event.y);
+          audio.playSfx('glassBreak');
+        }
         break;
       }
       case 'TARGET_MISSED': {

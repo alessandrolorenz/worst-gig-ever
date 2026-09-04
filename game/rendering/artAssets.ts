@@ -59,6 +59,12 @@ export const TARGET_ART = {
 export const DRUMSTICK_ART = require('../../assets/art/props/drumstick.png');
 export const HIT_BURST_ART = require('../../assets/art/effects/hit_burst.png');
 
+/** The two-frame POV drink, in play order (M18). */
+export const MUG_DRINK_ART = [
+  require('../../assets/art/effects/mug_drink_01_catch.png'),
+  require('../../assets/art/effects/mug_drink_02_drink.png'),
+];
+
 export const GLASS_SHARD_ART = [
   require('../../assets/art/effects/glass_shard_01.png'),
   require('../../assets/art/effects/glass_shard_02.png'),

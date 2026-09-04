@@ -12,12 +12,18 @@
  */
 import { countdownDurationMs } from '../config/rhythm.ts';
 import { COMBO_TIERS, SCORING } from '../config/scoring.ts';
-import { FASTBALL_CHANCE, HIT_FORGIVENESS, TARGET_DEFINITIONS } from '../config/targets.ts';
+import {
+  DRINK_MIN_CLOSENESS,
+  FASTBALL_CHANCE,
+  HIT_FORGIVENESS,
+  TARGET_DEFINITIONS,
+} from '../config/targets.ts';
 import { STAGE, THROW_ORIGIN, VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { level01 } from '../levels/level01.ts';
 import type { LevelDefinition, RoundCurve, SpawnPhase } from '../levels/levelDefinition.ts';
 import { laneDriftRange, volleyTemplate, type VolleyTemplate } from '../levels/volleys.ts';
 import {
+  closenessAt,
   hitRadiusAt,
   progressAt,
   throwPoseAt,
@@ -721,6 +727,7 @@ export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
 
   const best = direct ?? assisted;
   const bestPose = direct === null ? assistedPose : directPose;
+  const bestProgress = direct === null ? assistedProgress : directProgress;
 
   if (best === null) return events;
 
@@ -729,7 +736,18 @@ export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
   state.combo += 1;
   state.bestCombo = Math.max(state.bestCombo, state.combo);
   const multiplier = comboMultiplier(state.combo);
-  const points = TARGET_DEFINITIONS[best.kind].basePoints * multiplier;
+
+  // A mug caught near the drummer is drunk; one swatted while it is still far
+  // away breaks with the stick, exactly as it always did (M18). The test is on
+  // where the mug *reads* as being, never on elapsed time — see
+  // `DRINK_MIN_CLOSENESS`.
+  const drunk =
+    best.kind === 'beerMug' && closenessAt(bestProgress) >= DRINK_MIN_CLOSENESS;
+
+  // Flat, and added outside the multiplier rather than inside it.
+  const points =
+    TARGET_DEFINITIONS[best.kind].basePoints * multiplier +
+    (drunk ? SCORING.drinkBonus : 0);
   state.score += points;
   state.targetsDestroyed += 1;
 
@@ -741,6 +759,7 @@ export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
     y: bestPose.y,
     points,
     multiplier,
+    drunk,
   });
   events.push({ type: 'COMBO_CHANGED', combo: state.combo });
   return events;

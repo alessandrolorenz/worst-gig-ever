@@ -12,6 +12,7 @@ import { REFERENCE_CANVAS, STAGE, STAGE_MOTION, VOCALIST_BLOCKING_RECT } from '.
 import {
   DRUMSTICK_ART,
   GLASS_SHARD_ART,
+  MUG_DRINK_ART,
   HIT_BURST_ART,
   PERFORMER_ART,
   STAGE_ART,
@@ -21,6 +22,7 @@ import {
 import {
   CROWD_BACK_RECT,
   CROWD_FRONT_RECT,
+  DRINK_RECT,
   DRUM_KIT_RECT,
   TARGET_DRAW_SIZE,
   absolute,
@@ -31,7 +33,14 @@ import { Countdown } from './Countdown.tsx';
 import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
-import { effectProgress, type EffectsState, type TimedEffect } from '../systems/effects.ts';
+import {
+  drinkFrame,
+  drinkOpacity,
+  effectProgress,
+  type DrinkEffect,
+  type EffectsState,
+  type TimedEffect,
+} from '../systems/effects.ts';
 import { shardOpacity, type Shard, type ShardsState } from '../systems/shards.ts';
 import {
   ONE_SHOT_POSES,
@@ -348,6 +357,30 @@ function Burst({ effect }: { effect: TimedEffect }) {
   );
 }
 
+/**
+ * The drummer's own arm, drawn last and largest (M18).
+ *
+ * Fixed layout with only opacity animating, in line with the M14.1 render
+ * pass: the frame swap is a source change, not a re-layout.
+ */
+function Drink({ drink }: { drink: DrinkEffect }) {
+  return (
+    <Image
+      source={MUG_DRINK_ART[drinkFrame(drink)]}
+      style={{
+        position: 'absolute',
+        left: DRINK_RECT.x,
+        top: DRINK_RECT.y,
+        width: DRINK_RECT.width,
+        height: DRINK_RECT.height,
+        opacity: drinkOpacity(drink),
+      }}
+      resizeMode="contain"
+      fadeDuration={0}
+    />
+  );
+}
+
 function Debris({ shards }: { shards: readonly Shard[] }) {
   return (
     <>
@@ -476,6 +509,11 @@ export function SceneRenderer({
         {effects.strikes.map((effect) => (
           <Strike key={effect.id} effect={effect} />
         ))}
+        {/**
+         * Above every projectile and every effect: it is the player's own arm,
+         * and nothing on stage is nearer to the camera than that.
+         */}
+        {effects.drink !== null && <Drink drink={effects.drink} />}
         {/**
          * Only from the pre-roll to the final whistle. An overlay is always on
          * screen otherwise, and its scrim is not opaque — leaving the HUD up

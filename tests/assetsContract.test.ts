@@ -41,8 +41,21 @@ function isProduction(entry: AssetEntry): entry is ProductionAsset {
   return 'path' in entry;
 }
 
-const production = Object.entries(manifest.assets).filter(
+const allProduction = Object.entries(manifest.assets).filter(
   (entry): entry is [string, ProductionAsset] => isProduction(entry[1]),
+);
+
+/**
+ * Pack 1 is the M6A contract these tests exist to freeze, and it is identified
+ * by its prompt family. Later packs register alongside it in the same manifest
+ * — M18's drink sequence is the first — and must not silently change Pack 1's
+ * counts, so they are split out here and asserted on their own terms below.
+ */
+const production = allProduction.filter(([, entry]) =>
+  entry.prompt.startsWith('prompts/assets/'),
+);
+const laterPacks = allProduction.filter(
+  ([, entry]) => !entry.prompt.startsWith('prompts/assets/'),
 );
 
 test('M6A: Pack 1 has exactly 33 required and two optional production files', () => {
@@ -87,6 +100,29 @@ test('M6A: every generation prompt names only canonical Pack 1 production paths'
     const prompt = readFileSync(join(repoRoot, entry.prompt), 'utf8');
     assert.ok(prompt.includes(entry.path), `${entry.prompt} does not name ${entry.path}`);
   }
+});
+
+test('M18: the drink is registered as a two-frame optional effect sequence', () => {
+  const drink = laterPacks.filter(([key]) => key.startsWith('mugDrink'));
+  assert.deepEqual(
+    drink.map(([key]) => key).sort(),
+    ['mugDrinkCatch', 'mugDrinkDrink'],
+    'the drink is exactly two frames — the raise frame was dropped at M18',
+  );
+  for (const [key, entry] of drink) {
+    assert.equal(entry.kind, 'effect');
+    assert.equal(entry.transparency, 'transparent');
+    // Optional: the game has to run without the sequence, because it is a gag
+    // on top of a mug hit and not a state the round depends on.
+    assert.equal(entry.requiredForMvp, false, `${key} must not be required`);
+    assert.equal(entry.requiredForM6B, false, `${key} is not Pack 1`);
+    assert.ok(existsSync(join(repoRoot, entry.path)), `${key}: missing ${entry.path}`);
+    assert.ok(entry.path.startsWith('assets/art/effects/'), `${key} is not an effect file`);
+    assert.ok(existsSync(join(repoRoot, entry.prompt)), `${key}: missing ${entry.prompt}`);
+  }
+  // Both frames share one drawn box, or the arm changes size mid-gesture.
+  const sizes = new Set(drink.map(([, entry]) => `${entry.width}x${entry.height}`));
+  assert.equal(sizes.size, 1, 'the two drink frames must share one frame size');
 });
 
 test('M6A: legacy semantic keys are aliases, not duplicate or obsolete files', () => {

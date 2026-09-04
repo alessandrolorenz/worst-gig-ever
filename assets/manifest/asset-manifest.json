@@ -367,6 +367,26 @@
       "prompt": "prompts/assets/08-break-fx.md",
       "requiredForMvp": true,
       "requiredForM6B": true
+    },
+    "mugDrinkCatch": {
+      "path": "assets/art/effects/mug_drink_01_catch.png",
+      "kind": "effect",
+      "width": 640,
+      "height": 544,
+      "transparency": "transparent",
+      "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
+    },
+    "mugDrinkDrink": {
+      "path": "assets/art/effects/mug_drink_02_drink.png",
+      "kind": "effect",
+      "width": 640,
+      "height": 544,
+      "transparency": "transparent",
+      "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
+      "requiredForMvp": false,
+      "requiredForM6B": false
     }
   },
   "story": {

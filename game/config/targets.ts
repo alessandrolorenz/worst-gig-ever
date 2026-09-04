@@ -101,6 +101,21 @@ export const TARGET_DEFINITIONS: Readonly<Record<TargetKind, TargetDefinition>> 
 };
 
 /**
+ * How near the mug has to be before the drummer drinks it instead of smashing
+ * it (M18, owner decision 2026-09-04).
+ *
+ * Compared against `closenessAt(progress)` — where the mug *reads* as being —
+ * and never against `progress`, which is linear in time. With
+ * `STAGE.farDepth` at 4.2 the two diverge hard: at progress 0.60 a mug has
+ * crossed only 26% of the visible distance, so a time gate would put the
+ * drummer's forearm on screen to catch an object still up near the vanishing
+ * point. 0.5 closeness is progress 0.808 — the mug at 62% of full size,
+ * y 655 — and leaves 346-452 ms to land the hit on a normal mug, 260-298 ms
+ * on a fastball.
+ */
+export const DRINK_MIN_CLOSENESS = 0.5;
+
+/**
  * Hit-resolution forgiveness (M5A, Priority 1).
  *
  * The first playtest found targets unreliable to hit, which is a playability

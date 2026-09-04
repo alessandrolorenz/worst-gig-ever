@@ -69,6 +69,22 @@ export const CROWD_FRONT_RECT: Rect = { x: 0, y: 482, width: 1920, height: 520 }
 export const DRUM_KIT_DROP = 120;
 
 /**
+ * Where the M18 drink is drawn: the drummer's own forearm, nearer to the
+ * camera than anything else on stage.
+ *
+ * The spec placed it at x 1380-1900 / y 640-1080. It is shifted down and right
+ * from there so the arm **bleeds past the screen corner**: the conditioned art
+ * carries 34 px of transparent margin on its right and 13 px below the
+ * forearm, which at this rect's scale would leave the arm ending in a stump
+ * floating ~10 px above the bottom of the screen and ~48 px shy of its right
+ * edge. An arm attached to the player has to run off the frame.
+ *
+ * It clears `padBounds()` (x 640-1280, y 865-1075) by 148 px, so the player
+ * never loses the beat behind their own drinking hand.
+ */
+export const DRINK_RECT: Rect = { x: 1428, y: 651, width: 520, height: 440 };
+
+/**
  * Foreground drum kit.
  *
  * `drumkit_pov.png` is authored 1920x700 at canvas width, so its native size
