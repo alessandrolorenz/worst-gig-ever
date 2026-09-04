@@ -19,13 +19,28 @@ Read:
 
 ## Goal
 
-A tapped mug is drunk, not smashed, and drinking it pays. Everything else about
-a mug stays exactly what it was.
+A mug caught **near the drummer** is drunk and pays a bonus; a mug hit while it
+is still far away breaks with the stick exactly as it does today. Everything
+else about a mug stays exactly what it was.
 
 ## Required work
 
-1. **Stop breaking mugs.** On `TARGET_HIT` with `kind === 'beerMug'`: no glass
-   shards, no `glassBreak`. The impact burst stays.
+1. **Branch the mug on distance.** On `TARGET_HIT` with `kind === 'beerMug'`,
+   compare `closenessAt(progress)` against a new
+   `DRINK_MIN_CLOSENESS = 0.5` in `game/config/targets.ts`:
+   - **at or above** — no glass shards, no `glassBreak`, drink plays, bonus
+     awarded. The impact burst stays.
+   - **below** — the existing break path, untouched: burst, five shards,
+     `glassBreak`, `75 × multiplier` and no bonus.
+
+   **Gate on `closenessAt`, never on `progress`.** They are not the same axis:
+   `progress` is linear in time, and at `progress` 0.60 a mug has crossed only
+   **26%** of the visible distance (`STAGE.farDepth` is 4.2). Gating on time
+   would put the drummer's forearm on screen for a mug still small and near the
+   vanishing point — the exact "pode ficar estranho" this milestone was told to
+   avoid. `closeness` 0.5 is `progress` 0.808, mug at 62% size, y 655, leaving
+   346–452 ms to land the hit on a normal mug and 260–298 ms on a fastball.
+   The spec's section A carries the full table.
 2. **Three-frame POV drink**, 120 ms per frame plus a 120 ms fade — 480 ms
    total. One slot; a second mug landing mid-drink **cuts to frame 3** rather
    than restarting from the catch, so the payoff always lands. The show throws
@@ -37,8 +52,9 @@ a mug stays exactly what it was.
    lane corridor. Occluding the guitarist's legs is accepted — it is the
    drummer's own arm, nearer to the camera than anything on stage.
 4. **`SCORING.drinkBonus`, flat, 25**, added on top of
-   `basePoints: 75 × comboMultiplier` on a mug hit. **Not multiplied by the
-   combo** — the mug is the easier target (120 px radius against 104, slower at
+   `basePoints: 75 × comboMultiplier` **only on a mug that is drunk** — a mug
+   smashed early pays `75 × multiplier` and nothing more, or waiting buys the
+   player nothing. **Not multiplied by the combo** — the mug is the easier target (120 px radius against 104, slower at
    both ends of both windows), so a multiplied premium would make the easy
    object the best scoring path at high combo. It goes to the Defense score;
    the Groove is untouched.
@@ -63,6 +79,11 @@ a mug stays exactly what it was.
 
 - Change the mug's `basePoints`, hitbox, approach windows, integrity cost, or
   combo behaviour. The bonus is additive and flat.
+- Gate the drink on `progress`, or on a raw `y`/`scale` comparison of your own.
+  `closenessAt` is the one source for "how near is it".
+- Add a glow, rim, or HUD cue marking a mug as drinkable. Deliberately excluded
+  — whether the two outcomes read as a rule is a device-review question.
+- Vary `DRINK_MIN_CLOSENESS` by stage, by kind, or over a round.
 - Restore Show Integrity on a drink, or add any drunk meter. Both are deferred
   by the spec, on purpose.
 - Give the bottle a drink animation. The bottle breaking is the contrast that
@@ -72,14 +93,19 @@ a mug stays exactly what it was.
 
 `npm run verify` plus:
 
-- a mug hit spawns zero shards and fires no `glassBreak`; a bottle hit is
-  unchanged in every respect;
-- a mug hit awards `75 × multiplier + 25`, asserted at the ×1, ×2, ×3 and ×4
-  tiers, with the bonus never multiplied;
+- a mug hit at `closeness ≥ 0.5` spawns zero shards and fires no `glassBreak`;
+  a mug hit below 0.5 produces the pre-M18 break in every respect; a bottle hit
+  is unchanged at every distance;
+- **a mug hit at `progress` 0.60 breaks** — `closeness` there is 0.26. This
+  case fails loudly if the gate is ever moved onto the time axis;
+- a drunk mug awards `75 × multiplier + 25`, asserted at the ×1, ×2, ×3 and ×4
+  tiers, with the bonus never multiplied; a mug smashed early awards
+  `75 × multiplier`;
 - on a replayed seed, combo, `targetsDestroyed` and integrity match their
-  pre-M18 values exactly; only the score differs, and only by 25 per mug;
+  pre-M18 values exactly at both distances; only the score differs, and only by
+  25 per mug actually drunk;
 - the drink rect intersects neither `padBounds()` nor the lane corridor;
-- a second mug within 480 ms runs one animation, never two;
+- a second mug drunk within 480 ms runs one animation, never two;
 - the frames are excluded from the loop-continuity gate and present in the
   manifest;
 - animation and SFX are cleared on quit, restart, and unmount (rule 11).
@@ -89,7 +115,8 @@ a mug stays exactly what it was.
 1. Incoming branch/HEAD.
 2. What was changed, per file, and why.
 3. Gulp SFX provenance, or the reason it shipped without one.
-4. Measured score delta over one replayed Stage 3 seed, before and after.
+4. Measured score delta over one replayed Stage 3 seed, before and after, plus
+   how many of that seed's mugs were drunk against smashed.
 5. Verification results, with test counts.
 6. Current git status.
 7. Final state: `M18_DRINK_DEVICE_REVIEW`.

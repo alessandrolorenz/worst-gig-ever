@@ -8,6 +8,13 @@ Spec: `docs/specs/M18-mug-drink-reaction.md`.
 
 > These are the only assets M18 needs. Nothing else in the pack changes.
 
+> **The 2026-09-04 gate does not change this brief.** M18 now only plays the
+> drink when the mug is caught near the drummer (`closeness` ≥ 0.5); a mug hit
+> far away breaks with the stick and never animates. The art is unaffected —
+> these frames were always a close-range POV catch, and the gate simply
+> guarantees the mug really is that close whenever they play. Generate them
+> as written.
+
 ## Outputs
 
 | File | Size | Notes |

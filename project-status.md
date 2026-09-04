@@ -389,7 +389,7 @@ depends on is readable.
 |---|---|---|---|
 | M16 | Beat Clarity and Progressive Teaching | *"a representação das batidas… não estão claras"*; teach beats progressively, clearer visual, few objects | `docs/specs/M16-beat-clarity-and-progressive-teaching.md` |
 | M17 | Difficulty Curve and Throw Patterns | gradual speed and frequency; authored combos — three bottles in one lane, side to side | `docs/specs/M17-difficulty-curve-and-throw-patterns.md` |
-| M18 | Mug Drink Reaction | the drummer drinks the mug instead of smashing it, three frames, and it scores | `docs/specs/M18-mug-drink-reaction.md` |
+| M18 | Mug Drink Reaction | the drummer drinks a mug caught *near* him, three frames, and it scores; a mug hit far away still breaks | `docs/specs/M18-mug-drink-reaction.md` |
 
 Execution prompts: `prompts/18-m16-beat-clarity-and-progressive-teaching.md`
 and `prompts/19-m18-mug-drink-reaction.md`. M17's is written after M16 is
@@ -550,8 +550,30 @@ specifies that a second mug mid-drink **cuts to the payoff frame** rather than
 restarting from the catch — restarting would show two beginnings and no
 punchline in exactly the two cases per round that matter.
 
-At one mug every 3.5 s in both rounds, the animation occupies about 14% of a
-round. A running gag, not a takeover.
+At one mug every 3.5 s in both rounds, the animation occupies at most about
+14% of a round. A running gag, not a takeover.
+
+**The owner then narrowed M18 further, on 2026-09-04 and before any code:** the
+drink happens only when the mug is caught near the drummer — *"se estiver longe
+dai quebra com a baqueta"* — first proposed at 60% of the path and settled at
+**50%** once measured. Two consequences worth recording here.
+
+First, the axis. `progress` is linear in time but the stage is a perspective,
+`STAGE.farDepth` 4.2, so at `progress` 0.60 a mug has crossed only **26% of
+the visible distance** — still small and near the vanishing point. Gating on
+time would have put the drummer's forearm on screen to catch a distant object,
+which is a worse version of the very oddness the owner flagged. The gate is
+therefore `closenessAt()`, not `progress`, and `DRINK_MIN_CLOSENESS = 0.5`
+resolves to `progress` 0.808: the mug at 62% of full size, y 655, leaving
+346–452 ms to land the drink on a normal mug and 260–298 ms on a fastball.
+
+Second, the shape of the milestone. The break path is no longer deleted — it
+becomes the default and the drink becomes a branch, so M18 now *adds* a case
+instead of removing behaviour. It also fixes the risk/reward inversion the flat
+bonus was already guarding against: the mug is the easier target, and now
+smashing it early is the safe play at base points while drinking is a
+deliberate choice to let it come deep for `+25`. And it can only lower the 14%
+above, since a mug smashed early never animates.
 
 ### Browser round run, one defect found
 
@@ -630,11 +652,13 @@ three are settled; they are folded into the specs above.
    and is the moment to close open item 2 as well (`crowd_applause.wav` is
    still the untrimmed 6.9 MB source and the mix is unnormalized).
 3. **Drinking a mug scores.** M18 adds a flat `SCORING.drinkBonus` of 25 on
-   top of `75 x multiplier`, unmultiplied — the mug is the *easier* target
-   (120 px radius against 104, slower at both ends), so a multiplied premium
-   would make the easy object the best scoring path at high combo. At x1 a
-   drunk mug equals a bottle; at x4 it is still worth less. Integrity healing
-   stays deferred: the owner asked for points, not for health.
+   top of `75 x multiplier`, unmultiplied and **only when the mug is actually
+   drunk** — the mug is the *easier* target (120 px radius against 104, slower
+   at both ends), so a multiplied premium would make the easy object the best
+   scoring path at high combo. At x1 a drunk mug equals a bottle; at x4 it is
+   still worth less. A mug smashed early pays `75 x multiplier` and no bonus,
+   which is what makes waiting a decision. Integrity healing stays deferred:
+   the owner asked for points, not for health.
    **Defense scores are therefore not comparable across the M18 boundary**, in
    the same way Groove scores are not across M13/M13.1 (open item 16).
 4. **`level01` retune: leaning yes, not decided** — *"acho que sim, nao estou

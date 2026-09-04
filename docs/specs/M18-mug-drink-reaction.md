@@ -17,13 +17,28 @@ same event happening twice with different art. Both target kinds currently
 resolve identically — burst, five glass shards, `glassBreak` — so the mug has
 no identity beyond being slower and worth less.
 
+**Refined by the owner on 2026-09-04, before any code was written.** The drink
+is not the outcome of every mug — only of a mug caught *near* the drummer:
+*"Para a parte em que o baterista pega e bebe a caneca de cerveja, isso só
+ocorra quando a caneca esteja proximo do baterista uns 60% do caminho, se
+estiver longe dai quebra com a baqueta."* On the measurement below the owner
+settled the threshold at **half the approach**: *"Pode ser em 50% no meio,
+isso simplifica."*
+
+That turns one outcome into two, and it is the change that makes the milestone
+work. See section A.
+
 ## What moves, and what does not
 
 M18 changes the score, in **exactly one way and no other**.
 
-`SCORING.drinkBonus` — a **flat** award on a mug hit, added on top of the
-existing `basePoints: 75 × comboMultiplier`. Proposed value **25**, and it is
-a tuning dial, not a rule.
+`SCORING.drinkBonus` — a **flat** award on a mug that is *drunk*, added on top
+of the existing `basePoints: 75 × comboMultiplier`. Proposed value **25**, and
+it is a tuning dial, not a rule.
+
+**A mug smashed early pays nothing extra**: `75 × comboMultiplier`, exactly
+what it pays today. The bonus is the reward for having waited, and if it were
+paid on every mug hit the wait would buy the player nothing.
 
 **Flat, and deliberately not multiplied by the combo.** The mug is the *easier*
 target: a 120 px tap radius against the bottle's 104, and a slower approach at
@@ -65,10 +80,66 @@ Neither is rejected. Both are separate decisions with their own playtest.
 
 ## What changes
 
-### A. Mug hits stop breaking
+### A. A mug is drunk only when it is within reach
 
-On `TARGET_HIT` with `kind === 'beerMug'`: no glass shards, no `glassBreak`
-SFX. The impact burst stays — the mug was still struck — and the drink plays.
+On `TARGET_HIT` with `kind === 'beerMug'`, the mug resolves one of two ways:
+
+- **near** — no glass shards, no `glassBreak` SFX, the drink plays and
+  `drinkBonus` is awarded. The impact burst stays; the mug was still struck.
+- **far** — it breaks with the stick, exactly as it does today: burst, five
+  shards, `glassBreak`, `75 × comboMultiplier`. This is the existing path,
+  unchanged and not deleted.
+
+The bottle has one outcome at every distance. Only the mug branches.
+
+#### The threshold is `closenessAt()`, not `progress`
+
+`DRINK_MIN_CLOSENESS = 0.5`, in `game/config/targets.ts`, compared against
+`closenessAt(progress)` from `game/systems/approach.ts`.
+
+**This distinction is the whole correctness of the feature and must not be
+"simplified" back to `progress`.** `progress` is linear in *time*;
+`closenessAt` is where the object actually is on screen, and with
+`STAGE.farDepth: 4.2` the two diverge enormously. Measured against the real
+approach math:
+
+| `progress` (time) | `closeness` (screen) | y | apparent size |
+|---|---|---|---|
+| 0.60 | **0.26** | 548 | 44% |
+| 0.80 | 0.49 | 650 | 61% |
+| 0.86 | 0.60 | 700 | 70% |
+| 1.00 | 1.00 | 880 (danger line) | 100% |
+
+At 60% of the *flight time* a mug has crossed only **26% of the visible
+distance** — still small, still up near the vanishing point. A forearm entering
+from the bottom-right to catch that would look worse than anything M18 is
+trying to fix, and it is precisely the *"pode ficar estranho"* the owner
+flagged. The gate has to be on what the player sees.
+
+`closeness ≥ 0.5` puts the mug at **62% of full size, y 655** — plainly in
+reach — and leaves a real window to hit it in:
+
+| | normal mug (1800–2350 ms) | fastball mug (1350–1550 ms, p = 0.2) |
+|---|---|---|
+| window below `closeness` 0.5 | 1454–1899 ms | 1090–1252 ms |
+| **window to land a drink** | **346–452 ms** | **260–298 ms** |
+
+0.6 was the owner's first instinct and is also playable, but it lands at
+`progress` 0.863 and leaves only 185–212 ms on a fastball. 0.5 roughly doubles
+that margin, and it is a config dial either way.
+
+#### What the branch buys
+
+The mug is the *easier* target — a 120 px tap radius against the bottle's 104,
+slower at both ends of both windows — and M18 hangs a premium on it. The gate
+is what keeps that honest: smashing early is the safe play at base points,
+and drinking is a deliberate choice to let the object come deep, with less
+margin for error, for `+25`. Without the gate the premium sits on the easy
+object unconditionally, which is the risk/reward inversion the flat bonus was
+already written to avoid.
+
+It also thins the density problem measured below: two mugs can only contend
+for the one drink slot if the player lets *both* run past `closeness` 0.5.
 
 ### B. A three-frame POV drink
 
@@ -101,8 +172,10 @@ density never interrupts a drink. It is the **show** that can land two mugs
 the Encore leans on bottles and volleys while the show mixes mugs in more
 evenly.
 
-At one mug every 3.5 s the animation occupies about **14% of a round** in both.
-That is a running gag, not a takeover.
+At one mug every 3.5 s the animation occupies at most about **14% of a round**
+in both. That is a running gag, not a takeover — and the section A gate only
+lowers it, since a mug smashed early never animates at all. 14% is therefore
+the ceiling, reached only by a player who drinks every single mug.
 
 ### One slot, and it cuts to the punchline
 
@@ -176,25 +249,37 @@ Manifest: three entries in `assets/manifest/asset-manifest.json`,
 
 - No change to bottle values, combo behaviour, integrity, hitboxes, or approach
   values. The mug's `basePoints` stays 75; the bonus is additive and flat.
-- No drinking animation for the bottle. The bottle still breaks; the contrast
-  is the joke.
+- No drinking animation for the bottle. The bottle breaks at every distance;
+  the contrast is the joke.
+- No change to `DRINK_MIN_CLOSENESS` per stage, per kind, or over a round. One
+  constant, one meaning.
 - No drunk meter, no integrity heal, no new HUD panel.
+- **No "tell" marking the mug as drinkable** — no glow, no rim, no HUD cue.
+  *"Close enough to reach"* is physics the player already understands, and a
+  marker would add HUD noise to teach what the animation itself teaches on the
+  first drink. Whether the two outcomes read as a rule or as randomness is a
+  question for the device review, not for the browser.
 
 ## Verification
 
 `npm run verify` plus:
 
-1. a mug hit spawns zero shards and fires no `glassBreak`; a bottle hit is
-   unchanged in every respect;
-2. a mug hit awards `75 × multiplier + drinkBonus`, and the bonus is not
-   multiplied — asserted at the ×1, ×2, ×3 and ×4 tiers;
-3. combo, `targetsDestroyed`, and integrity after a mug hit are identical to
-   their pre-M18 values on a replayed seed; only the score differs, and only by
-   `drinkBonus` per mug;
-4. the drink rect intersects neither `padBounds()` nor the lane corridor;
-5. a second mug within 480 ms runs one animation, never two, and cuts to the
-   payoff frame rather than restarting from the catch;
-6. the drink frames are excluded from the loop-continuity gate and present in
+1. a mug hit at `closeness ≥ DRINK_MIN_CLOSENESS` spawns zero shards and fires
+   no `glassBreak`; a mug hit below it produces the pre-M18 break in every
+   respect; a bottle hit is unchanged at every distance;
+2. **the gate reads `closenessAt`, not `progress`** — a mug hit at `progress`
+   0.60 (`closeness` 0.26) must *break*. This case exists to fail loudly if the
+   comparison is ever moved onto the time axis;
+3. a drunk mug awards `75 × multiplier + drinkBonus`, and the bonus is not
+   multiplied — asserted at the ×1, ×2, ×3 and ×4 tiers; a mug smashed early
+   awards `75 × multiplier` and no bonus;
+4. combo, `targetsDestroyed`, and integrity after a mug hit are identical to
+   their pre-M18 values on a replayed seed, at both distances; only the score
+   differs, and only by `drinkBonus` per mug actually drunk;
+5. the drink rect intersects neither `padBounds()` nor the lane corridor;
+6. a second mug drunk within 480 ms runs one animation, never two, and cuts to
+   the payoff frame rather than restarting from the catch;
+7. the drink frames are excluded from the loop-continuity gate and present in
    the manifest;
-7. the animation and its SFX are cleared on quit, restart, and unmount
+8. the animation and its SFX are cleared on quit, restart, and unmount
    (AGENTS.md rule 11).
