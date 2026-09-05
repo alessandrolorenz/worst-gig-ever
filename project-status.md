@@ -756,7 +756,7 @@ Two decisions worth carrying forward:
    tempo-lock table moved to `game/audio/audioMix.ts`; the registry keeps only
    the filenames it was always documented to own.
 
-Audio footprint: **5.7 MB**, down from 10.7 MB, with two new files in it.
+Audio footprint at M16: **5.7 MB**, down from 10.7 MB, with two new files in it. It is **7.9 MB** as of 2026-09-05, the difference being `show_bed_90.wav`.
 
 ### M17 implemented too — same branch
 
@@ -1289,7 +1289,11 @@ what caught the bottle's enlargement in the first place.
 1. **CLOSED 2026-09-04 — `PERFORMANCE_OK`.** The owner played the 1.0.7 local
    release build on the Galaxy S23 FE and reported it passed on performance.
    This was the project's oldest open item, waiting since 2026-09-03.
-2. `crowd_applause.wav` is still the full 39 s / 6.9 MB source, and volume normalization across the five files has not been done. Both are audible in the current build and are deliberately left alone until after observation.
+2. **CLOSED 2026-09-04, and this entry was stale until 2026-09-05.** The
+   applause was trimmed to 5.00 s / 0.88 MB, and the volume-normalization half
+   was measured and found not to be a defect — see item 3 of the M16 section
+   above, which recorded both correctly the whole time. Two *other* documents
+   went on describing the 39 s source, and this list was one of them.
 3. The current tuning is playtest-informed but remains provisional. The M13
    physical playtest found the dual-task difficulty desirable, so every
    difficulty value is frozen through the M13.1 re-test. Tune only after the

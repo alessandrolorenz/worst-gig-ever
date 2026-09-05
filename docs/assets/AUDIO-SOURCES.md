@@ -237,6 +237,24 @@ double its size for nothing.
 
 ---
 
+## Keeping these records true
+
+`npm run audit:provenance` re-derives every checkable claim in this file from
+the files themselves — recorded SHA-256 against the file's hash, recorded byte
+count against its size, recorded duration against its WAVE header — and
+`npm run verify` fails if any of them has drifted. It also catches the
+opposite direction, which is the one rule 14 is about: a runtime asset quietly
+replaced without its record being updated.
+
+**It covers the structured records below and nothing else, and that limit is
+deliberate.** Prose is not parsed, because "it was 39.15 s before the trim" and
+"it is still 39.15 s" are the same sentence to a regex and opposite claims to a
+reader; a guard that failed on correct history would teach people to delete
+history. Prose accuracy is editorial, and the practice that replaces it is to
+cite the command that reproduces a number — `npm run measure:art`,
+`npm run measure:rounds`, `npm run audit:provenance` — rather than restating
+the number and hoping.
+
 ## Derivatives
 
 Derivatives are produced locally from the verified CC0 sources above. They inherit CC0. Each entry records the exact command so the file can be regenerated from the recorded source SHA-256.
@@ -305,8 +323,8 @@ Applied to all five assets on 2026-08-30:
 - [x] file opens correctly (verified with `ffprobe`; MIDI verified as `Standard MIDI data (format 1), 4 tracks`);
 - [x] SHA-256 recorded below;
 - [x] local filename is stable;
-- [ ] runtime volume is normalized appropriately — **deferred to M4 slice 6**, when the mix is auditioned together;
-- [ ] unused long silence is trimmed if necessary — **outstanding for `crowd_applause.wav` only** (39 s);
+- [x] runtime volume is normalized appropriately — **answered at M16, and the answer was no re-levelling.** Measured: all four one-shots already peak at 0.97-1.00, and EBU R128 integrated loudness cannot be measured on three of them at all, because the gate needs 400 ms of content and they are shorter. Relative loudness is the `MIX` table's job, where each level carries a stated reason;
+- [x] unused long silence is trimmed if necessary — **done 2026-09-04.** `crowd_applause.wav` went from 39.15 s to 5.00 s; the derivative and its command are recorded below. This line said "outstanding" until 2026-09-05, which is how the roadmap came to list finished work as pending;
 - [x] any derivative preserves this provenance record.
 
 ## Retrieved file records

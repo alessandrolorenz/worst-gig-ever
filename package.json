@@ -25,9 +25,10 @@
     "validate:art": "node scripts/validate-pack1-art.mjs",
     "make:click": "node scripts/make-beat-click.mjs",
     "make:bed": "node scripts/make-groove-bed.mjs",
-    "verify": "npm run type-check && npm run lint && npm test && npm run validate:art -- --require-ready && npm run measure:art -- --require-continuity",
+    "verify": "npm run type-check && npm run lint && npm test && npm run validate:art -- --require-ready && npm run measure:art -- --require-continuity && npm run audit:provenance -- --require-clean",
     "measure:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-art-bounds.mjs",
     "measure:rounds": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-round-pressure.mjs",
+    "audit:provenance": "node scripts/audit-provenance.mjs",
     "make:gulp": "node scripts/make-mug-gulp.mjs"
   },
   "dependencies": {
