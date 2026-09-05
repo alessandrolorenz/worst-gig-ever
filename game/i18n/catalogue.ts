@@ -16,6 +16,7 @@
  */
 import { DEFAULT_LOCALE, type Locale } from './locales.ts';
 import { en } from './catalogues/en.ts';
+import { pseudo } from './catalogues/pseudo.ts';
 
 export type Catalogue = typeof en;
 
@@ -28,6 +29,13 @@ export type Catalogue = typeof en;
  */
 const CATALOGUES: Record<Locale, Catalogue> = {
   en,
+  /*
+   * Generated from `en`, so it cannot drift from it and needs no maintenance
+   * when copy changes. It is registered here — a catalogue a build cannot
+   * reach is a catalogue nobody checks — and kept unselectable by living in
+   * `DEV_LOCALES` rather than `SUPPORTED_LOCALES` (M20).
+   */
+  pseudo,
 };
 
 /**

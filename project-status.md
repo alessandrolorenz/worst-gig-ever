@@ -26,7 +26,7 @@ and asked nothing further of.
 |---|---|---|
 | M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
 | M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
-| M20 | Translation-safe layout | not started |
+| M20 | Translation-safe layout | **implemented, emulator-validated** (2026-09-05) on `m20/translation-safe-layout`. Owner device verdict outstanding. See below |
 | M21 | pt-BR | not started |
 
 ### M19 — locale foundation (implemented 2026-09-04, emulator-validated 2026-09-05)
@@ -64,7 +64,36 @@ Play again, Next stage. Same mechanism, covered by tests, but not read off a
 screen. The owner's phone was attached to adb throughout and was **not**
 installed to.
 
-### The emulator found the M20 bug already, in English
+### M20 — translation-safe layout (implemented and validated 2026-09-05)
+
+The rule: **no text surface may clip silently.** Two ways to satisfy it — a
+fixed box must fit, a scrollable one must take all the height there is and say
+visibly when there is more. **No copy was shortened**, which was the constraint
+going in.
+
+| | |
+|---|---|
+| Spec | `docs/specs/M20-translation-safe-layout.md` |
+| Briefing card | `maxHeight: 200` → `flexShrink: 1`. On the 411 dp viewport that is 254 dp of card instead of 200, with the chrome measured off a screenshot rather than derived — the derived number was 23 dp optimistic |
+| Bullet column | 560 → 640 dp. An English line-length choice inside a 923 dp landscape screen; it cost a line of wrapping per bullet |
+| Overflow cue | A `▾` in the accent colour, driven by `onLayout` vs `onContentSizeChange`. `persistentScrollbar` is on and is **not enough** — it draws dark grey on a near-black scrim |
+| HUD | Columns gained a `maxWidth`. They had a minimum and none, so a longer label would not have wrapped — it would have grown toward the timer |
+| Summary rows | Label shrinks, value does not. Without it a Portuguese label pushes its own number out of the column |
+| Pseudo-locale | Generated from English at 1.4x with accents, in `DEV_LOCALES` so a release cannot select it and still draws no language control |
+| Gate | `tests/layoutBudget.test.ts`, every surface in every locale. The `VIEWPORT_PX * 1.6` proxy is deleted, not loosened |
+| Verify | green, 402 tests |
+
+On the emulator: stage 1 in English now shows all five bullets with nothing cut
+mid-sentence and the cue drawn; stage 2 fits and shows **no** cue, so the cue is
+measurement-driven; stage 1 in pseudo overflows and says so; the title in pseudo
+holds all four stage cards and keeps `WORST GIG EVER` in English.
+
+**Two lessons worth keeping.** A derived layout budget agreed with itself and
+was wrong in the optimistic direction — measure the screen. And an affordance
+that exists is not an affordance that is visible: the scrollbar was there the
+whole time, dark grey on near-black.
+
+### How the emulator found the M20 bug, in English
 
 Stage 1's briefing **overflows its card at rest** on a 2424x1080 landscape
 phone: the third bullet is cut mid-sentence and bullets four and five are below

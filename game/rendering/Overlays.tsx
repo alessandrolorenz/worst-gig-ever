@@ -10,12 +10,19 @@
  * app's screen switch. The order it reads in is the order the player meets
  * them: story, title, briefing, then the round's own overlays.
  */
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
 
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
 import { PRODUCT_TITLE } from '../config/product.ts';
 import { THEME } from './theme.ts';
+import {
+  BRIEFING,
+  BUTTON,
+  OVERLAY_PADDING,
+  STAGE_CARD,
+  SUMMARY,
+} from './overlayLayout.ts';
 import type { Catalogue } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
 import { hasLocaleChoice, LOCALE_ENDONYMS } from '../i18n/locales.ts';
@@ -283,10 +290,109 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+/**
+ * The briefing card: what this stage asks for, immediately before it starts.
+ *
+ * Per stage rather than one rulebook at the title, because the stages ask for
+ * different things and a later one only needs to name what is new. Reachable
+ * from the title too, for a player who wants to re-read it without starting a
+ * round.
+ *
+ * ## Why this is its own component (M20)
+ *
+ * It is the only overlay that has to know whether its own content fits. The
+ * card takes the height the screen has and scrolls when the text is longer
+ * than that, which is what makes it survive a translation — but a scroll
+ * nobody can see is the silent clipping this milestone exists to remove, so it
+ * measures itself and says when there is more.
+ */
+function BriefingCard({
+  stage,
+  onBeginRound,
+  onBackToTitle,
+}: {
+  stage: StageDefinition;
+  onBeginRound(): void;
+  onBackToTitle(): void;
+}) {
+  const strings = useStrings();
+  const stageStrings = strings.stages[stage.id];
+
+  /*
+   * Measured rather than predicted. A budget test can say whether the words
+   * *should* fit at a modelled font metric; only the renderer knows whether
+   * they did, on this screen, in this language.
+   */
+  const [cardHeight, setCardHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const hasMore = cardHeight > 0 && contentHeight > cardHeight + 1;
+
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.briefingKicker}>
+        {format(strings.common.stageNumber, { number: stage.number })}
+      </Text>
+      <Text style={styles.briefingTitle}>{stageStrings.name}</Text>
+      {/**
+       * Takes the height the screen has, rather than a fixed 200 (M20).
+       *
+       * The old constant left about 90 dp of empty screen below the buttons on
+       * the shortest viewport this ships to, with the mug rule under the fold —
+       * and it was a number reached by raising 150 until stage 1 looked better,
+       * which is not a rule any translation can rely on.
+       *
+       * `persistentScrollbar` keeps Android's indicator drawn instead of
+       * fading it seconds after a scroll. It is necessary and it is not
+       * sufficient: on this scrim it is dark grey on near-black and a player
+       * will not see it, which is why the cue below exists.
+       */}
+      <ScrollView
+        style={styles.briefingScroll}
+        contentContainerStyle={styles.briefingList}
+        showsVerticalScrollIndicator
+        persistentScrollbar
+        onLayout={(event) => setCardHeight(event.nativeEvent.layout.height)}
+        onContentSizeChange={(_width, height) => setContentHeight(height)}
+      >
+        {stage.briefingFigures !== undefined && (
+          <View style={styles.figureRow}>
+            {stage.briefingFigures.map((figureId) => (
+              <View key={figureId} style={styles.figure}>
+                <Image
+                  source={BRIEFING_FIGURE_ART[figureId]}
+                  style={styles.figureArt}
+                  resizeMode="contain"
+                  fadeDuration={0}
+                />
+                <Text style={styles.figureCaption}>{strings.briefingFigures[figureId]}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+        {stageStrings.briefing.map((line) => (
+          <View key={line} style={styles.briefingItem}>
+            <Text style={styles.briefingBullet}>▸</Text>
+            <Text style={styles.briefingText}>{line}</Text>
+          </View>
+        ))}
+      </ScrollView>
+      {/*
+       * The row is always drawn and the mark inside it is not, so the card does
+       * not jump when the measurement arrives — the same reason the HUD's combo
+       * row has a fixed height (M12).
+       */}
+      <View style={styles.moreCueRow}>{hasMore && <Text style={styles.moreCue}>▾</Text>}</View>
+      <View style={styles.buttonRowLayout}>
+        <Button label={strings.briefing.start} onPress={onBeginRound} />
+        <Button label={strings.common.back} onPress={onBackToTitle} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
 export function Overlays(props: OverlayProps) {
   const { flow, stage, state, round, rhythm, story, audioAvailable } = props;
   const strings = useStrings();
-  const stageStrings = strings.stages[stage.id];
 
   if (flow.screen === 'STORY') {
     return (
@@ -344,53 +450,11 @@ export function Overlays(props: OverlayProps) {
    */
   if (flow.screen === 'BRIEFING') {
     return (
-      <View style={styles.scrim}>
-        <Text style={styles.briefingKicker}>
-          {format(strings.common.stageNumber, { number: stage.number })}
-        </Text>
-        <Text style={styles.briefingTitle}>{stageStrings.name}</Text>
-        {/**
-         * The indicator is on, deliberately. A briefing that silently hides its
-         * second half teaches nothing — and at the MVP playtest this card was
-         * doing exactly that with the one rule it exists to explain.
-         */}
-        <ScrollView
-          style={styles.briefingScroll}
-          contentContainerStyle={styles.briefingList}
-          showsVerticalScrollIndicator
-        >
-          {stage.briefingFigures !== undefined && (
-            <View style={styles.figureRow}>
-              {stage.briefingFigures.map((figureId) => (
-                <View key={figureId} style={styles.figure}>
-                  <Image
-                    source={BRIEFING_FIGURE_ART[figureId]}
-                    style={styles.figureArt}
-                    resizeMode="contain"
-                    fadeDuration={0}
-                  />
-                  <Text style={styles.figureCaption}>{strings.briefingFigures[figureId]}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-          {stageStrings.briefing.map((line) => (
-            <View key={line} style={styles.briefingItem}>
-              <Text style={styles.briefingBullet}>▸</Text>
-              <Text style={styles.briefingText}>{line}</Text>
-            </View>
-          ))}
-        </ScrollView>
-        <View style={styles.buttonRowLayout}>
-          <Button label={strings.briefing.start} onPress={props.onBeginRound} />
-          <Button
-            label={strings.common.back}
-            onPress={props.onBackToTitle}
-            tone="secondary"
-            compact
-          />
-        </View>
-      </View>
+      <BriefingCard
+        stage={stage}
+        onBeginRound={props.onBeginRound}
+        onBackToTitle={props.onBackToTitle}
+      />
     );
   }
 
@@ -517,8 +581,8 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.overlayScrim,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 28,
-    paddingVertical: 10,
+    paddingHorizontal: OVERLAY_PADDING.horizontal,
+    paddingVertical: OVERLAY_PADDING.vertical,
   },
   hudControls: {
     ...StyleSheet.absoluteFillObject,
@@ -580,12 +644,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stageCard: {
-    minWidth: 210,
-    maxWidth: 260,
-    marginHorizontal: 8,
+    minWidth: STAGE_CARD.minWidth,
+    maxWidth: STAGE_CARD.maxWidth,
+    marginHorizontal: STAGE_CARD.marginHorizontal,
     marginVertical: 4,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: STAGE_CARD.paddingVertical,
+    paddingHorizontal: STAGE_CARD.paddingHorizontal,
     borderRadius: 16,
     borderWidth: 2,
     borderColor: THEME.accent,
@@ -593,56 +657,65 @@ const styles = StyleSheet.create({
   },
   stageNumber: {
     color: THEME.accent,
-    fontSize: 11,
+    fontSize: STAGE_CARD.number.fontSize,
     fontWeight: '900',
     letterSpacing: 3,
   },
   stageName: {
     color: THEME.hudText,
-    fontSize: 18,
+    fontSize: STAGE_CARD.name.fontSize,
     fontWeight: '800',
     letterSpacing: 0.5,
     marginTop: 2,
   },
   stageSubtitle: {
     color: THEME.hudDim,
-    fontSize: 12,
+    fontSize: STAGE_CARD.subtitle.fontSize,
     marginTop: 1,
   },
 
   /** Briefing card. */
   briefingKicker: {
     color: THEME.accent,
-    fontSize: 12,
+    fontSize: BRIEFING.kicker.fontSize,
     fontWeight: '900',
     letterSpacing: 4,
   },
   briefingTitle: {
     color: THEME.hudText,
-    fontSize: 26,
+    fontSize: BRIEFING.title.fontSize,
     fontWeight: '800',
     letterSpacing: 1,
-    marginBottom: 8,
+    marginBottom: BRIEFING.title.marginBottom,
   },
   /*
-   * Scrolls rather than grows, so a longer briefing can never clip a button.
+   * Scrolls rather than grows, so a longer briefing can never clip a button —
+   * and since M20 it grows to whatever the screen has left before it scrolls.
    *
-   * Raised from 150 after the MVP playtest. At 150 a stage that carries figures
-   * *and* the mug rule measured about 300 px of content, so half the card sat
-   * below a fold with `showsVerticalScrollIndicator` off — the rule was on the
-   * screen and unreadable, which is indistinguishable from absent. 200 fits
-   * stage 1 whole and still leaves the 411 dp viewport its heading, its button
-   * row and room to spare.
+   * `flexShrink: 1` with no maximum is the whole mechanism: the kicker, the
+   * title and the button row are fixed, so the card takes the remainder and
+   * gives it back on a smaller screen. `briefingCardHeight()` in
+   * `overlayLayout.ts` is the same arithmetic, which is how the budget test
+   * knows what this is worth without rendering it.
+   *
+   * The 200 it replaces was set at M18.1 by raising 150 until stage 1 looked
+   * right. It measured 75 dp short on the 411 dp viewport and clipped the mug
+   * rule in English — see the M19 emulator run.
    */
-  briefingScroll: { maxHeight: 200, alignSelf: 'stretch' },
+  briefingScroll: { flexShrink: 1, alignSelf: 'stretch' },
   /*
    * Inside the scroll, so pictures cost the bullets nothing on the 411 dp
    * viewport the whole results stack is measured against — the list scrolls
    * rather than the card growing.
    */
-  figureRow: { flexDirection: 'row', justifyContent: 'center', gap: 20, paddingBottom: 8 },
-  figure: { alignItems: 'center', width: 128 },
-  figureArt: { width: 72, height: 62 },
+  figureRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 20,
+    paddingBottom: BRIEFING.figure.rowPaddingBottom,
+  },
+  figure: { alignItems: 'center', width: BRIEFING.figure.width },
+  figureArt: { width: 72, height: BRIEFING.figure.artHeight },
   /*
    * 12, not 10. These two captions are the tightest statement of the mug rule
    * anywhere in the game — "still far away: it smashes" against "within arm's
@@ -650,28 +723,42 @@ const styles = StyleSheet.create({
    */
   figureCaption: {
     color: THEME.hudText,
-    fontSize: 12,
-    lineHeight: 15,
+    fontSize: BRIEFING.figure.caption.fontSize,
+    lineHeight: BRIEFING.figure.caption.lineHeight,
     textAlign: 'center',
-    paddingTop: 4,
+    paddingTop: BRIEFING.figure.caption.paddingTop,
   },
-  briefingList: { alignItems: 'center', paddingBottom: 4 },
+  briefingList: { alignItems: 'center', paddingBottom: BRIEFING.list.paddingBottom },
+  /*
+   * "There is more below", in the one place a player is already looking (M20).
+   *
+   * Android's scrollbar is drawn persistently on this card and is dark grey on
+   * a near-black scrim, which is an affordance only someone who knows it is
+   * there can find. This is the same information in the card's own accent.
+   */
+  moreCueRow: { height: BRIEFING.moreCue.height, justifyContent: 'center' },
+  moreCue: {
+    color: THEME.accent,
+    fontSize: BRIEFING.moreCue.fontSize,
+    lineHeight: BRIEFING.moreCue.height,
+    textAlign: 'center',
+  },
   briefingItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    maxWidth: 560,
-    marginBottom: 5,
+    maxWidth: BRIEFING.bullet.maxWidth,
+    marginBottom: BRIEFING.bullet.gap,
   },
   briefingBullet: {
     color: THEME.accent,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: BRIEFING.bullet.lineHeight,
     marginRight: 8,
   },
   briefingText: {
     color: THEME.hudText,
-    fontSize: 15,
-    lineHeight: 20,
+    fontSize: BRIEFING.bullet.fontSize,
+    lineHeight: BRIEFING.bullet.lineHeight,
     flexShrink: 1,
   },
 
@@ -688,12 +775,12 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   summaryColumn: {
-    minWidth: 280,
-    maxWidth: 330,
-    marginHorizontal: 14,
+    minWidth: SUMMARY.columnMinWidth,
+    maxWidth: SUMMARY.columnMaxWidth,
+    marginHorizontal: SUMMARY.marginHorizontal,
   },
   summaryHeading: {
-    fontSize: 13,
+    fontSize: SUMMARY.heading.fontSize,
     fontWeight: '900',
     letterSpacing: 5,
     marginBottom: 2,
@@ -705,13 +792,28 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(244, 236, 216, 0.12)',
   },
-  summaryLabel: { color: THEME.hudDim, fontSize: 13 },
-  summaryValue: { color: THEME.hudText, fontSize: 13, fontWeight: '700' },
+  /*
+   * The label shrinks and the number does not (M20).
+   *
+   * `space-between` with neither child shrinking let the label win: "Beats
+   * missed" is short, *Batidas perdidas* is not, and "Best beat streak" becomes
+   * *Melhor sequência de batidas*. Without this the label pushes the value it
+   * exists to caption out of the column, and a summary that has lost its
+   * numbers is not a summary.
+   */
+  summaryLabel: { color: THEME.hudDim, fontSize: SUMMARY.label.fontSize, flexShrink: 1 },
+  summaryValue: {
+    color: THEME.hudText,
+    fontSize: SUMMARY.value.fontSize,
+    fontWeight: '700',
+    flexShrink: 0,
+    marginLeft: 8,
+  },
   summaryDetail: {
     color: THEME.hudDim,
-    fontSize: 11,
+    fontSize: SUMMARY.detail.fontSize,
     marginTop: 4,
-    lineHeight: 15,
+    lineHeight: SUMMARY.detail.lineHeight,
   },
   buttonRowLayout: {
     flexDirection: 'row',
@@ -720,19 +822,26 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: THEME.accent,
-    paddingVertical: 10,
-    paddingHorizontal: 30,
+    paddingVertical: BUTTON.paddingVertical,
+    paddingHorizontal: BUTTON.paddingHorizontal,
     borderRadius: 24,
-    marginTop: 6,
-    marginHorizontal: 6,
-    minWidth: 200,
+    marginTop: BUTTON.marginTop,
+    marginHorizontal: BUTTON.marginHorizontal,
+    minWidth: BUTTON.minWidth,
+    /* A label the size of the screen is not a button: long labels wrap inside
+       this width instead of pushing their neighbours off the row (M20). */
+    maxWidth: BUTTON.maxWidth,
   },
   buttonSecondary: {
     backgroundColor: 'transparent',
     borderWidth: 2,
     borderColor: THEME.hudDim,
   },
-  buttonCompact: { minWidth: 150, paddingHorizontal: 20, paddingVertical: 8 },
+  buttonCompact: {
+    minWidth: BUTTON.compactMinWidth,
+    paddingHorizontal: BUTTON.compactPaddingHorizontal,
+    paddingVertical: BUTTON.compactPaddingVertical,
+  },
   buttonPressed: { opacity: 0.75 },
   /* Visibly not-yet-pressable, rather than invisible or absent: the player
      should see the button arrive and understand it is settling. */
@@ -745,11 +854,11 @@ const styles = StyleSheet.create({
   buttonTextWithIcon: { marginLeft: 10 },
   buttonText: {
     color: THEME.hudText,
-    fontSize: 16,
+    fontSize: BUTTON.fontSize,
     fontWeight: '800',
     textAlign: 'center',
     letterSpacing: 1,
   },
-  buttonTextCompact: { fontSize: 14 },
+  buttonTextCompact: { fontSize: BUTTON.compactFontSize },
   buttonTextSecondary: { color: THEME.hudDim },
 });

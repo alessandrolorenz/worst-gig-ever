@@ -79,6 +79,35 @@ export const COUNTDOWN_BOX: Pick<Rect, 'y' | 'height'> = {
   height: 230,
 };
 
+/**
+ * Type sizes and column widths in the HUD, shared with the layout budget test
+ * (M20).
+ *
+ * The HUD is the one place in the game where every row is a **fixed box**: M12
+ * requires that a score gaining a digit or a PERFECT flashing cannot move
+ * anything, so the heights in `GROOVE_PANEL_ROWS` are deliberate and are not
+ * going to grow for a longer language. That makes "does the text fit on one
+ * line" a hard requirement here rather than a preference, and these are the
+ * numbers that decide it.
+ *
+ * `columnMaxWidth` is new at M20. The three top-row columns had a minimum and
+ * no maximum, so a longer combo label did not wrap — it grew, silently, toward
+ * the timer in the middle of the screen. A defined wrap that the budget test
+ * can check is better than an undefined collision that it cannot.
+ */
+export const HUD_TYPE = {
+  columnMinWidth: 420,
+  columnMaxWidth: 560,
+  label: { fontSize: 24 },
+  combo: { fontSize: 30 },
+  groove: {
+    label: { fontSize: 26 },
+    streak: { fontSize: 26 },
+    judgement: { fontSize: 34 },
+    leadIn: { fontSize: 28 },
+  },
+} as const;
+
 /** Fixed line heights inside the Groove panel, top to bottom. */
 export const GROOVE_PANEL_ROWS = {
   label: 32,

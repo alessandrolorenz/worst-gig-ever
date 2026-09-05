@@ -414,42 +414,19 @@ test('M18.1: every briefing entry is a whole sentence, not a fragment', () => {
   }
 });
 
-test('M18.1: no briefing asks the card to show more than it can', () => {
-  /*
-   * Mirrors `styles.briefingScroll` in Overlays.tsx: 200 px of viewport, text
-   * at 20 px per line with 5 px between entries, figures at about 105 px when
-   * a stage has them. Wrapping is estimated at 62 characters per line, which
-   * is 560 px of maxWidth at 15 px text.
-   *
-   * A proxy, and deliberately a loose one — it exists to catch a briefing that
-   * has doubled in length, not to lay the card out.
-   */
-  const VIEWPORT_PX = 200;
-  const LINE_PX = 20;
-  const ENTRY_GAP_PX = 5;
-  const FIGURE_ROW_PX = 105;
-  const CHARS_PER_LINE = 62;
-
-  for (const stage of STAGES) {
-    /*
-     * English, and only English (M19). That is correct for a catalogue with one
-     * locale and insufficient the moment there are two: Portuguese runs 15-25%
-     * longer for the same meaning, so this budget passing here says nothing
-     * about whether the card holds a translation. Making it length-independent
-     * is M20 — see docs/specs/M19-locale-foundation.md, "Known follow-on".
-     */
-    const text = en.stages[stage.id].briefing.reduce(
-      (total: number, line: string) =>
-        total + Math.ceil(line.length / CHARS_PER_LINE) * LINE_PX + ENTRY_GAP_PX,
-      0,
-    );
-    const figures = stage.briefingFigures ? FIGURE_ROW_PX : 0;
-    const height = text + figures;
-    assert.ok(
-      height <= VIEWPORT_PX * 1.6,
-      `stage ${stage.number}: about ${height} px of briefing against a ${VIEWPORT_PX} px ` +
-        'card. Past this the end of it is only reachable by scrolling, and the ' +
-        'briefing is the one place a rule is ever explained.',
-    );
-  }
-});
+/*
+ * The height budget that used to live here was deleted at M20.
+ *
+ * It compared an estimated briefing height against `VIEWPORT_PX * 1.6` — 320
+ * px against a 200 px card — so it permitted 60% overflow by construction, and
+ * it passed a card that was clipping the mug rule in English on a real device
+ * (M19 emulator run, 2026-09-05).
+ *
+ * Its replacement is `tests/layoutBudget.test.ts`, which measures against the
+ * height the card actually has and does it in every locale. Loosening this one
+ * further, or keeping both, would have left two budgets with different numbers
+ * and no way to tell which was the contract.
+ *
+ * The sentence rule above is untouched: it is about copy, not about height,
+ * and it is still right.
+ */

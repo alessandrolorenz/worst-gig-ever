@@ -95,7 +95,7 @@ Validated on the Pixel_9 emulator on 2026-09-05: every screen reachable without
 playing a round renders from the catalogue, both interpolated strings included,
 and no language control is drawn. Owner device verdict outstanding.
 
-### M20 — Translation-safe layout
+### M20 — Translation-safe layout — **IMPLEMENTED (2026-09-05), emulator-validated**
 
 The milestone the briefing bug demands. Pseudo-locale expansion, English-length
 layout assumptions removed, silent clipping prevented.
@@ -114,6 +114,33 @@ language it was tuned for.
 And `tests/mugDrink.test.ts` passes on it, because its budget allows 320 px
 against a 200 px card. **The first job of M20 is a gate that measures what fits,
 not one that permits 60% overflow.**
+
+Done, on `m20/translation-safe-layout`. Spec and decisions:
+`docs/specs/M20-translation-safe-layout.md`. `npm run verify` green at 402
+tests.
+
+The rule it settled on: **no text surface may clip silently**, satisfied two
+ways — a fixed box must fit, a scrollable one must take all the height there is
+and say visibly when there is more. The briefing card is the second kind, so
+the budget is on its sentences and the two pictures are allowed to scroll. No
+copy was shortened.
+
+What made it work, and none of it was in the plan:
+
+- A **pseudo-locale**, generated from English at 1.4x with accents, registered
+  as a `DEV_LOCALES` entry so a release build cannot select it and still draws
+  no language control.
+- A wrapping model **calibrated against a device measurement** rather than
+  derived — the derived chrome was 23 dp optimistic, which is the direction
+  that lets text vanish.
+- The bullet column widened 560 → 640 dp. That was an English line-length
+  choice inside a 923 dp landscape screen, and it cost a line of wrapping per
+  bullet.
+- `HUD_TYPE.columnMaxWidth`, because the HUD columns had a minimum and no
+  maximum: at 1.4x the combo label would not have wrapped, it would have grown
+  toward the timer.
+- A `▾` cue, because `persistentScrollbar` draws dark grey on a near-black
+  scrim and is invisible to anyone not looking for it.
 
 ### M21 — pt-BR
 

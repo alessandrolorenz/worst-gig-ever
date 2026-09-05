@@ -18,10 +18,26 @@
  */
 export const SUPPORTED_LOCALES = ['en'] as const;
 
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
+/**
+ * Locales that exist for development and can never ship (M20).
+ *
+ * `pseudo` is English, accented and 1.4x longer, generated rather than written
+ * — see `catalogues/pseudo.ts`. It is the only way to ask whether a screen
+ * survives a longer language before that language has been written.
+ *
+ * Kept out of `SUPPORTED_LOCALES` rather than flagged inside it, so that every
+ * shipping question — what the device can resolve to, whether the language
+ * control is drawn, what a release build can select — reads the shippable list
+ * and gets the right answer without knowing this list exists.
+ */
+export const DEV_LOCALES = ['pseudo'] as const;
+
+export type ShippableLocale = (typeof SUPPORTED_LOCALES)[number];
+export type DevLocale = (typeof DEV_LOCALES)[number];
+export type Locale = ShippableLocale | DevLocale;
 
 /** The locale every fallback lands on, and the one the catalogue is typed by. */
-export const DEFAULT_LOCALE: Locale = 'en';
+export const DEFAULT_LOCALE: ShippableLocale = 'en';
 
 /**
  * What each language calls itself.
@@ -32,10 +48,44 @@ export const DEFAULT_LOCALE: Locale = 'en';
  */
 export const LOCALE_ENDONYMS: Record<Locale, string> = {
   en: 'English',
+  /* Not an endonym. Nothing calls itself this, which is the point. */
+  pseudo: 'Pseúdó',
 };
 
+/**
+ * True in a development build.
+ *
+ * `__DEV__` is React Native's global and does not exist under `node --test`,
+ * so the `typeof` guard is doing real work rather than being defensive for its
+ * own sake: a test that did not ask for dev locales gets the shipping answer.
+ */
+export function isDevelopmentBuild(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+}
+
+/**
+ * The locales a player can actually choose from, here, now.
+ *
+ * `includeDev` is a parameter with a default rather than a read of `__DEV__`
+ * inside the function, so a test can ask both questions — what ships, and what
+ * a developer sees — without pretending to be a bundler.
+ */
+export function availableLocales(
+  includeDev: boolean = isDevelopmentBuild(),
+): readonly Locale[] {
+  return includeDev ? [...SUPPORTED_LOCALES, ...DEV_LOCALES] : [...SUPPORTED_LOCALES];
+}
+
 export function isLocale(value: string): value is Locale {
-  return (SUPPORTED_LOCALES as readonly string[]).includes(value);
+  return (
+    (SUPPORTED_LOCALES as readonly string[]).includes(value) ||
+    (DEV_LOCALES as readonly string[]).includes(value)
+  );
+}
+
+/** True for a locale that must never reach a player. */
+export function isDevLocale(value: Locale): value is DevLocale {
+  return (DEV_LOCALES as readonly string[]).includes(value);
 }
 
 /** The base language of a BCP 47 tag: `pt-BR` -> `pt`, `en` -> `en`. */
@@ -57,7 +107,7 @@ function baseLanguage(tag: string): string {
  */
 export function resolveLocale(
   preferredTags: readonly string[],
-  supported: readonly Locale[] = SUPPORTED_LOCALES,
+  supported: readonly ShippableLocale[] = SUPPORTED_LOCALES,
 ): Locale {
   for (const tag of preferredTags) {
     if (typeof tag !== 'string' || tag.trim() === '') continue;
@@ -81,13 +131,19 @@ export function resolveLocale(
  * locales, a list would be a screen. It becomes a picker when it stops being
  * reasonable, which is not at two.
  */
-export function nextLocale(current: Locale): Locale {
-  const index = SUPPORTED_LOCALES.indexOf(current);
+export function nextLocale(current: Locale, available = availableLocales()): Locale {
+  const index = available.indexOf(current);
   if (index < 0) return DEFAULT_LOCALE;
-  return SUPPORTED_LOCALES[(index + 1) % SUPPORTED_LOCALES.length] ?? DEFAULT_LOCALE;
+  return available[(index + 1) % available.length] ?? DEFAULT_LOCALE;
 }
 
-/** True when there is a choice to offer. See M19: one locale draws no control. */
-export function hasLocaleChoice(): boolean {
-  return SUPPORTED_LOCALES.length > 1;
+/**
+ * True when there is a choice to offer.
+ *
+ * M19: one locale draws no control. M20 does not change that for a player —
+ * `pseudo` only exists in a development build, so a release still has one
+ * locale and still draws nothing.
+ */
+export function hasLocaleChoice(available = availableLocales()): boolean {
+  return available.length > 1;
 }

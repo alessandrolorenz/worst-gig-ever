@@ -31,7 +31,11 @@ import {
   isLocale,
   nextLocale,
   resolveLocale,
+  availableLocales,
+  isDevLocale,
+  DEV_LOCALES,
   type Locale,
+  type ShippableLocale,
 } from '../game/i18n/locales.ts';
 import { PRODUCT_TITLE } from '../game/config/product.ts';
 import { STAGES } from '../game/levels/stages.ts';
@@ -421,14 +425,22 @@ test('M19: the product name is not translatable', () => {
 // Choosing a locale
 // ---------------------------------------------------------------------------
 
-test('M19: every supported locale has a catalogue and a name of its own', () => {
-  assert.ok(SUPPORTED_LOCALES.includes(DEFAULT_LOCALE), 'the fallback must be shippable');
+test('M19: every locale has a catalogue and a name of its own', () => {
+  assert.ok(
+    (SUPPORTED_LOCALES as readonly string[]).includes(DEFAULT_LOCALE),
+    'the fallback must be shippable',
+  );
+
+  // Every locale that exists at all, development ones included: a registered
+  // locale without a catalogue renders an English game in silence, and one
+  // without a name gives the language control a blank button.
+  const everyLocale = availableLocales(true);
   assert.deepEqual(
     allCatalogues().map(([locale]) => locale).sort(),
-    [...SUPPORTED_LOCALES].sort(),
-    'a supported locale without a catalogue would render an English game silently',
+    [...everyLocale].sort(),
+    'a locale without a catalogue would render an English game silently',
   );
-  for (const locale of SUPPORTED_LOCALES) {
+  for (const locale of everyLocale) {
     assert.ok(LOCALE_ENDONYMS[locale]?.trim().length > 0, `${locale} has no endonym`);
     assert.ok(isLocale(locale));
   }
@@ -436,22 +448,62 @@ test('M19: every supported locale has a catalogue and a name of its own', () => 
 });
 
 test('M19: the language control appears exactly when there is a choice', () => {
+  // Shipping: one locale, no control. M20 adds a dev locale and must not
+  // change this — a release build has nothing to switch between.
   assert.equal(
-    hasLocaleChoice(),
+    hasLocaleChoice(availableLocales(false)),
     SUPPORTED_LOCALES.length > 1,
-    'one language draws no control; two draw one',
+    'one shippable language draws no control',
   );
+
+  // Development: the pseudo-locale is there to be selected, or it cannot be
+  // looked at.
+  assert.equal(hasLocaleChoice(availableLocales(true)), true, 'a developer must be able to switch');
 });
 
 test('M19: cycling the language visits every locale and comes back', () => {
-  const seen: Locale[] = [];
-  let locale = DEFAULT_LOCALE;
-  for (let i = 0; i < SUPPORTED_LOCALES.length; i += 1) {
-    seen.push(locale);
-    locale = nextLocale(locale);
+  for (const includeDev of [false, true]) {
+    const available = availableLocales(includeDev);
+    const seen: Locale[] = [];
+    let locale: Locale = DEFAULT_LOCALE;
+    for (let i = 0; i < available.length; i += 1) {
+      seen.push(locale);
+      locale = nextLocale(locale, available);
+    }
+    assert.deepEqual(
+      [...seen].sort(),
+      [...available].sort(),
+      `a locale is unreachable (dev=${includeDev})`,
+    );
+    assert.equal(locale, DEFAULT_LOCALE, 'cycling must wrap rather than stop');
   }
-  assert.deepEqual(seen.sort(), [...SUPPORTED_LOCALES].sort(), 'a locale is unreachable');
-  assert.equal(locale, DEFAULT_LOCALE, 'cycling must wrap rather than stop');
+});
+
+// ---------------------------------------------------------------------------
+// M20 — the pseudo-locale exists and cannot ship
+// ---------------------------------------------------------------------------
+
+test('M20: the pseudo-locale is not shippable, by construction', () => {
+  assert.ok(!(SUPPORTED_LOCALES as readonly string[]).includes('pseudo'));
+  assert.deepEqual([...DEV_LOCALES], ['pseudo']);
+
+  // A release build offers exactly the shippable list, and no more.
+  assert.deepEqual([...availableLocales(false)], [...SUPPORTED_LOCALES]);
+  assert.ok(availableLocales(true).includes('pseudo'));
+
+  for (const locale of DEV_LOCALES) assert.ok(isDevLocale(locale));
+  for (const locale of SUPPORTED_LOCALES) assert.ok(!isDevLocale(locale));
+});
+
+test('M20: no device can be resolved into a development locale', () => {
+  /*
+   * The strongest form of this is that it does not compile: `resolveLocale`
+   * takes `ShippableLocale[]`, so a dev locale cannot even be offered to it.
+   * What is left to assert at runtime is that a device asking for the pseudo
+   * locale by name still lands on English.
+   */
+  assert.equal(resolveLocale(['pseudo']), DEFAULT_LOCALE);
+  assert.equal(resolveLocale(['ps', 'pseudo', 'xx']), DEFAULT_LOCALE);
 });
 
 /**
@@ -461,7 +513,7 @@ test('M19: cycling the language visits every locale and comes back', () => {
  * exists, because that is the rule being asserted: it decides nothing while
  * English is the only option, and it decides everything the day pt-BR ships.
  */
-const FUTURE_LOCALES = ['en', 'pt-BR'] as unknown as readonly Locale[];
+const FUTURE_LOCALES = ['en', 'pt-BR'] as unknown as readonly ShippableLocale[];
 
 test('M19: the device language decides, and English catches everything else', () => {
   assert.equal(resolveLocale(['en-US'], FUTURE_LOCALES), 'en');
