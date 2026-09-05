@@ -229,6 +229,56 @@ anchored at x 1640, so the drink art will occlude his legs — accepted, because
 it is the drummer's own arm and it is nearer to the camera than anything else
 on stage.
 
+#### C.1 Superseded, 2026-09-05: the corner is where the thumbs are
+
+The bottom-right anchor was wrong for a reason no measurement in this spec
+could have caught. The owner played the 1.2.0 device build in landscape, which
+means a hand at each side and a thumb resting over the lower corners — and the
+animation was drawn under one of them:
+
+> *"Como as maos ficam nas laterais com os dedoes sobre a tela a animaçao
+> bebendo a cerveja esta obstruida pelos dedos... Quero que a caneca tome 70%
+> da altura da tela e fique mais posicionada para o centro da tela."*
+
+The drink is a 480 ms payoff. A payoff the player's own hand covers is not a
+payoff, and the corner is the one part of the screen a landscape grip is
+guaranteed to occupy. So the rect becomes **x 890–1987, y 166–1098**, sized so
+that the mug — not the drawn box, which is mostly forearm — is **55% of the
+canvas height**, with its left edge at x 945 and the centre line running
+through it.
+
+The fraction was walked down over three device builds the same afternoon —
+70%, then *"achei que ficou bom, so deixaria um pouco menor"* at 65%, then
+*"acho melhor 55%"*. Only the owner can judge this; it is a question about a
+hand holding a phone, not one any measurement here can answer.
+
+What each step spends is horizontal centring. The forearm still has to reach
+the right edge, so a shorter arm starts further right and drags the mug with
+it: 70% put the mug's left edge at 670, 65% at 765, 55% at **945** — fifteen px
+inside the left half. Below this the claim in the heading stops being true.
+
+There is also a hard floor at **51.25%**: below it no `y` exists at all, because
+the arm can no longer reach the bottom of the canvas without the mug landing on
+the Groove Pad. 55% already narrows that window to 16 px (y 158–173), so `y` is
+now a derived number rather than a tuned one — re-derive both bounds if the
+fraction moves again.
+
+Of the two original constraints, the first stands and the second is dropped:
+
+- **The Groove Pad still wins.** The catch frame's mug bottom lands at y 857
+  against the pad's y 865, and `npm run measure:art` now checks the *silhouette*
+  rather than the rect, because a rect that spans the pad's columns says
+  nothing about whether any pixel lands on it. Zero do, in either frame.
+- **The central sightline is deliberately entered.** That was the whole
+  request. It costs the player sight of the centre lanes for 480 ms after they
+  have just hit a mug, which is the price of a payoff they can actually see;
+  the pad, which is the beat, is the thing that had to stay.
+
+The art is re-conditioned from the same 1254x1254 raws at **1440x1224** rather
+than 640x544 — the previous frames were sized for a corner and a 2.25x upscale
+of them was visibly soft. The shared crop is unchanged, so the framing is
+identical; only the resolution differs.
+
 ### D. The award has to be visible
 
 A flat bonus nobody sees is a number in a log. The award prints as a short
@@ -315,7 +365,9 @@ and the value belongs in the provenance record.
 4. combo, `targetsDestroyed`, and integrity after a mug hit are identical to
    their pre-M18 values on a replayed seed, at both distances; only the score
    differs, and only by `drinkBonus` per mug actually drunk;
-5. the drink rect intersects neither `padBounds()` nor the lane corridor;
+5. no drawn pixel of either drink frame lands inside `padBounds()`, the mug
+   is 55% of the canvas height, and the forearm still leaves the frame on the
+   right and the bottom (C.1);
 6. a second mug drunk within 480 ms runs one animation, never two, and cuts to
    the drink frame rather than restarting from the catch;
 7. the drink frames are excluded from the loop-continuity gate and present in

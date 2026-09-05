@@ -17,11 +17,16 @@ Built with Expo, React Native Game Engine, and Matter.js, using
 specification-driven development.
 
 > **Renamed at M9** (2026-08-31), from the working title *Worst Band Ever*. The
-> joke is the gig, not the band. The GitHub repository, the Expo slug
-> (`worst-band-ever`), the EAS project, and the native application identifiers
-> (`com.worstbandever.app`) deliberately still carry the old name — they are
-> technical identifiers with remote state attached, and migrating them is a
-> pre-release task tracked in ADR 0010.
+> joke is the gig, not the band. The technical identifiers followed at
+> **M18.5** (2026-09-04): the Expo slug is `worst-gig-ever` and the application
+> id is `com.worstgigever.app` on both platforms. See
+> `docs/release/product-identity.md`, which is the authoritative record, and
+> note that the title is **never translated** — it is painted into the opening
+> poster art.
+>
+> Two external identifiers are not source-controlled and are tracked in the
+> M18.5 report: the GitHub repository is still `worst-band-ever`, and the EAS
+> project must be renamed on expo.dev before the next EAS build.
 
 > **Status:** current checkpoint `M15_DEVICE_REVIEW`, on the unmerged branch
 > `feat/m15-story-and-stages`. M15 adds the opening story, a briefing card per

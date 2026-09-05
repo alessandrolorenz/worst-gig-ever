@@ -146,9 +146,67 @@ not a song — Stage 2 exists to teach the beat, and an arrangement worth
 listening to buries the thing being taught. Peak-normalized to 0.72 so the
 click stays the clearest thing in the mix.
 
-The show's bed is **not** this file and is still the drifting rock loop. That
-is the one open piece of M16: replacing it is a music choice that belongs to
-the owner, not to a generator.
+The show's bed is **not** this file — see `show_bed_90.wav` below, which closed
+the last open piece of M16 on 2026-09-05.
+
+### `show_bed_90.wav`
+
+- Origin: **generated**, `scripts/make-show-bed.mjs`
+- Licence: same as this repository (MIT). No third-party rights involved.
+- Added: 2026-09-05, for Stage 3 ("Keep the beat") and Stage 4 ("Encore")
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 21.333333 s, 1,881,644 bytes
+- SHA-256: `1438089965e837e99475512d765706e144271e5366918087ccdbaedf95fe74d1`
+- **Exactly 32 beats at 90 BPM** — eight bars of four, verified on disk by
+  `tests/audioContract.test.ts`
+
+Reason it exists: the correction below. The show and the encore score beats and
+were playing a 120 BPM track, so the two loudest things telling the player when
+"now" is were a third apart.
+
+What it is: a full bed rather than the teaching bed's floor — driven
+eighth-note power chords through a soft clipper, kick with a push off the
+backbeat, crashes on the two phrase heads, and a four-stroke snare fill into
+the loop point. Eight bars rather than four, because the show runs for minutes
+and a four-bar figure announces itself as a loop. Rooted on A like
+`groove_bed_90.wav`, on A-A-G-D | A-A-G-E, so the stage that teaches the beat
+and the stage that tests it sound like the same band. Peak-normalized to 0.72,
+same as the teaching bed, so the click stays the clearest thing in the mix.
+
+Measured after generation: seam step 365 against a typical sample-to-sample
+delta of 3,344 in the same region, so the wrap is inaudible; peak -2.85 dBFS
+with no clipped samples; the crash sits 18 dB above the other bars in the high
+band, so the four-bar phrase reads.
+
+---
+
+## Correction, 2026-09-05: the rock loop is at 120 BPM, not drifting at 90
+
+Every entry above this line that describes `rock_theme_song_loop.wav` as a
+90 BPM track slipping 417 ms per loop was **wrong about the defect**, and the
+wrongness survived three milestones because it was never measured — it was
+arithmetic on the file's 21.75 s length against a 90 BPM grid.
+
+How it was measured: the CC0 package ships the source MIDI alongside the
+rendered loop. Its note-onset train was aligned against the audio's energy
+flux across 100-160 BPM at 0.2 BPM resolution, over all plausible offsets.
+**All ten best fits landed between 119.6 and 120.0 BPM**, with 77 of the
+MIDI's 83 distinct onset times inside the window. The MIDI's own tempo meta
+event says 120 BPM, and its content runs 48.5 quarter notes — 24.25 s at that
+tempo — so the published 21.75 s "loop" is also a mid-phrase cut of it.
+
+Why the difference matters. A drift accumulates and can be removed by trimming
+the file; a wrong tempo cannot. At 90 BPM a beat falls every 667 ms and at
+120 BPM every 500 ms, so the music and the player agree once every two seconds
+— three of the player's beats to four of the music's — and on the other two
+beats of every three the music sits **167 ms** from the tap it is inviting.
+`RHYTHM.perfectWindowMs` is 90 ms, so a player who trusts the music cannot
+score PERFECT on two beats out of three however well they play.
+
+What it cost: `MUSIC_TEMPO_LOCKED` and its contract test both measured file
+duration, so trimming the loop to 21.333 s would have turned every check green
+without changing a note. The contract now accepts only one kind of evidence
+for a tempo claim — that this repository generated the file at `RHYTHM.bpm`
+from a committed script — because that is the only kind it can verify.
 
 ### `beat_click.wav`
 

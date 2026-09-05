@@ -16,8 +16,174 @@ and their migration is pre-release debt tracked in ADR 0010.
 Galaxy S23 FE: *"achei que esta tudo massa... Daí acho que fechou o mvp."*
 
 This is the first time the project has had a build the owner played end to end
-and asked nothing further of. Everything below is either done or deliberately
-deferred; nothing is in progress.
+and asked nothing further of.
+
+**V2 is now under way and its focus is internationalization** — owner decision,
+2026-09-04: *"o foco da v2 será a internacionalização."* Road map:
+`docs/specs/V2-plan.md`.
+
+| | Milestone | State |
+|---|---|---|
+| M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
+| M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
+| M22 | Local memory and sharing | **implemented, emulator-validated** (2026-09-05) on `m22/local-memory-and-sharing` |
+| M20 | Translation-safe layout | **implemented, emulator-validated** (2026-09-05) on `m20/translation-safe-layout`. Owner device verdict outstanding. See below |
+| M21 | pt-BR | **draft implemented, emulator-validated** (2026-09-05) on `m21/pt-br`. **The copy needs the owner's read before it is done.** See below |
+
+### M19 — locale foundation (implemented 2026-09-04, emulator-validated 2026-09-05)
+
+Every user-visible string is out of the components and into a typed catalogue.
+**No translation and no copy change**: the strings in `game/i18n/catalogues/en.ts`
+are the strings that were on screen the day before, character for character, so
+the game is meant to look identical.
+
+| | |
+|---|---|
+| Spec | `docs/specs/M19-locale-foundation.md` |
+| Catalogue | `game/i18n/catalogues/en.ts`; `Catalogue = typeof en`, so a locale missing a key fails in `tsc` rather than at runtime in that locale |
+| Dependency added | `expo-localization` (~16.1.6) — **one**, and only for reading the device's languages. No i18n runtime: AGENTS.md rule 18, and a library would trade away the compile-time completeness above |
+| Domain change | `stages.ts` and `storyState.ts` now carry ids and no prose. `stage.name/subtitle/briefing` and `panel.caption` are gone; the catalogue is keyed by the same ids the JPEG registry already used |
+| Title | `WORST GIG EVER` is a constant in `game/config/product.ts`, deliberately **not** a catalogue string — `docs/release/product-identity.md` forbids translating it |
+| Language control | Built, wired to `flow.locale`, drawn on the title and pause rows. **Invisible while one locale exists**, which is M19's own state; adding `pt-BR` to `SUPPORTED_LOCALES` is the whole of what makes it appear |
+| Gate | `npm run verify` green — 390 tests, 0 failures (20 new in `tests/localization.test.ts`) |
+
+**Validated on the Pixel_9 emulator, 2026-09-05** (debug build; a native module
+was added, so the dev client had to be rebuilt). The `ExpoLocalization` class
+was confirmed present in the APK first — a native module that failed to link
+would be swallowed by `detectLocale`'s try/catch and go silently missing.
+
+Read off the screen: the story caption and Skip; the title's tagline, all four
+stage cards, and its button row; stage 1's kicker, name, both figure captions
+and all five briefing bullets; the in-round DEFENSE / GROOVE / SHOW INTEGRITY /
+GET READY and the `{seconds}s` timer; and the whole results screen including
+both interpolated strings — `0 / 32` and `Show Integrity left: 0 of 3.` No
+language control is drawn, which is the intended state. **Nothing had vanished.**
+
+Not seen, because they need a round actually played: PERFECT/GOOD, beat streak,
+hit combo, TAP THE SINGER, GO!, Paused/Resume, SHOW COMPLETE, STAGE n CLEARED,
+Play again, Next stage. Same mechanism, covered by tests, but not read off a
+screen. The owner's phone was attached to adb throughout and was **not**
+installed to.
+
+### M22 — local memory and sharing (implemented and validated 2026-09-05)
+
+High scores, progress and preferences survive a cold start; the results screen
+shares a line of text. **No backend, no accounts — and no new dependencies:**
+`expo-file-system` has shipped since M2 and React Native's own `Share` opens
+the sheet. A test fails if `async-storage` or `expo-sharing` ever appears.
+
+The constraint from M15 — *session progress must never gate a cold start* — is
+asserted rather than trusted. Twenty hostile saves (truncated, not JSON, wrong
+types, a version from the future, a prototype pollution attempt) are each
+parsed and then used to build a flow, and **every stage must still open**. It
+has a second reading the code obeys too: the app does not wait for storage to
+render. It starts on defaults and applies the save when it lands.
+
+Validated on the emulator with `adb run-as` reading the file back:
+
+- A finished round wrote `grooveScore: null` on a defense-only stage,
+  `bestStageCleared: -1` after a ruined show, and **`locale: null` while the
+  game was running in Portuguese** — the device had said so, the player had not
+  chosen, and only a choice is persisted.
+- An injected save cold-started into English *over* the device's Portuguese,
+  click off, stages 1–2 ticked, **3–4 still selectable**, Best 4560 / 880 shown.
+- A `futureField` the build knows nothing about survived being written back.
+
+**Two defects it found in the writing of it.** `JSON.parse` can produce an own
+`__proto__` key, and `unknown[key] = value` replaces the target's prototype
+rather than adding a property — small blast radius, and not something to leave
+working by accident. And a test that imported the storage adapter pulled in a
+native module Node cannot type-strip, taking the whole suite down; the file
+name was contract rather than mechanics and moved to `persistence.ts`.
+
+### M21 — pt-BR (draft implemented 2026-09-05, copy not yet reviewed)
+
+**The engineering is finished. The words are a draft.** The V2 plan says *"Do
+not machine-translate and ship"* and recommends the owner writes these lines
+because the jokes are the product. These are written rather than generated, and
+every line where the joke had to be re-invented is marked `REVIEW:` in
+`game/i18n/catalogues/pt-BR.ts` and tabled in `docs/specs/M21-pt-br.md`.
+
+The ones to argue with first:
+
+| English | pt-BR |
+|---|---|
+| *"You kept the groove alive. Somehow."* | *"Você manteve o groove vivo. Sabe-se lá como."* |
+| *"The gig fell apart."* | *"O show desandou."* |
+| *"You can hold the line."* | *"Você aguenta o tranco."* |
+| *"Hold the line"* (fase 1) | *"Segure as pontas"* |
+| *"It keeps escalating"* (fase 4) | *"Só piora"* |
+| *"Load in. Bolt it down. Hope."* | *"Descarrega. Parafusa. Reza."* |
+| *"Then a beer found the mixing desk."* | *"Aí uma cerveja achou a mesa de som."* |
+
+`Groove` and `pad` stay English on purpose — they are the on-screen names of two
+mechanisms and what a Brazilian drummer actually says. The mug rule's caption is
+*"Ao alcance da mão"*, which is the owner's own phrase from the M18.1 playtest.
+
+**The integration was three lines and no layout work** — a typed catalogue, an
+entry in `SUPPORTED_LOCALES`, an endonym — and every layout budget passed on the
+first run. That is the return on M20.
+
+**The language control is now visible to players**, since there are two
+shippable locales. A Brazilian device gets pt-BR at startup without touching it:
+validated by setting a per-app locale on the emulator and cold-starting, which
+is the first time `detectLocale()` has been proven against a real Android
+locale list rather than a unit test.
+
+Two defects it found in its own tooling: the pseudo-locale was padding past the
+full stop, so its briefing entries were not sentences; and the "whole sentence,
+not a fragment" rule was English-only, when a translator splitting one sentence
+into two is exactly how that defect comes back.
+
+### M20 — translation-safe layout (implemented and validated 2026-09-05)
+
+The rule: **no text surface may clip silently.** Two ways to satisfy it — a
+fixed box must fit, a scrollable one must take all the height there is and say
+visibly when there is more. **No copy was shortened**, which was the constraint
+going in.
+
+| | |
+|---|---|
+| Spec | `docs/specs/M20-translation-safe-layout.md` |
+| Briefing card | `maxHeight: 200` → `flexShrink: 1`. On the 411 dp viewport that is 254 dp of card instead of 200, with the chrome measured off a screenshot rather than derived — the derived number was 23 dp optimistic |
+| Bullet column | 560 → 640 dp. An English line-length choice inside a 923 dp landscape screen; it cost a line of wrapping per bullet |
+| Overflow cue | A `▾` in the accent colour, driven by `onLayout` vs `onContentSizeChange`. `persistentScrollbar` is on and is **not enough** — it draws dark grey on a near-black scrim |
+| HUD | Columns gained a `maxWidth`. They had a minimum and none, so a longer label would not have wrapped — it would have grown toward the timer |
+| Summary rows | Label shrinks, value does not. Without it a Portuguese label pushes its own number out of the column |
+| Pseudo-locale | Generated from English at 1.4x with accents, in `DEV_LOCALES` so a release cannot select it and still draws no language control |
+| Gate | `tests/layoutBudget.test.ts`, every surface in every locale. The `VIEWPORT_PX * 1.6` proxy is deleted, not loosened |
+| Verify | green, 402 tests |
+
+On the emulator: stage 1 in English now shows all five bullets with nothing cut
+mid-sentence and the cue drawn; stage 2 fits and shows **no** cue, so the cue is
+measurement-driven; stage 1 in pseudo overflows and says so; the title in pseudo
+holds all four stage cards and keeps `WORST GIG EVER` in English.
+
+**Two lessons worth keeping.** A derived layout budget agreed with itself and
+was wrong in the optimistic direction — measure the screen. And an affordance
+that exists is not an affordance that is visible: the scrollbar was there the
+whole time, dark grey on near-black.
+
+### How the emulator found the M20 bug, in English
+
+Stage 1's briefing **overflows its card at rest** on a 2424x1080 landscape
+phone: the third bullet is cut mid-sentence and bullets four and five are below
+the fold. Scrolling reaches all five, so this is M18.1's fold rather than a new
+defect, and **M19 did not cause it** — no style, font size or sentence changed.
+
+What is worth acting on is that **`tests/mugDrink.test.ts` passes on this.** Its
+budget is `VIEWPORT_PX * 1.6`: 320 px against a 200 px card, so the gate permits
+60% overflow by construction. It was written as a loose proxy to catch a
+briefing that had doubled in length — it does that, it has never been a
+fits-on-screen check, and reading it as one is the mistake to avoid.
+
+By the test's own model stage 1 scores 290 of an allowed 320. On the device,
+roughly 270 px of content sits in a 200 px scroll. **The English card is already
+~35% over**, before a translation that runs 15-25% longer. The V2 plan predicted
+this would start in pt-BR; it is already true in English, which makes M20 a
+correctness milestone rather than a preparatory one.
+
+Everything else below is either done or deliberately deferred.
 
 ### What the MVP is
 
@@ -844,7 +1010,7 @@ Build facts, exactly as run:
 | Screen | 2424 x 1080 physical, 420 dpi — **923 x 411 dp** in landscape |
 | Gradle | `BUILD SUCCESSFUL`, `app-debug.apk`, 354 tasks |
 | Autolinking | `expo-modules-autolinking resolve -p android` reports **15** modules (ADR 0006 threshold) |
-| Package | `com.worstbandever.app` (retained; ADR 0010) |
+| Package | `com.worstbandever.app` — *the id at the time of this run; migrated to `com.worstgigever.app` at M18.5* |
 | Launcher label | **Worst Gig Ever** — confirmed in the dev-client header |
 
 | Check | Result |

@@ -3,7 +3,8 @@
  *
  * The only runtime module that names a story image file, in the same way
  * `artAssets.ts` is the only one that names a gameplay sprite. `storyState.ts`
- * knows panel ids and captions and nothing about JPEGs.
+ * knows panel ids and nothing about JPEGs; since M19 it does not know the
+ * captions either.
  *
  * These are **flattened narrative stills**, not gameplay art: nothing moves in
  * them, nothing is composited against them, and no hitbox is measured from
@@ -25,9 +26,9 @@
 /* Metro resolves bundled image files through static `require` calls. */
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-import { STORY_PANELS } from '../state/storyState.ts';
+import { STORY_PANELS, type StoryPanelId } from '../state/storyState.ts';
 
-export const STORY_ART: Readonly<Record<string, number>> = {
+export const STORY_ART: Readonly<Record<StoryPanelId, number>> = {
   poster: require('../../assets/art/story/01_poster.jpg'),
   arrival: require('../../assets/art/story/02_arrival.jpg'),
   setup: require('../../assets/art/story/03_setup.jpg'),
@@ -42,7 +43,7 @@ export const STORY_ART: Readonly<Record<string, number>> = {
  * not the app. The pairing is asserted in `tests/storyContract.test.ts`, so a
  * gap is a failing test long before it is a blank screen.
  */
-export function storyImageFor(panelId: string): number | null {
+export function storyImageFor(panelId: StoryPanelId): number | null {
   return STORY_ART[panelId] ?? null;
 }
 

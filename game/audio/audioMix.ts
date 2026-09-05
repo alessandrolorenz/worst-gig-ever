@@ -29,22 +29,49 @@ export type SfxKey =
  * stage that scores beats needs a bed that agrees with the beat clock; a stage
  * that scores none can play anything.
  */
-export type MusicKey = 'showTheme' | 'grooveBed';
+export type MusicKey = 'showTheme' | 'grooveBed' | 'showBed';
 
 /**
- * Whether a bed's loop is a whole number of `RHYTHM.bpm` beats.
+ * Whether a bed's pulse is `RHYTHM.bpm`.
  *
  * A stage that scores beats while playing a bed that is *not* tempo-locked is
- * telling the player two different things about when "now" is. Declared as
- * data rather than left implicit, so the contract test can hold the line: the
- * only scored stage still allowed untempo-locked music is the show, and it is
- * named in that test rather than merely tolerated.
+ * telling the player two different things about when "now" is.
+ *
+ * **This used to mean "the file's length is a whole number of beats", and that
+ * is not the same claim.** `showTheme` was recorded here as a 90 BPM track
+ * that slipped 417 ms per loop; it is a 120 BPM track, and the arithmetic on
+ * its duration could never have said so. Trimming it to 21.333 s would have
+ * satisfied every check the project had while changing nothing a player hears.
+ *
+ * So a `true` here now means the file was **generated at `RHYTHM.bpm` by a
+ * committed script**, which is a property a test can actually verify —
+ * `MUSIC_GENERATOR` below is what it verifies against. A found file cannot be
+ * marked `true`, because nothing in this repository can check that it is.
  */
 export const MUSIC_TEMPO_LOCKED: Record<MusicKey, boolean> = {
-  /** 21.75 s, which at 90 BPM is 32.625 beats — it slips ~417 ms per loop. */
+  /**
+   * A CC0 track rendered from a **120 BPM** MIDI (measured; see
+   * `docs/assets/AUDIO-SOURCES.md`). Against a 90 BPM clock its beats coincide
+   * with the player's only once every two seconds and sit 167 ms away on the
+   * other two of every three — beyond `perfectWindowMs` by most of a window.
+   * It plays only on Stage 1, which scores no beats at all.
+   */
   showTheme: false,
   /** Generated at exactly 16 beats by `scripts/make-groove-bed.mjs`. */
   grooveBed: true,
+  /** Generated at exactly 32 beats by `scripts/make-show-bed.mjs`. */
+  showBed: true,
+};
+
+/**
+ * The committed generator behind each tempo-locked bed, or `null` for a found
+ * file. This is the evidence for the claim above, and the contract test refuses
+ * a `true` without it.
+ */
+export const MUSIC_GENERATOR: Record<MusicKey, string | null> = {
+  showTheme: null,
+  grooveBed: 'scripts/make-groove-bed.mjs',
+  showBed: 'scripts/make-show-bed.mjs',
 };
 
 /**

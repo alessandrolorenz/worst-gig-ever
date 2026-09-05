@@ -91,3 +91,14 @@ READY overlay's kicker and tagline, which are strings. Scoring, spawn cadence,
 hitboxes, approach speeds, Show Integrity, the vocalist event, round duration,
 and the audio lifecycle are untouched, and the rhythm mechanic itself starts at
 M10.
+
+---
+
+> **Superseded by M18.5 (2026-09-04).** The identifiers this document reasons
+> about were migrated before internationalization: the Expo slug is now
+> `worst-gig-ever` and the application id is `com.worstgigever.app` on both
+> platforms. The reasoning below is preserved as the record of why they were
+> retained at the time, and is no longer the current state.
+>
+> Authoritative record: `docs/release/product-identity.md`.
+> Migration: `docs/specs/M18.5-final-release-identity-report.md`.

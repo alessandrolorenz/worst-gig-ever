@@ -24,7 +24,14 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PNG } from 'pngjs';
 
-import { TARGET_DRAW_SIZE } from '../game/rendering/composition.ts';
+import {
+  DRINK_MUG_SCREEN_FRACTION,
+  DRINK_RECT,
+  TARGET_DRAW_SIZE,
+  drinkMugOnCanvas,
+} from '../game/rendering/composition.ts';
+import { REFERENCE_CANVAS } from '../game/config/stage.ts';
+import { padBounds } from '../game/config/rhythm.ts';
 import { effectiveHitRadius } from '../game/state/roundState.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -46,6 +53,12 @@ const COLOR_DELTA_SQ = 40 * 40 * 3;
 /** Provisional gates. Tune them from measurements, not from taste. */
 const MAX_ANCHOR_DRIFT_PX = 8;
 const MAX_FRAME_CHANGE = 0.25;
+/**
+ * How much of the drink art has to leave the canvas for the forearm to read as
+ * the player's own. 463 rows currently run past the right edge and 158 columns
+ * past the bottom; a hundred of each is a floor, not a target.
+ */
+const MIN_DRINK_EDGE_ROWS = 100;
 
 function decode(absolutePath) {
   return PNG.sync.read(readFileSync(absolutePath));
@@ -201,12 +214,86 @@ for (const [name, keys] of TRIPLETS) {
   );
 }
 
+// ------------------------------------------------------------------ drink
+
+/**
+ * The M18 drink is the one piece of art placed by what it hides rather than by
+ * where it sits. It is drawn over the whole centre of the screen for 480 ms,
+ * and the two things it must not take with it are the groove pad — the
+ * player's only read on the beat — and its own anchor to the edge of the
+ * frame, without which the forearm reads as a floating stump.
+ *
+ * Bounding boxes cannot answer either question: the arm's box spans the pad's
+ * columns and stops well short of the corner in the rows that matter. Only the
+ * silhouette can, which is why this lives here and not in `mugDrink.test.ts`.
+ */
+console.log('\n## Drink placement');
+
+const DRINK_FRAMES = ['mugDrinkCatch', 'mugDrinkDrink'];
+const pad = padBounds();
+let drinkFailures = 0;
+
+for (const key of DRINK_FRAMES) {
+  const relativePath = pathFor(key);
+  if (!relativePath) {
+    drinkFailures += 1;
+    console.log(`DRINK ${key} | FAIL — file missing`);
+    continue;
+  }
+
+  const png = decode(relativePath);
+  const fit = Math.min(DRINK_RECT.width / png.width, DRINK_RECT.height / png.height);
+
+  let padPixels = 0;
+  let edgeRows = 0;
+  let bottomCols = 0;
+  const columnsPastBottom = new Set();
+
+  for (let y = 0; y < png.height; y += 1) {
+    let rowLeavesFrame = false;
+    for (let x = 0; x < png.width; x += 1) {
+      if (png.data[(png.width * y + x) * 4 + 3] <= ALPHA_FLOOR) continue;
+      const canvasX = DRINK_RECT.x + x * fit;
+      const canvasY = DRINK_RECT.y + y * fit;
+      if (canvasX >= REFERENCE_CANVAS.width) rowLeavesFrame = true;
+      if (canvasY >= REFERENCE_CANVAS.height) columnsPastBottom.add(Math.round(canvasX));
+      const dx = (canvasX - (pad.left + pad.right) / 2) / ((pad.right - pad.left) / 2);
+      const dy = (canvasY - (pad.top + pad.bottom) / 2) / ((pad.bottom - pad.top) / 2);
+      if (dx * dx + dy * dy <= 1) padPixels += 1;
+    }
+    if (rowLeavesFrame) edgeRows += 1;
+  }
+  bottomCols = columnsPastBottom.size;
+
+  const padOk = padPixels === 0;
+  const anchorOk = edgeRows >= MIN_DRINK_EDGE_ROWS && bottomCols >= MIN_DRINK_EDGE_ROWS;
+  if (!padOk || !anchorOk) drinkFailures += 1;
+
+  console.log(
+    `DRINK ${key} | ${displayPath(relativePath)} | frame ${png.width}x${png.height} | ` +
+      `pad pixels ${padPixels} (must be 0) ${padOk ? 'OK' : 'FAIL'} | ` +
+      `off-frame right ${edgeRows} rows, bottom ${bottomCols} cols ` +
+      `(>=${MIN_DRINK_EDGE_ROWS}) ${anchorOk ? 'OK' : 'FAIL'}`,
+  );
+}
+
+const mug = drinkMugOnCanvas();
+const mugShare = mug.height / REFERENCE_CANVAS.height;
+const shareOk = Math.abs(mugShare - DRINK_MUG_SCREEN_FRACTION) < 0.01;
+if (!shareOk) drinkFailures += 1;
+console.log(
+  `DRINK mug | ${(mugShare * 100).toFixed(1)}% of the screen's height ` +
+    `(target ${(DRINK_MUG_SCREEN_FRACTION * 100).toFixed(0)}%) ${shareOk ? 'OK' : 'FAIL'} | ` +
+    `left edge x ${mug.left.toFixed(0)}, canvas centre ${REFERENCE_CANVAS.width / 2}`,
+);
+
 console.log(
   `\nSUMMARY triplets=${TRIPLETS.length} continuityFailures=${continuityFailures} ` +
+    `drinkFailures=${drinkFailures} ` +
     `alphaFloor=${ALPHA_FLOOR} maxDrift=${MAX_ANCHOR_DRIFT_PX} maxChange=${MAX_FRAME_CHANGE}`,
 );
 
-if (continuityFailures === 0) {
+if (continuityFailures === 0 && drinkFailures === 0) {
   console.log('PASS_AMBIENT_LOOP_READY');
 } else {
   console.log('AMBIENT_LOOP_NOT_READY');

@@ -20,6 +20,7 @@ import { createAppFlow, type AppFlowState } from '../state/appFlow.ts';
 import { createStory, type StoryState } from '../state/storyState.ts';
 import type { GameState } from '../state/gameState.ts';
 import { stageAt, FIRST_STAGE_INDEX, type StageDefinition } from '../levels/stages.ts';
+import { DEFAULT_LOCALE, type Locale } from '../i18n/locales.ts';
 
 export interface SceneEntity {
   round: RoundState;
@@ -62,9 +63,17 @@ export interface GameEntities {
   [key: string]: SceneEntity;
 }
 
+/**
+ * The entity map for a fresh game.
+ *
+ * `initialLocale` is a parameter rather than a device read so this stays
+ * callable from a test: `detectLocale()` is a native call and lives in
+ * `GameEngine`, which is the boundary that already owns the device.
+ */
 export function createSceneEntities(
   audio: AudioService,
   renderer: React.ComponentType<never>,
+  initialLocale: Locale = DEFAULT_LOCALE,
 ): GameEntities {
   const stage = stageAt(FIRST_STAGE_INDEX);
   return {
@@ -72,7 +81,7 @@ export function createSceneEntities(
       round: createRound(stage.level),
       rhythm: createRhythm(),
       stage,
-      flow: createAppFlow(),
+      flow: createAppFlow(initialLocale),
       story: createStory(),
       effects: createEffects(),
       shards: createShards(),

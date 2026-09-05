@@ -20,3 +20,14 @@ Replace the identifiers with `com.worstbandever.app` on both platforms. Shipping
 - Changing the Android package invalidates any previously installed development build of the old identifier; reinstall rather than upgrade.
 - Landscape is now enforced at the OS level, so M4 graybox layout should be authored against the 16:9 reference canvas with safe-area-aware scaling.
 - The app icons, splash image, and `README.md` still describe the template's Balloon Pop example. They are intentionally left alone: the baseline app must stay runnable and honestly described until M4 replaces the game.
+
+---
+
+> **Superseded by M18.5 (2026-09-04).** The identifiers this document reasons
+> about were migrated before internationalization: the Expo slug is now
+> `worst-gig-ever` and the application id is `com.worstgigever.app` on both
+> platforms. The reasoning below is preserved as the record of why they were
+> retained at the time, and is no longer the current state.
+>
+> Authoritative record: `docs/release/product-identity.md`.
+> Migration: `docs/specs/M18.5-final-release-identity-report.md`.

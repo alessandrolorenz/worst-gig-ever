@@ -168,13 +168,27 @@ than between them.
 
 ### E. Music re-acquired at 90 BPM, routed per stage
 
-> **Partly implemented.** Routing is done, the teaching stage has its bed, and
-> `MIX.music` is down from 0.5 to 0.38 so the click leads. **The show's bed is
-> still the drifting rock loop** — replacing it is a taste decision, and the
-> click carries the beat there in the meantime. Open item 13 is therefore
-> narrowed rather than closed: it now applies to one stage instead of all of
-> them, and `tests/audioContract.test.ts` names that stage so a fourth one
-> cannot quietly join it.
+> **CLOSED 2026-09-05, and the premise below was wrong.** The show and the
+> encore now play `show_bed_90.wav`, generated at exactly 32 beats by
+> `scripts/make-show-bed.mjs`, and no stage that scores beats plays untempo-
+> locked music any more.
+>
+> **The rock loop was never drifting at 90 BPM — it is a 120 BPM track.** This
+> section's "0.625 of a beat per loop" is arithmetic on the file's duration
+> against a 90 BPM grid, and nobody measured its pulse until now; aligning the
+> CC0 package's own source MIDI against the audio put all ten best fits between
+> 119.6 and 120.0 BPM. A drift can be trimmed away, and this section says so —
+> *"even trimming it is enough to remove the slip"*. It is not: trimming to
+> 21.333 s would have turned every check in the project green while leaving the
+> music a third faster than the player's beat, 167 ms off on two beats out of
+> every three against a 90 ms PERFECT window.
+>
+> That is a defect in the gate as much as in the file, so `MUSIC_TEMPO_LOCKED`
+> no longer means "the file's length is a whole number of beats". It means the
+> file was generated at `RHYTHM.bpm` by a committed script, which is the only
+> form of the claim `tests/audioContract.test.ts` can verify. A found file
+> cannot be marked tempo-locked at all. Full correction in
+> `docs/assets/AUDIO-SOURCES.md`.
 
 Owner decision, 2026-09-04: re-acquire the music rather than accept the drift.
 That is the right call — no visual fix survives a soundtrack that contradicts
@@ -191,7 +205,7 @@ Routing becomes per stage, because the stages now want different things:
 |---|---|---|
 | 1 Hold the line | the existing rock loop, unchanged | done — no beat is scored here, so drift cannot mislead anyone |
 | 2 Find the beat | a **sparse** 90 BPM bed — kick, hat, backbeat, root notes | done — generated, exactly 16 beats, verified on disk |
-| 3 Keep the beat | a **full** 90 BPM rock bed | **outstanding** — still the drifting loop; the click carries the beat |
+| 3 Keep the beat | a **full** 90 BPM rock bed | **done** (2026-09-05) — `show_bed_90.wav`, generated at 32 beats; the encore takes it too |
 
 `StageDefinition` gains a `music` key, `audioService` keeps one player per
 track instead of one player, and `playMusic` takes that key. Two players rather

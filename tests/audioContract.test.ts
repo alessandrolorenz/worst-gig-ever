@@ -15,7 +15,13 @@ import { readFileSync, statSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { MIX, MUSIC_TEMPO_LOCKED, SFX_POOL_SIZE } from '../game/audio/audioMix.ts';
+import {
+  MIX,
+  MUSIC_GENERATOR,
+  MUSIC_TEMPO_LOCKED,
+  SFX_POOL_SIZE,
+  type MusicKey,
+} from '../game/audio/audioMix.ts';
 import { beatIntervalMs } from '../game/config/rhythm.ts';
 import { level01 } from '../game/levels/level01.ts';
 import { STAGES } from '../game/levels/stages.ts';
@@ -74,15 +80,27 @@ test('the generated bed is a whole number of Groove beats, measured on disk', ()
    * under a scored beat has to be exact, and the only way to be sure is to
    * measure the file rather than trust the tempo it was rendered at.
    */
-  const bed = readWav('assets/audio/music/runtime/groove_bed_90.wav');
-  const beats = (bed.seconds * 1000) / beatIntervalMs();
+  const beds: Record<string, { path: string; beats: number }> = {
+    grooveBed: { path: 'assets/audio/music/runtime/groove_bed_90.wav', beats: 16 },
+    showBed: { path: 'assets/audio/music/runtime/show_bed_90.wav', beats: 32 },
+  };
 
-  assert.ok(
-    Math.abs(beats - Math.round(beats)) < 1e-6,
-    `the bed is ${beats.toFixed(4)} beats long, so it drifts`,
-  );
-  assert.equal(Math.round(beats), 16, 'four bars of four');
-  assert.equal(Math.round(beats) % 4, 0, 'the loop must land on a bar line, not just a beat');
+  for (const [key, expected] of Object.entries(beds)) {
+    assert.equal(MUSIC_TEMPO_LOCKED[key as MusicKey], true, `${key} is not marked tempo-locked`);
+    const bed = readWav(expected.path);
+    const beats = (bed.seconds * 1000) / beatIntervalMs();
+
+    assert.ok(
+      Math.abs(beats - Math.round(beats)) < 1e-6,
+      `${key} is ${beats.toFixed(4)} beats long, so it drifts`,
+    );
+    assert.equal(Math.round(beats), expected.beats, `${key} changed length`);
+    assert.equal(
+      Math.round(beats) % 4,
+      0,
+      `${key} must land on a bar line, not just a beat`,
+    );
+  }
 });
 
 test('every audio file is a format Android actually guarantees', () => {
@@ -91,6 +109,7 @@ test('every audio file is a format Android actually guarantees', () => {
   for (const path of [
     'assets/audio/music/runtime/rock_theme_song_loop.wav',
     'assets/audio/music/runtime/groove_bed_90.wav',
+    'assets/audio/music/runtime/show_bed_90.wav',
     'assets/audio/sfx/beat_click.wav',
     'assets/audio/sfx/crowd_applause.wav',
     'assets/audio/sfx/glass_breaking.wav',
@@ -150,22 +169,46 @@ test('the stage that teaches the beat plays a bed that cannot drift', () => {
   );
 });
 
-test('the show is the only scored stage still allowed to drift, and it is named', () => {
+test('no stage that scores beats plays music that disagrees with them', () => {
   /*
-   * The one open piece of M16. Every stage that scores beats should be on a
-   * tempo-locked bed; the show is not, because replacing its music is a taste
-   * decision that belongs to the owner rather than to a generator.
-   *
-   * This test exists so a *fourth* stage cannot quietly join the exception. It
-   * fails the moment anything other than the show scores beats over music that
-   * drifts — which is exactly when someone needs to be told.
+   * This was the last open piece of M16, and for a long time it read the other
+   * way round: the show was *allowed* to drift and the test merely named it so
+   * a fourth stage could not quietly join the exception. The show now has a
+   * generated bed, so the exception is gone and the rule is the plain one.
    */
-  const drifting = STAGES.filter((stage) => stage.groove && !MUSIC_TEMPO_LOCKED[stage.music]);
+  const offenders = STAGES.filter((stage) => stage.groove && !MUSIC_TEMPO_LOCKED[stage.music]);
   assert.deepEqual(
-    drifting.map((stage) => stage.level.id),
-    [level01.id],
-    'a scored stage other than the show is playing music that drifts against the beat clock',
+    offenders.map((stage) => stage.id),
+    [],
+    'a scored stage is playing music that is not locked to the beat clock',
   );
+});
+
+test('a bed can only claim to be tempo-locked if this repository generated it', () => {
+  /*
+   * The defect this exists to prevent, stated plainly, because the project
+   * already made it once: `showTheme` was recorded as a 90 BPM track that
+   * slipped 417 ms per loop. It is a 120 BPM track. The claim was arithmetic
+   * on the file's *duration* against a 90 BPM grid, which cannot see a pulse —
+   * and trimming the file to 21.333 s would have satisfied every check here
+   * while changing nothing a player hears.
+   *
+   * A found file's tempo is somebody's word. A generated file's tempo is a
+   * constant in a committed script, and that is checkable, so it is the only
+   * evidence this contract accepts.
+   */
+  for (const key of Object.keys(MUSIC_TEMPO_LOCKED) as MusicKey[]) {
+    if (!MUSIC_TEMPO_LOCKED[key]) continue;
+    const generator = MUSIC_GENERATOR[key];
+    assert.ok(
+      generator,
+      `${key} claims to be tempo-locked but names no generator, so nothing can verify it`,
+    );
+    assert.ok(
+      statSync(join(ROOT, generator)).isFile(),
+      `${key} names a generator that is missing: ${generator}`,
+    );
+  }
 });
 
 test('every stage names a bed that exists', () => {
@@ -182,7 +225,11 @@ test('the generated audio is reproducible from its script', () => {
   // are verifiable rather than merely present. This checks the scripts are
   // still there to regenerate from; the byte-for-byte hashes are recorded in
   // docs/assets/AUDIO-SOURCES.md.
-  for (const script of ['scripts/make-beat-click.mjs', 'scripts/make-groove-bed.mjs']) {
+  for (const script of [
+    'scripts/make-beat-click.mjs',
+    'scripts/make-groove-bed.mjs',
+    'scripts/make-show-bed.mjs',
+  ]) {
     assert.ok(statSync(join(ROOT, script)).isFile(), `${script} is missing`);
   }
 });

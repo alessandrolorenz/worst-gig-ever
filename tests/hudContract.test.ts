@@ -40,6 +40,8 @@ import {
 import { RHYTHM, beatTimeMs } from '../game/config/rhythm.ts';
 import { level01 } from '../game/levels/level01.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import { PRODUCT_TITLE } from '../game/config/product.ts';
+import { en } from '../game/i18n/catalogues/en.ts';
 
 /**
  * Source text with comments removed.
@@ -201,13 +203,25 @@ test('the corridor definition tracks the lane table', () => {
 // ---------------------------------------------------------------------------
 
 test('GROOVE and DEFENSE are labelled distinctly wherever a score is shown', () => {
-  for (const [name, source] of [
-    ['HUD', hudSource],
-    ['results', overlaysSource],
+  /*
+   * M19 moved the copy into the catalogue, so this asserts the strings
+   * themselves and the fact that each surface reaches for its own pair of
+   * them. Scanning the components for the word "GROOVE" would now pass on a
+   * build that rendered the wrong key.
+   */
+  for (const [name, groove, defense] of [
+    ['HUD', en.hud.groove, en.hud.defense],
+    ['results', en.summary.groove, en.summary.defense],
   ] as const) {
-    assert.ok(source.includes('GROOVE'), `${name} must label the Groove`);
-    assert.ok(source.includes('DEFENSE'), `${name} must label the Defense`);
+    assert.ok(groove.trim().length > 0, `${name} must label the Groove`);
+    assert.ok(defense.trim().length > 0, `${name} must label the Defense`);
+    assert.notEqual(groove, defense, `${name} labels both columns the same`);
   }
+
+  assert.ok(hudSource.includes('strings.hud.groove'), 'the HUD must draw the Groove label');
+  assert.ok(hudSource.includes('strings.hud.defense'), 'the HUD must draw the Defense label');
+  assert.ok(overlaysSource.includes('summary.groove'), 'the results need a Groove column');
+  assert.ok(overlaysSource.includes('summary.defense'), 'the results need a Defense column');
 });
 
 test('no combined total is presented anywhere', () => {
@@ -218,6 +232,14 @@ test('no combined total is presented anywhere', () => {
     for (const forbidden of ['TOTAL', 'Total score', 'Overall', 'Grade', 'combined']) {
       assert.ok(!source.includes(forbidden), `${name} must not present "${forbidden}"`);
     }
+    // And the same rule applied to where the copy actually lives now (M19).
+    for (const forbidden of ['TOTAL', 'Total score', 'Overall', 'Grade', 'combined']) {
+      const catalogueCopy = JSON.stringify(en.hud) + JSON.stringify(en.summary);
+      assert.ok(
+        !catalogueCopy.includes(forbidden),
+        `the catalogue must not present "${forbidden}"`,
+      );
+    }
     // The two scores are never added together.
     assert.ok(
       !/rhythm\.score\s*\+\s*round\.score|round\.score\s*\+\s*rhythm\.score/.test(source),
@@ -227,9 +249,21 @@ test('no combined total is presented anywhere', () => {
 });
 
 test('the title screen carries the renamed identity', () => {
-  assert.ok(overlaysSource.includes('WORST GIG EVER'));
-  assert.ok(overlaysSource.includes('Keep the beat. Survive the gig.'));
-  assert.ok(!overlaysSource.includes('WORST BAND EVER'));
+  /*
+   * The title is not a catalogue string and must never become one: see
+   * `docs/release/product-identity.md`, "Title translation policy". It is
+   * lettered into `assets/art/story/01_poster.jpg`, so translating it costs an
+   * art regeneration per locale and a fragmented store identity.
+   */
+  assert.equal(PRODUCT_TITLE, 'WORST GIG EVER');
+  assert.ok(overlaysSource.includes('PRODUCT_TITLE'), 'the title screen must draw the constant');
+  assert.ok(
+    !JSON.stringify(en).includes('WORST GIG EVER'),
+    'the product name must not be in a catalogue, where a locale would translate it',
+  );
+
+  assert.equal(en.title.tagline, 'Keep the beat. Survive the gig.');
+  assert.ok(!JSON.stringify(en).toUpperCase().includes('WORST BAND EVER'));
 });
 
 /**
@@ -240,8 +274,9 @@ test('the title screen carries the renamed identity', () => {
  */
 test('every stage briefs the job it asks for, before it asks', () => {
   for (const stage of STAGES) {
-    assert.ok(stage.briefing.length > 0, `stage ${stage.number} has no briefing`);
-    const briefing = stage.briefing.join(' ').toLowerCase();
+    const stageStrings = en.stages[stage.id];
+    assert.ok(stageStrings.briefing.length > 0, `stage ${stage.number} has no briefing`);
+    const briefing = stageStrings.briefing.join(' ').toLowerCase();
 
     // Defense is asked for on every stage, so every briefing must name it.
     assert.ok(
@@ -287,9 +322,10 @@ test('the stages are ordered, numbered from one, and introduce one job at a time
 });
 
 test('the end copy names both jobs', () => {
-  assert.ok(overlaysSource.includes('You kept the groove alive. Somehow.'));
-  assert.ok(
-    overlaysSource.includes('The gig fell apart. Try to keep the beat while you defend the kit.'),
+  assert.equal(en.results.outcomeShowComplete, 'You kept the groove alive. Somehow.');
+  assert.equal(
+    en.results.outcomeGrooveRuined,
+    'The gig fell apart. Try to keep the beat while you defend the kit.',
   );
 });
 
@@ -298,15 +334,18 @@ test('the end copy names both jobs', () => {
  * dual-task line above is still there for the stage that does ask for both.
  */
 test('a defense-only loss is not explained in Groove terms', () => {
-  assert.ok(
-    overlaysSource.includes('The kit took three hits. Watch the crowd, not the floor.'),
+  assert.equal(
+    en.results.outcomeDefenseRuined,
+    'The kit took three hits. Watch the crowd, not the floor.',
     'the single-job stage needs its own failure line',
   );
 });
 
 test('PERFECT and GOOD are words, not only colours', () => {
-  assert.ok(hudSource.includes("'PERFECT'"), 'the grade must be spelled out');
-  assert.ok(hudSource.includes("'GOOD'"));
+  assert.equal(en.hud.perfect, 'PERFECT', 'the grade must be spelled out');
+  assert.equal(en.hud.good, 'GOOD');
+  assert.ok(hudSource.includes('strings.hud.perfect'), 'and actually drawn');
+  assert.ok(hudSource.includes('strings.hud.good'));
 });
 
 // ---------------------------------------------------------------------------

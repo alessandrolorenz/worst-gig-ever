@@ -22,21 +22,37 @@ import { COUNTDOWN, GROOVE_PULSE, countdownStep } from '../config/rhythm.ts';
 import { REFERENCE_CANVAS } from '../config/stage.ts';
 import { COUNTDOWN_BOX } from './hudLayout.ts';
 import { THEME } from './theme.ts';
+import { useStrings } from '../i18n/LocaleContext.tsx';
 import { padPulse, pulseClockMs } from '../state/rhythmState.ts';
 import type { RoundState } from '../state/roundState.ts';
 
-/** What the countdown is showing right now, or null once it is over. */
-export function countdownLabel(round: RoundState): string | null {
-  if (round.state === 'COUNTDOWN') return String(countdownStep(round.countdownMs));
+/**
+ * What the countdown is showing right now, or null once it is over.
+ *
+ * A cue rather than a rendered string (M19). The numerals are numbers and the
+ * same in every language; only `GO!` is a word, and it now comes from the
+ * catalogue — so the caller has to be told *which* of the two it is getting
+ * rather than comparing the text against `'GO!'`, which would have been a
+ * comparison that silently stopped matching in the second locale.
+ */
+export type CountdownCue =
+  | { readonly kind: 'count'; readonly step: number }
+  | { readonly kind: 'go' };
+
+export function countdownCue(round: RoundState): CountdownCue | null {
+  if (round.state === 'COUNTDOWN') return { kind: 'count', step: countdownStep(round.countdownMs) };
   // `GO!` belongs to the round, not the pre-roll: the boundary it marks is the
   // instant the round clock starts, so it is shown against elapsed time.
-  if (round.state === 'PLAYING' && round.elapsedMs < COUNTDOWN.goTextMs) return 'GO!';
+  if (round.state === 'PLAYING' && round.elapsedMs < COUNTDOWN.goTextMs) return { kind: 'go' };
   return null;
 }
 
 export function Countdown({ round }: { round: RoundState }) {
-  const label = countdownLabel(round);
-  if (label === null) return null;
+  const strings = useStrings();
+  const cue = countdownCue(round);
+  if (cue === null) return null;
+
+  const label = cue.kind === 'go' ? strings.countdown.go : String(cue.step);
 
   const clockMs = pulseClockMs(round.state, round.elapsedMs, round.countdownMs);
   const pulse = padPulse(clockMs);
@@ -63,7 +79,7 @@ export function Countdown({ round }: { round: RoundState }) {
         <Text
           style={[
             styles.numeral,
-            { color: label === 'GO!' ? THEME.cymbal : THEME.hudText },
+            { color: cue.kind === 'go' ? THEME.cymbal : THEME.hudText },
           ]}
         >
           {label}

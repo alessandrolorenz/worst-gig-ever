@@ -8,13 +8,19 @@
 >
 > **Installing a local debug build over an EAS-signed APK fails** with
 > `INSTALL_FAILED_UPDATE_INCOMPATIBLE` — different signing keys. Uninstall the
-> old one first (`adb uninstall com.worstbandever.app`).
+> old one first (`adb uninstall com.worstgigever.app`, or
+> `adb uninstall com.worstbandever.app` for anything built before M18.5).
 
-> The deep-link scheme below is `exp+worst-band-ever://` and the Android
-> package is `com.worstbandever.app`. Those are **correct**: the product was
-> renamed to Worst Gig Ever at M9 but the Expo slug and the native application
-> identifiers were deliberately retained, because they carry remote EAS and
-> installed-app state. See ADR 0010.
+> **Identifiers changed at M18.5.** The deep-link scheme is now
+> `exp+worst-gig-ever://` and the Android package is `com.worstgigever.app`.
+> Until M18.5 both carried the old working title, deliberately, because they
+> held remote EAS and installed-app state (ADR 0010); the migration was done
+> before internationalization, while the installed base was one phone.
+>
+> **Any build installed before M18.5 uses a different package id**, so it does
+> not upgrade — Android treats it as a separate app. Uninstall it:
+> `adb uninstall com.worstbandever.app`. See
+> `docs/release/product-identity.md`.
 
 Three ways to run the slice, in increasing order of fidelity and setup cost.
 Pick by what you are trying to learn:
@@ -134,18 +140,18 @@ you cannot press `a`. Launch the app straight into the dev server instead:
 ```sh
 adb reverse tcp:8081 tcp:8081
 adb shell am start -a android.intent.action.VIEW \
-  -d "exp+worst-band-ever://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
+  -d "exp+worst-gig-ever://expo-development-client/?url=http%3A%2F%2Flocalhost%3A8081"
 ```
 
 `adb reverse` makes the emulator's `localhost:8081` reach Metro on the host.
 The scheme is `exp+<slug>` from `app.json` — `app.json` sets no explicit
-`scheme`, so it is derived from `slug: "worst-band-ever"`. It is declared in
+`scheme`, so it is derived from `slug: "worst-gig-ever"`. It is declared in
 the generated `android/app/src/main/AndroidManifest.xml`.
 
 To restart the app from scratch:
 
 ```sh
-adb shell am force-stop com.worstbandever.app
+adb shell am force-stop com.worstgigever.app
 ```
 
 ### Step 4 — play
@@ -241,8 +247,8 @@ The launcher could not auto-discover a dev server. Use the deep link above, or
 type the Metro URL into the launcher by hand.
 
 **`Error: Activity not started, unable to resolve Intent`.**
-Wrong URL scheme in the deep link. It is `exp+worst-band-ever://`, not
-`com.worstbandever.app://` — the package name and the scheme are different
+Wrong URL scheme in the deep link. It is `exp+worst-gig-ever://`, not
+`com.worstgigever.app://` — the package name and the scheme are different
 things. Confirm against the generated manifest:
 
 ```sh

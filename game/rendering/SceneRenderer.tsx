@@ -33,6 +33,7 @@ import { Countdown } from './Countdown.tsx';
 import { GroovePad } from './GroovePad.tsx';
 import { fitCanvas, type Viewport } from './layout.ts';
 import { THEME } from './theme.ts';
+import { useStrings } from '../i18n/LocaleContext.tsx';
 import {
   drinkFrame,
   drinkOpacity,
@@ -239,6 +240,7 @@ const Vocalist = memo(function Vocalist({ status, pose }: {
   status: RoundState['vocalist']['status'];
   pose: PerformerPose;
 }) {
+  const strings = useStrings();
   const rect = status === 'idle' ? performerRect('vocalist') : VOCALIST_BLOCKING_RECT;
   const frame =
     status === 'blocking'
@@ -248,7 +250,9 @@ const Vocalist = memo(function Vocalist({ status, pose }: {
   return (
     <View style={[styles.vocalistFrame, absolute(rect)]}>
       <FrameStack sources={VOCALIST_FRAMES} current={frame} />
-      {status === 'blocking' && <Text style={styles.vocalistCue}>TAP THE SINGER</Text>}
+      {status === 'blocking' && (
+        <Text style={styles.vocalistCue}>{strings.scene.tapTheSinger}</Text>
+      )}
     </View>
   );
 });

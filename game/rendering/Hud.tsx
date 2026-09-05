@@ -14,8 +14,10 @@ import { View, Text, StyleSheet } from 'react-native';
 
 import { GROOVE_PULSE, isUnscoredLeadBeat } from '../config/rhythm.ts';
 import { REFERENCE_CANVAS } from '../config/stage.ts';
-import { GROOVE_PANEL, GROOVE_PANEL_ROWS, HUD_MARGIN } from './hudLayout.ts';
+import { GROOVE_PANEL, GROOVE_PANEL_ROWS, HUD_MARGIN, HUD_TYPE } from './hudLayout.ts';
 import { THEME } from './theme.ts';
+import { format } from '../i18n/format.ts';
+import { useStrings } from '../i18n/LocaleContext.tsx';
 import {
   isPadPulsing,
   judgementFreshness,
@@ -34,6 +36,7 @@ export function Hud({
   rhythm: RhythmState;
   grooveEnabled: boolean;
 }) {
+  const strings = useStrings();
   const secondsLeft = Math.ceil(remainingMs(round) / 1000);
   const multiplier = comboMultiplier(round.combo);
   const timeFraction = 1 - remainingMs(round) / round.level.durationMs;
@@ -42,27 +45,29 @@ export function Hud({
     <>
       <View style={styles.root} pointerEvents="none">
         <View style={styles.left}>
-          <Text style={styles.label}>DEFENSE</Text>
+          <Text style={styles.label}>{strings.hud.defense}</Text>
           <Text style={styles.score}>{round.score}</Text>
           {/* Fixed-height row, so the combo appearing cannot move the score. */}
           <View style={styles.comboRow}>
             {round.combo > 0 && (
               <Text style={styles.combo}>
-                {round.combo} HIT COMBO {multiplier > 1 ? `x${multiplier}` : ''}
+                {multiplier > 1
+                  ? format(strings.hud.comboMultiplied, { count: round.combo, multiplier })
+                  : format(strings.hud.combo, { count: round.combo })}
               </Text>
             )}
           </View>
         </View>
 
         <View style={styles.centre}>
-          <Text style={styles.timer}>{secondsLeft}s</Text>
+          <Text style={styles.timer}>{format(strings.hud.secondsLeft, { seconds: secondsLeft })}</Text>
           <View style={styles.timerTrack}>
             <View style={[styles.timerFill, { width: `${Math.min(100, timeFraction * 100)}%` }]} />
           </View>
         </View>
 
         <View style={styles.right}>
-          <Text style={styles.label}>SHOW INTEGRITY</Text>
+          <Text style={styles.label}>{strings.hud.showIntegrity}</Text>
           <View style={styles.pips}>
             {Array.from({ length: round.level.startingIntegrity }, (_, i) => (
               <View
@@ -100,6 +105,7 @@ export function Hud({
  * targets arrive — see `hudLayout.ts`.
  */
 function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
+  const strings = useStrings();
   const clockMs = pulseClockMs(round.state, round.elapsedMs, round.countdownMs);
   const leadIn =
     isPadPulsing(round.state) && (clockMs < 0 || isUnscoredLeadBeat(upcomingBeatIndex(clockMs)));
@@ -108,12 +114,14 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
 
   return (
     <View style={styles.groovePanel} pointerEvents="none">
-      <Text style={styles.grooveLabel}>GROOVE</Text>
+      <Text style={styles.grooveLabel}>{strings.hud.groove}</Text>
       <Text style={styles.grooveScore}>{rhythm.score}</Text>
 
       <View style={styles.grooveStreakRow}>
         {rhythm.streak > 0 && (
-          <Text style={styles.grooveStreak}>{rhythm.streak} BEAT STREAK</Text>
+          <Text style={styles.grooveStreak}>
+            {format(strings.hud.beatStreak, { count: rhythm.streak })}
+          </Text>
         )}
       </View>
 
@@ -125,7 +133,7 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
        */}
       <View style={styles.grooveJudgementRow}>
         {leadIn ? (
-          <Text style={styles.grooveLeadIn}>GET READY</Text>
+          <Text style={styles.grooveLeadIn}>{strings.hud.getReady}</Text>
         ) : (
           labelAge > 0 &&
           judgement !== null && (
@@ -138,7 +146,7 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
                 },
               ]}
             >
-              {judgement.grade === 'perfect' ? 'PERFECT' : 'GOOD'}
+              {judgement.grade === 'perfect' ? strings.hud.perfect : strings.hud.good}
             </Text>
           )
         )}
@@ -165,12 +173,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: HUD_MARGIN.x,
     paddingTop: HUD_MARGIN.top,
   },
-  left: { minWidth: 420 },
-  centre: { alignItems: 'center', minWidth: 420 },
-  right: { minWidth: 420, alignItems: 'flex-end' },
+  /*
+   * A minimum and, since M20, a maximum. Without the maximum a longer locale's
+   * combo label did not wrap — it grew toward the timer in the centre of the
+   * screen, which is a collision rather than a clip and is worse. The width is
+   * bounded well clear of the centre column: the left rail starts at
+   * `HUD_MARGIN.x` and the centred column begins at 750 on the reference
+   * canvas.
+   */
+  left: { minWidth: HUD_TYPE.columnMinWidth, maxWidth: HUD_TYPE.columnMaxWidth },
+  centre: {
+    alignItems: 'center',
+    minWidth: HUD_TYPE.columnMinWidth,
+    maxWidth: HUD_TYPE.columnMaxWidth,
+  },
+  right: {
+    minWidth: HUD_TYPE.columnMinWidth,
+    maxWidth: HUD_TYPE.columnMaxWidth,
+    alignItems: 'flex-end',
+  },
   label: {
     color: THEME.hudDim,
-    fontSize: 24,
+    fontSize: HUD_TYPE.label.fontSize,
     letterSpacing: 3,
     fontWeight: '600',
     ...shadow,
@@ -185,7 +209,7 @@ const styles = StyleSheet.create({
   comboRow: { height: 38, justifyContent: 'center' },
   combo: {
     color: THEME.burst,
-    fontSize: 30,
+    fontSize: HUD_TYPE.combo.fontSize,
     fontWeight: '700',
     letterSpacing: 1,
     ...shadow,
@@ -229,7 +253,7 @@ const styles = StyleSheet.create({
   grooveLabel: {
     height: GROOVE_PANEL_ROWS.label,
     color: THEME.cymbal,
-    fontSize: 26,
+    fontSize: HUD_TYPE.groove.label.fontSize,
     letterSpacing: 4,
     fontWeight: '800',
     ...shadow,
@@ -245,21 +269,21 @@ const styles = StyleSheet.create({
   grooveStreakRow: { height: GROOVE_PANEL_ROWS.streak, justifyContent: 'center' },
   grooveStreak: {
     color: THEME.cymbal,
-    fontSize: 26,
+    fontSize: HUD_TYPE.groove.streak.fontSize,
     fontWeight: '700',
     letterSpacing: 1,
     ...shadow,
   },
   grooveJudgementRow: { height: GROOVE_PANEL_ROWS.judgement, justifyContent: 'center' },
   grooveJudgement: {
-    fontSize: 34,
+    fontSize: HUD_TYPE.groove.judgement.fontSize,
     fontWeight: '900',
     letterSpacing: 3,
     ...shadow,
   },
   grooveLeadIn: {
     color: THEME.hudDim,
-    fontSize: 28,
+    fontSize: HUD_TYPE.groove.leadIn.fontSize,
     fontWeight: '800',
     letterSpacing: 4,
     ...shadow,

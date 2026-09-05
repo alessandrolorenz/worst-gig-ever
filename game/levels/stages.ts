@@ -1,12 +1,11 @@
 /**
- * The two stages of the show (M15).
+ * The four stages of the show (M15, M16, M17).
  *
  * Source of truth: docs/specs/M15-story-briefings-and-two-stages.md
  *
  * A *level* is a spawn schedule; a **stage** is a level plus the things that
- * are true around it — which job the stage asks for, what it is called, and
- * what the player is told before it starts. They are separate types on
- * purpose:
+ * are true around it — which job the stage asks for, and what the player is
+ * taught before it starts. They are separate types on purpose:
  *
  *   - `LevelDefinition` is read by the round domain on every tick. Nothing in
  *     it may depend on how the game is presented.
@@ -18,9 +17,17 @@
  * frame, and the rhythm domain decides for itself what to do about it. The
  * round domain never sees it at all.
  *
- * Keeping the split this way is also what let Stage 2 stay the *validated*
+ * Keeping the split this way is also what let Stage 3 stay the *validated*
  * round: `level01` is byte-for-byte the schedule the owner approved at M13.1
  * and M14, and everything M15 adds around it lives here instead.
+ *
+ * ## No prose lives here (M19)
+ *
+ * A stage's name, subtitle and briefing used to be English sentences on the
+ * objects below. They are now in `game/i18n/catalogues/en.ts`, keyed by the
+ * stage `id` — the same way `storyAssets.ts` has always keyed a JPEG by a
+ * panel id. What is left describes what a stage *is*, which is the only thing
+ * a domain module should have known in the first place.
  */
 import type { MusicKey } from '../audio/audioMix.ts';
 import { defenseDrill } from './defenseDrill.ts';
@@ -29,14 +36,19 @@ import { findTheBeat } from './findTheBeat.ts';
 import { level01 } from './level01.ts';
 import type { LevelDefinition } from './levelDefinition.ts';
 
+/**
+ * Every stage, as a literal union.
+ *
+ * It is the key into the string catalogue, so it is a union rather than
+ * `string`: a stage added without strings is a type error rather than a blank
+ * briefing card discovered in a playtest.
+ */
+export type StageId = 'stage-1-defense' | 'stage-2-beat' | 'stage-3-groove' | 'stage-4-encore';
+
 export interface StageDefinition {
-  readonly id: string;
+  readonly id: StageId;
   /** 1-based, and the number the player is shown. */
   readonly number: number;
-  /** Short name on the title screen's stage button. */
-  readonly name: string;
-  /** One line under the name: what this stage is for. */
-  readonly subtitle: string;
   readonly level: LevelDefinition;
   /**
    * Whether the Groove Pad is live this stage.
@@ -57,8 +69,6 @@ export interface StageDefinition {
    * stage that scores none can play anything.
    */
   readonly music: MusicKey;
-  /** The briefing card, one bullet per line, in the order they are read. */
-  readonly briefing: readonly string[];
   /**
    * Pictures on the briefing, shown above the bullets (M18.1).
    *
@@ -67,14 +77,12 @@ export interface StageDefinition {
    * two outcomes, and prose describing "close" against "far" is a worse
    * teacher than two pictures of it. Optional, because a stage that teaches
    * nothing new should not pay the vertical space.
+   *
+   * Ids only. The art is resolved by the renderer and the caption by the
+   * catalogue, so a stage names the outcome it is teaching and neither the
+   * PNG that shows it nor the English that describes it.
    */
-  readonly briefingFigures?: readonly BriefingFigure[];
-}
-
-/** One captioned picture on a briefing card. Art is resolved by the renderer. */
-export interface BriefingFigure {
-  readonly id: BriefingFigureId;
-  readonly caption: string;
+  readonly briefingFigures?: readonly BriefingFigureId[];
 }
 
 export type BriefingFigureId = 'smash' | 'drink';
@@ -91,27 +99,16 @@ export type BriefingFigureId = 'smash' | 'drink';
 const stageOne: StageDefinition = {
   id: 'stage-1-defense',
   number: 1,
-  name: 'Hold the line',
-  subtitle: 'Defense only',
   level: defenseDrill,
   groove: false,
   /*
-   * The rock loop, and its 417 ms-per-loop drift against 90 BPM does not
-   * matter here: no beat is scheduled, scored, or missed on this stage, so
-   * there is no clock for the music to disagree with.
+   * The rock loop keeps this stage, and the fact that it is a 120 BPM track
+   * against a 90 BPM clock does not matter here: no beat is scheduled, scored,
+   * or missed on this stage, so there is no clock for the music to disagree
+   * with. It is also the track the game has always opened on.
    */
   music: 'showTheme',
-  briefing: [
-    'The crowd is throwing what it was drinking.',
-    'Tap a bottle or a mug to smash it before it reaches your kit.',
-    'Mugs are the exception, and the distance is the whole rule: hit one far away and it smashes like anything else, but let it come within arm’s reach and the drummer catches it and drinks it, which is worth more.',
-    'Three things get through and the show is over.',
-    'No beat to keep yet. That is the next stage. Just defend.',
-  ],
-  briefingFigures: [
-    { id: 'smash', caption: 'Still far away:\nit smashes' },
-    { id: 'drink', caption: 'Within arm’s reach:\nhe drinks it' },
-  ],
+  briefingFigures: ['smash', 'drink'],
 };
 
 /**
@@ -128,8 +125,6 @@ const stageOne: StageDefinition = {
 const stageTwo: StageDefinition = {
   id: 'stage-2-beat',
   number: 2,
-  name: 'Find the beat',
-  subtitle: 'Groove first',
   level: findTheBeat,
   groove: true,
   /*
@@ -139,12 +134,6 @@ const stageTwo: StageDefinition = {
    * opposite of the lesson.
    */
   music: 'grooveBed',
-  briefing: [
-    'You are the drummer. Before anything gets thrown, find the beat.',
-    'Two marks slide together on the pad. Tap the pad when they touch.',
-    'Count it: one, two, three, four.',
-    'Bottles start halfway through — smash them, or the show is over.',
-  ],
 };
 
 /**
@@ -156,25 +145,14 @@ const stageTwo: StageDefinition = {
 const stageThree: StageDefinition = {
   id: 'stage-3-groove',
   number: 3,
-  name: 'Keep the beat',
-  subtitle: 'Groove + defense',
   level: level01,
   groove: true,
   /*
-   * Still the rock loop, and this is the **one open piece of M16**: the show
-   * scores beats, so its bed should be tempo-locked too, and this one is not.
-   * The click carries the beat here in the meantime. Replacing it is a music
-   * choice that belongs to the owner rather than to a generator — see
-   * `docs/specs/M16-beat-clarity-and-progressive-teaching.md`, section E.
+   * The generated show bed, which closes the last open piece of M16. The show
+   * scores beats, so its bed has to agree with them; the rock loop it used to
+   * play never did, because it is at 120 BPM rather than drifting at 90.
    */
-  music: 'showTheme',
-  briefing: [
-    'Now both jobs at once, and the crowd has warmed up.',
-    'Keep the beat on the pad while you clear what comes at the kit.',
-    'Mugs are back: let one reach you and you drink it instead of smashing it.',
-    'A missed beat costs you the streak. A missed bottle costs the show.',
-    'Someone may get in your way. Deal with them.',
-  ],
+  music: 'showBed',
 };
 
 /**
@@ -193,23 +171,15 @@ const stageThree: StageDefinition = {
 const stageFour: StageDefinition = {
   id: 'stage-4-encore',
   number: 4,
-  name: 'Encore',
-  subtitle: 'It keeps escalating',
   level: encore,
   groove: true,
   /*
-   * The teaching bed, because it is the only tempo-locked one that exists and
-   * a stage that scores beats must not play music that drifts against them.
-   * It is the wrong music for an encore and it is the right *property*; when
-   * the show gets a tempo-locked bed of its own, this stage takes it.
+   * The show bed, as this stage's own comment promised it would take as soon
+   * as one existed. It had been playing the *teaching* bed — the right
+   * property and the wrong music, since an encore backed by four bars of
+   * kick-snare-root is an anticlimax.
    */
-  music: 'grooveBed',
-  briefing: [
-    'The crowd wants one more song. They brought more bottles.',
-    'It starts easy and it does not stay that way: faster, and closer together.',
-    'They come in threes now — same spot, or side to side. Smash all of them.',
-    'Keep the beat on the pad. Three through the kit and the show is over.',
-  ],
+  music: 'showBed',
 };
 
 export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo, stageThree, stageFour];

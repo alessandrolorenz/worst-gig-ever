@@ -371,8 +371,8 @@
     "mugDrinkCatch": {
       "path": "assets/art/effects/mug_drink_01_catch.png",
       "kind": "effect",
-      "width": 640,
-      "height": 544,
+      "width": 1440,
+      "height": 1224,
       "transparency": "transparent",
       "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
       "requiredForMvp": false,
@@ -381,8 +381,8 @@
     "mugDrinkDrink": {
       "path": "assets/art/effects/mug_drink_02_drink.png",
       "kind": "effect",
-      "width": 640,
-      "height": 544,
+      "width": 1440,
+      "height": 1224,
       "transparency": "transparent",
       "prompt": "prompts/assets-v2/18-mug-drink-3frame.md",
       "requiredForMvp": false,
@@ -481,6 +481,14 @@
       "origin": "generated",
       "tempoLockedBpm": 90,
       "loopBeats": 16,
+      "requiredForMvp": true
+    },
+    "showBed90": {
+      "runtime": "assets/audio/music/runtime/show_bed_90.wav",
+      "generator": "scripts/make-show-bed.mjs",
+      "origin": "generated",
+      "tempoLockedBpm": 90,
+      "loopBeats": 32,
       "requiredForMvp": true
     },
     "beatClick": {

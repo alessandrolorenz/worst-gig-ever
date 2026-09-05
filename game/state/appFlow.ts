@@ -21,6 +21,7 @@
  * Pure data and pure transitions: no React, no React Native, no timers.
  */
 import { clampStageIndex, hasNextStage, STAGES, type StageDefinition, stageAt } from '../levels/stages.ts';
+import { DEFAULT_LOCALE, nextLocale, type Locale } from '../i18n/locales.ts';
 
 export const APP_SCREENS = [
   /** The five-panel opening story. */
@@ -71,16 +72,50 @@ export interface AppFlowState {
    * by care.
    */
   clickEnabled: boolean;
+  /**
+   * The language the game is being read in (M19).
+   *
+   * Session-only, exactly like `clickEnabled`, and for the same reason:
+   * persistence needs storage and storage is M22. It is seeded from the
+   * device's own preference at startup rather than defaulting to English, so a
+   * player whose phone is in Portuguese gets Portuguese without touching a
+   * control — the control exists so that choice can be *overridden* and, more
+   * importantly, so a translation can be checked on a device that is not set
+   * to that language.
+   *
+   * It lives on the flow rather than in a module-level variable because it is
+   * a player choice about the whole session, which is precisely what this
+   * object holds. `LocaleContext` reads it; it is not a second copy of it.
+   */
+  locale: Locale;
 }
 
-export function createAppFlow(): AppFlowState {
+/**
+ * A fresh flow.
+ *
+ * The locale is a parameter with a default rather than a device read, so this
+ * stays a pure function that the domain tests can call without a device or a
+ * native module. `GameEngine` passes `detectLocale()`; every test gets English.
+ */
+export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowState {
   return {
     screen: 'STORY',
     stageIndex: 0,
     bestStageCleared: -1,
     introSeen: false,
     clickEnabled: true,
+    locale: initialLocale,
   };
+}
+
+/** The language control, from the title or from a paused round (M19). */
+export function cycleLocale(flow: AppFlowState): void {
+  flow.locale = nextLocale(flow.locale);
+}
+
+/** Sets the language directly. */
+export function setLocale(flow: AppFlowState, locale: Locale): void {
+  flow.locale = locale;
 }
 
 /** The click switch, from the title or from a paused round. */

@@ -40,6 +40,7 @@
     "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
     "expo-keep-awake": "~14.1.4",
+    "expo-localization": "~16.1.6",
     "expo-status-bar": "~2.2.3",
     "matter-js": "^0.18.0",
     "react": "19.0.0",

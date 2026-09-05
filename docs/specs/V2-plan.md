@@ -51,60 +51,167 @@ and it is where the real work is.
 
 ## Order
 
-### M19 — The locale layer
+Corrected at M18.5. The earlier draft of this plan placed release identity
+*after* localization; that was wrong for the reason M18.5 acts on — an Android
+package id is effectively permanent once published, and internationalizing is a
+decision to reach more people, every one of whom would install a build the
+migration invalidates.
 
-Every user-visible string into a catalogue, keyed and typed, with locale
-detection and an explicit in-game language switch. **No translations yet** —
-this milestone ends with the game running in English out of a catalogue,
-looking identical, with a test that fails if any user-visible literal is left
-behind.
+### M18.5 — Final release identity — **DONE (2026-09-04)**
 
-The switch matters as much as the detection: the owner tests on one phone, and
-a language you cannot select is a language you cannot check.
+Expo slug `worst-gig-ever`, application id `com.worstgigever.app` on both
+platforms, `RECORD_AUDIO` removed, `package-lock.json` tracked, and an identity
+contract at `docs/release/product-identity.md` with a test that guards it.
 
-### M20 — Layout that survives translation
+One external action remains and it **blocks EAS builds**: the EAS project is
+still named `worst-band-ever` on expo.dev and must be renamed there. See
+`docs/specs/M18.5-final-release-identity-report.md`.
 
-The milestone the briefing bug demands. Every text surface — briefing cards,
-results, title, story captions, HUD, buttons — measured against a **pseudo-
-locale** that is deliberately 30–40% longer than English, and required to stay
-readable without silent clipping.
+### M19 — Locale foundation — **IMPLEMENTED (2026-09-04), emulator-validated (2026-09-05)**
 
-Concretely: the briefing card stops being a 200 px scroll with hand-trimmed
-copy and starts being a container that adapts, and the tests that guard it stop
-using an English character budget.
+Every user-visible string into typed localization catalogues. **English only —
+no translation yet.** Locale detection plus an explicit in-game language
+selector, because a language you cannot select is a language you cannot check.
 
-Do this **before** translating, not after. Translating into a layout that
-cannot hold it produces four broken languages instead of one.
+Ends with the game looking identical, running out of a catalogue, and a test
+that fails if any user-visible literal is left behind.
 
-### M21 — The languages
+Delivered as specified, on `m19/locale-foundation`. Spec and decisions:
+`docs/specs/M19-locale-foundation.md`. `npm run verify` green at 390 tests.
 
-pt-BR first — it is the owner's own language, so it is the only one that can be
-judged rather than trusted. Others after, and each one is cheap once M19 and
-M20 exist.
+Three things the plan above did not settle, decided in the spec:
 
-Open question below on which.
+- **No i18n runtime.** `expo-localization` is the one dependency, and only for
+  reading the device's languages. `Catalogue = typeof en` makes a locale's
+  completeness a `tsc` error, which is worth more here than plural rules and
+  lazy loading.
+- **The domain lost its prose.** `stages.ts` and `storyState.ts` hold ids;
+  the catalogue holds the sentences, keyed by the same ids.
+- **The language control is invisible until there is a choice.** It is built,
+  wired and tested; adding `pt-BR` to `SUPPORTED_LOCALES` is all that makes it
+  appear.
 
-### M22 — Release identity (ADR 0010)
+Validated on the Pixel_9 emulator on 2026-09-05: every screen reachable without
+playing a round renders from the catalogue, both interpolated strings included,
+and no language control is drawn. Owner device verdict outstanding.
 
-Must land **before v2 ships**, and the reason is now stronger than it was.
+### M20 — Translation-safe layout — **IMPLEMENTED (2026-09-05), emulator-validated**
 
-The launcher says *Worst Gig Ever*; the Expo slug (`worst-band-ever`), the EAS
-project, the GitHub repository and `com.worstbandever.app` still say the old
-name. Migrating means new signing credentials against the final package name,
-which **invalidates every installed build**.
+The milestone the briefing bug demands. Pseudo-locale expansion, English-length
+layout assumptions removed, silent clipping prevented.
 
-Internationalizing a game is a decision to reach more people. Every one of them
-installs a build that the migration would later invalidate. Today it costs one
-reinstall on one phone; after v2 ships it costs the audience v2 was built to
-reach. It is not part of i18n and it is not optional to sequence.
+Before translating, not after: translating into a layout that cannot hold it
+produces four broken languages instead of one.
 
-## Not in v2, and why
+**Upgraded from preparatory to corrective by the M19 emulator run.** The
+prediction above — that stage 1 "now fits its 200 px card *in English*, with
+little to spare" — is wrong. It does not fit. On a 2424x1080 landscape phone
+the card shows two and a half of its five bullets at rest, and the mug rule is
+the sentence cut in half. Everything is reachable by scrolling, so it is
+M18.1's fold rather than a new break, but the card is already ~35% over in the
+language it was tuned for.
+
+And `tests/mugDrink.test.ts` passes on it, because its budget allows 320 px
+against a 200 px card. **The first job of M20 is a gate that measures what fits,
+not one that permits 60% overflow.**
+
+Done, on `m20/translation-safe-layout`. Spec and decisions:
+`docs/specs/M20-translation-safe-layout.md`. `npm run verify` green at 402
+tests.
+
+The rule it settled on: **no text surface may clip silently**, satisfied two
+ways — a fixed box must fit, a scrollable one must take all the height there is
+and say visibly when there is more. The briefing card is the second kind, so
+the budget is on its sentences and the two pictures are allowed to scroll. No
+copy was shortened.
+
+What made it work, and none of it was in the plan:
+
+- A **pseudo-locale**, generated from English at 1.4x with accents, registered
+  as a `DEV_LOCALES` entry so a release build cannot select it and still draws
+  no language control.
+- A wrapping model **calibrated against a device measurement** rather than
+  derived — the derived chrome was 23 dp optimistic, which is the direction
+  that lets text vanish.
+- The bullet column widened 560 → 640 dp. That was an English line-length
+  choice inside a 923 dp landscape screen, and it cost a line of wrapping per
+  bullet.
+- `HUD_TYPE.columnMaxWidth`, because the HUD columns had a minimum and no
+  maximum: at 1.4x the combo label would not have wrapped, it would have grown
+  toward the timer.
+- A `▾` cue, because `persistentScrollbar` draws dark grey on a near-black
+  scrim and is invisible to anyone not looking for it.
+
+### M21 — pt-BR — **DRAFT IMPLEMENTED (2026-09-05), awaiting owner review**
+
+Complete Brazilian Portuguese translation, with human review of the humour and
+voice. The owner's own language, so the only one that can be judged rather than
+trusted.
+
+Code complete on `m21/pt-br`; `npm run verify` green at 405 tests. Spec:
+`docs/specs/M21-pt-br.md`.
+
+**The words are a draft and the milestone is not done until they are read.**
+Open question 3 above recommends the owner writes these lines. What exists is
+written rather than generated, and every line where the joke had to be
+re-invented instead of translated is marked `REVIEW:` in the catalogue and
+tabled in the spec — *"Sabe-se lá como"* for *"Somehow"*, *"O show desandou"*,
+*"Segure as pontas"*, *"Só piora"*, *"Descarrega. Parafusa. Reza."*
+
+The integration was three lines and no layout work: a typed catalogue, an entry
+in `SUPPORTED_LOCALES`, an endonym. **Every layout budget passed on the first
+run.** That is what M20 was spent on.
+
+Validated on the emulator by setting a per-app locale and cold-starting: the
+game opened in Portuguese with nothing touched, which is the first proof that
+`detectLocale()` reads a real device.
+
+### M22 — Local memory and sharing — **IMPLEMENTED (2026-09-05), emulator-validated**
+
+Local high scores, progress and preferences that survive a cold start, and
+result sharing. No backend, no accounts.
+
+One constraint from M15 and not negotiable: session progress must never gate a
+cold start. Persistence records what happened; it does not lock anything.
+
+Done on `m22/local-memory-and-sharing`; `npm run verify` green at 427 tests.
+Spec: `docs/specs/M22-local-memory-and-sharing.md`.
+
+**No new dependencies.** `expo-file-system` has been a dependency since M2 and
+writes one small JSON file; React Native's own `Share` opens the share sheet.
+`async-storage` and `expo-sharing` would each have been a native module for a
+job the existing stack already does (AGENTS.md rule 18), and a test now fails
+if either appears.
+
+The constraint is asserted directly rather than trusted: twenty hostile saves —
+truncated, not JSON, wrong types, a version from the future, a prototype
+pollution attempt — are each parsed and then used to build a flow, and every
+stage must still open. A corrupt save costs a high score and never the game.
+
+The file is versioned from its first write and unknown fields are preserved, so
+an older build cannot silently delete what a newer one saved. Validated on
+device: a `futureField` survived a write by a build that knows nothing about it.
+
+Also validated on device, and only observable there: the *detected* locale is
+not persisted, only a chosen one. A player whose phone is Portuguese gets
+Portuguese every launch; a player who picked English keeps English until they
+pick otherwise.
+
+### M23 — Monetization and store readiness
+
+AdMob interstitials at natural stage boundaries, a one-time Remove Ads
+purchase, and privacy/consent/store configuration.
+
+### M24 — Music Pack 01
+
+Additional commercially safe tracks on the same rhythmic contract.
+
+## Not on the road above, and why
 
 | | |
 |---|---|
-| **Music on the beat clock** | The owner already decided this — *"drift is not accepted"* — and open item 13's condition ("only worth building if the mechanic proves fun") is met. It is the biggest quality jump available and it has nothing to do with i18n. It should be its own milestone, before or after v2, but not folded in. |
-| **Memory** | Nothing survives a cold start today — no high score, no progress. Real gap, unrelated to i18n. |
-| **Store readiness** | `RECORD_AUDIO` is declared and unused, `package-lock.json` is git-ignored, `crowd_applause.wav` is the untrimmed 6.9 MB source. All required for a store, none for v2. |
+| **Music on the beat clock** | **DONE 2026-09-05.** Built after the owner picked it as the next phase. It was not the milestone this row described: the show's loop was not drifting at 90 BPM, it was a 120 BPM track, and the gate measured file duration so it could never have said so. Stages 3 and 4 now play a generated 32-beat bed, and a tempo claim now requires a committed generator as evidence. See `docs/assets/AUDIO-SOURCES.md`. |
+| **Audio weight** | **Already done, and this row was stale when it was written.** The applause was trimmed at M16 on 2026-09-04 to 5.00 s / 0.88 MB and recorded as a derivative; three documents including this one went on describing the 39 s source. Measured 2026-09-05: all nine audio files total 7.9 MB, the largest is now the stage-1 rock loop at 3.8 MB, and the only clipping anywhere is 13 samples in a third-party file. The "not volume-normalized" half is a misreading of `MIX`, which sets a deliberate per-sound level with a reason for each. |
 | **Integrity healing, drunk meter** | Deferred at M18 with reasons; each needs its own playtest. |
 | **`level01` retune (M17.1)** | Owner is leaning yes — *"acho que sim, nao estou certo"* — and it makes every past device observation incomparable when it lands. Better decided than carried. |
 | **Hermes** | Named as the lever *if* performance failed. It passed. |
@@ -126,10 +233,16 @@ and in the pause overlay, nowhere else.
 1. **Which languages?** pt-BR is certain. Spanish is the cheapest next reach;
    English is already there. Every added locale is ongoing cost on every copy
    change, so this is a commitment, not a checkbox.
-2. **Does the title translate?** Recommended no — see above. Saying yes costs
-   an art regeneration of `01_poster.jpg` per locale and a store identity per
-   market.
+2. **Does the title translate?** **Settled: no.** Recorded at M18.5 in
+   `docs/release/product-identity.md` and enforced at M19 by keeping
+   `WORST GIG EVER` a constant in `game/config/product.ts` rather than a
+   catalogue string, with a test that fails if it becomes one.
 3. **Who writes pt-BR?** Recommended: the owner, because the jokes are the
    product. If it is me, the lines need reviewing rather than accepting.
-4. **Does the music sync land before or after v2?** It is decided, unbuilt, and
-   unrelated — but it is the largest single improvement still on the table.
+4. **Where does the music sync go?** It is decided, unbuilt, and unrelated to
+   i18n — but it is the largest single improvement still on the table, and the
+   longer it waits the longer every playtest is told to ignore a flaw in the
+   thing the game is about.
+5. **Does the GitHub repository get renamed?** M18.5 migrated everything in
+   source control; the remote is still `alessandrolorenz/worst-band-ever` and
+   nothing in the code depends on it. Cosmetic, external, and cheap.

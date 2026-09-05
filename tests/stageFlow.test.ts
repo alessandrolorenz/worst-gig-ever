@@ -35,6 +35,7 @@ import {
   STAGES,
   stageAt,
 } from '../game/levels/stages.ts';
+import { en } from '../game/i18n/catalogues/en.ts';
 import { defenseDrill } from '../game/levels/defenseDrill.ts';
 import { encore } from '../game/levels/encore.ts';
 import { findTheBeat } from '../game/levels/findTheBeat.ts';
@@ -288,11 +289,15 @@ test('picking a stage opens its briefing, not its round', () => {
 });
 
 test('the briefing shown is the briefing of the stage just picked', () => {
+  // M19: the stage carries an id and the catalogue carries the sentences, so
+  // "the right briefing" is now "the right id resolving to the right strings".
   const flow = createAppFlow();
   startStage(flow, 0);
-  assert.deepEqual(currentStage(flow).briefing, STAGES[0].briefing);
+  assert.equal(currentStage(flow).id, STAGES[0].id);
+  assert.deepEqual(en.stages[currentStage(flow).id].briefing, en.stages[STAGES[0].id].briefing);
   startStage(flow, 1);
-  assert.deepEqual(currentStage(flow).briefing, STAGES[1].briefing);
+  assert.equal(currentStage(flow).id, STAGES[1].id);
+  assert.deepEqual(en.stages[currentStage(flow).id].briefing, en.stages[STAGES[1].id].briefing);
 });
 
 test('no stage is locked, because the unlock could not survive a relaunch', () => {

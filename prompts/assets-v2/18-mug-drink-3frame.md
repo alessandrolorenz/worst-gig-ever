@@ -56,12 +56,19 @@ and M18 adds a real sequence check rather than pretending the gate covered it.
 
 | File | Size | Notes |
 |---|---|---|
-| `assets/art/effects/mug_drink_01_catch.png` | 640x544 transparent | frame 1 |
-| `assets/art/effects/mug_drink_02_raise.png` | 640x544 transparent | frame 2 |
-| `assets/art/effects/mug_drink_03_drink.png` | 640x544 transparent | frame 3 |
+| `assets/art/effects/mug_drink_01_catch.png` | 1440x1224 transparent | frame 1 |
+| `assets/art/effects/mug_drink_02_raise.png` | 1440x1224 transparent | frame 2 |
+| `assets/art/effects/mug_drink_03_drink.png` | 1440x1224 transparent | frame 3 |
 
-They are drawn into a 520x440 rect at canvas x 1380–1900, y 640–1080, so the
-frame is that box at 1.23x with padding for the conditioning step.
+Two of the three ship: the owner cut `raise` after seeing the renders, and the
+pair that ships is `01_catch` + `02_drink`, conditioned from
+`design-reference/m18-drink-pair`.
+
+They are drawn into `DRINK_RECT`, 1097x932 at canvas x 890, y 166. That box is
+not a free choice: it is sized so the mug is 55% of the canvas height (M18 spec
+§C.1). The frames stay at 1440x1224 rather than being re-conditioned down to it,
+because the fraction has moved three times in one afternoon and downscaling is
+free while the detail, once thrown away, is not.
 
 ## Keep frame 1 cheap to redraw
 
@@ -211,7 +218,7 @@ so scale and anchor cannot drift between files:
 node scripts/condition-art.mjs \
   --input-dir design-reference/m18-drink-raw \
   --output-dir design-reference/m18-drink-staging \
-  --prefix mug_drink_ --width 640 --height 544
+  --prefix mug_drink_ --width 1440 --height 1224 --card-chroma 40
 npm run measure:art
 npm run validate:art
 ```
