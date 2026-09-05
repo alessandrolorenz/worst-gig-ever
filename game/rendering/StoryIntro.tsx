@@ -33,6 +33,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Image, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { THEME } from './theme.ts';
+import { useStrings } from '../i18n/LocaleContext.tsx';
 import { storyImageFor } from './storyAssets.ts';
 import { currentPanel, STORY_PANELS, type StoryState } from '../state/storyState.ts';
 
@@ -48,6 +49,7 @@ export function StoryIntro({
   onAdvance(): void;
   onSkip(): void;
 }) {
+  const strings = useStrings();
   const panel = currentPanel(story);
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -75,7 +77,7 @@ export function StoryIntro({
         )}
         {/* Keeps the caption legible over a bright frame without dimming the art. */}
         <View style={styles.captionBar}>
-          <Text style={styles.caption}>{panel.caption}</Text>
+          <Text style={styles.caption}>{strings.story[panel.id]}</Text>
         </View>
       </Animated.View>
 
@@ -97,7 +99,7 @@ export function StoryIntro({
         onPress={onSkip}
         accessibilityRole="button"
       >
-        <Text style={styles.skipText}>Skip</Text>
+        <Text style={styles.skipText}>{strings.common.skip}</Text>
       </Pressable>
     </Pressable>
   );

@@ -19,6 +19,7 @@ import {
   type RoundState,
 } from '../game/state/roundState.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import { en } from '../game/i18n/catalogues/en.ts';
 import type { RoundEvent } from '../game/state/roundEvents.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -329,7 +330,7 @@ test('M18.1: the mug rule is taught with pictures on the stage that introduces i
   // have to be explained — in words and, because one object behaving two ways
   // is hard to write, in pictures.
   const first = STAGES[0];
-  const copy = first.briefing.join(' ');
+  const copy = en.stages[first.id].briefing.join(' ');
   assert.ok(/drink/i.test(copy), 'the briefing must say a mug can be drunk');
   // The owner's correction after the MVP playtest: saying a mug *can* be drunk
   // is not the rule. The rule is the condition — it has to be close enough to
@@ -345,12 +346,16 @@ test('M18.1: the mug rule is taught with pictures on the stage that introduces i
   );
   assert.ok(first.briefingFigures, 'stage 1 must carry briefing pictures');
   assert.deepEqual(
-    first.briefingFigures.map((figure) => figure.id),
+    first.briefingFigures,
     ['smash', 'drink'],
     'both outcomes are shown, in the order they are explained',
   );
-  for (const figure of first.briefingFigures) {
-    assert.ok(figure.caption.trim().length > 0, `${figure.id} needs a caption`);
+  // M19: the stage names the outcome; the caption for it lives in the catalogue.
+  for (const figureId of first.briefingFigures) {
+    assert.ok(
+      en.briefingFigures[figureId].trim().length > 0,
+      `${figureId} needs a caption`,
+    );
   }
 });
 
@@ -394,7 +399,7 @@ test('M18.1: the drink has a sound, and it is one this repository generates', ()
  */
 test('M18.1: every briefing entry is a whole sentence, not a fragment', () => {
   for (const stage of STAGES) {
-    for (const line of stage.briefing) {
+    for (const line of en.stages[stage.id].briefing) {
       assert.match(
         line,
         /[.!?]$/,
@@ -426,8 +431,16 @@ test('M18.1: no briefing asks the card to show more than it can', () => {
   const CHARS_PER_LINE = 62;
 
   for (const stage of STAGES) {
-    const text = stage.briefing.reduce(
-      (total, line) => total + Math.ceil(line.length / CHARS_PER_LINE) * LINE_PX + ENTRY_GAP_PX,
+    /*
+     * English, and only English (M19). That is correct for a catalogue with one
+     * locale and insufficient the moment there are two: Portuguese runs 15-25%
+     * longer for the same meaning, so this budget passing here says nothing
+     * about whether the card holds a translation. Making it length-independent
+     * is M20 — see docs/specs/M19-locale-foundation.md, "Known follow-on".
+     */
+    const text = en.stages[stage.id].briefing.reduce(
+      (total: number, line: string) =>
+        total + Math.ceil(line.length / CHARS_PER_LINE) * LINE_PX + ENTRY_GAP_PX,
       0,
     );
     const figures = stage.briefingFigures ? FIGURE_ROW_PX : 0;

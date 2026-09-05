@@ -14,7 +14,12 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Image } from 'react-native';
 
 import { QuitSVG } from '../../assets/SVG/QuitSVG';
+import { PRODUCT_TITLE } from '../config/product.ts';
 import { THEME } from './theme.ts';
+import type { Catalogue } from '../i18n/catalogue.ts';
+import { format } from '../i18n/format.ts';
+import { hasLocaleChoice, LOCALE_ENDONYMS } from '../i18n/locales.ts';
+import { useLocale, useStrings } from '../i18n/LocaleContext.tsx';
 import { MUG_DRINK_ART, TARGET_ART } from './artAssets.ts';
 
 /**
@@ -69,6 +74,7 @@ interface OverlayProps {
   onNextStage(): void;
   onQuit(): void;
   onToggleClick(): void;
+  onCycleLocale(): void;
 }
 
 function Button({
@@ -131,14 +137,37 @@ function Button({
  * sentence about the future that is wrong the moment you have read it.
  */
 function ClickToggle({ enabled, onPress }: { enabled: boolean; onPress(): void }) {
+  const strings = useStrings();
   return (
     <Button
-      label={enabled ? 'Click: on' : 'Click: off'}
+      label={enabled ? strings.title.clickOn : strings.title.clickOff}
       onPress={onPress}
       tone="secondary"
       compact
     />
   );
+}
+
+/**
+ * The language control (M19).
+ *
+ * In the two rows a player is already stopped in — the title and a paused
+ * round — and nowhere else. The V2 plan rules out a HUD flourish for it
+ * explicitly, and M19 does not add a settings screen.
+ *
+ * Its label is the endonym of the current language, so the control is the one
+ * thing on screen that never needs translating: `English`, then
+ * `Português (BR)`. A player who cannot read the current language can still
+ * recognise the name of their own.
+ *
+ * It draws nothing while there is one language, which is M19's own state — the
+ * game must look identical when the catalogue lands. `SUPPORTED_LOCALES`
+ * gaining `pt-BR` is the whole of what makes it appear.
+ */
+function LanguageToggle({ onPress }: { onPress(): void }) {
+  const locale = useLocale();
+  if (!hasLocaleChoice()) return null;
+  return <Button label={LOCALE_ENDONYMS[locale]} onPress={onPress} tone="secondary" compact />;
 }
 
 /**
@@ -157,6 +186,9 @@ function StageButton({
   cleared: boolean;
   onPress(): void;
 }) {
+  const strings = useStrings();
+  const stageStrings = strings.stages[stage.id];
+
   return (
     <Pressable
       onPress={onPress}
@@ -164,11 +196,11 @@ function StageButton({
       style={({ pressed }) => [styles.stageCard, pressed && styles.buttonPressed]}
     >
       <Text style={styles.stageNumber}>
-        STAGE {stage.number}
+        {format(strings.common.stageNumber, { number: stage.number })}
         {cleared ? '  ✓' : ''}
       </Text>
-      <Text style={styles.stageName}>{stage.name}</Text>
-      <Text style={styles.stageSubtitle}>{stage.subtitle}</Text>
+      <Text style={styles.stageName}>{stageStrings.name}</Text>
+      <Text style={styles.stageSubtitle}>{stageStrings.subtitle}</Text>
     </Pressable>
   );
 }
@@ -196,35 +228,46 @@ function Summary({
   rhythm: RhythmState;
   grooveEnabled: boolean;
 }) {
+  const strings = useStrings();
+  const summary = strings.summary;
   const meanError = meanAbsTimingErrorMs(rhythm);
 
   return (
     <View style={styles.summary}>
       {grooveEnabled && (
         <View style={styles.summaryColumn}>
-          <Text style={[styles.summaryHeading, { color: THEME.cymbal }]}>GROOVE</Text>
-          <SummaryRow label="Groove score" value={String(rhythm.score)} />
-          <SummaryRow label="Beats hit" value={`${rhythm.hits} / ${judgedBeats(rhythm)}`} />
-          <SummaryRow label="Perfect" value={String(rhythm.perfects)} />
-          <SummaryRow label="Good" value={String(rhythm.goods)} />
-          <SummaryRow label="Beats missed" value={String(rhythm.misses)} />
-          <SummaryRow label="Best beat streak" value={String(rhythm.bestStreak)} />
+          <Text style={[styles.summaryHeading, { color: THEME.cymbal }]}>{summary.groove}</Text>
+          <SummaryRow label={summary.grooveScore} value={String(rhythm.score)} />
+          <SummaryRow
+            label={summary.beatsHit}
+            value={format(summary.beatsHitValue, {
+              hits: rhythm.hits,
+              judged: judgedBeats(rhythm),
+            })}
+          />
+          <SummaryRow label={summary.perfect} value={String(rhythm.perfects)} />
+          <SummaryRow label={summary.good} value={String(rhythm.goods)} />
+          <SummaryRow label={summary.beatsMissed} value={String(rhythm.misses)} />
+          <SummaryRow label={summary.bestBeatStreak} value={String(rhythm.bestStreak)} />
           <Text style={styles.summaryDetail}>
             {meanError === null
-              ? 'No beats landed this round.'
-              : `Average timing ${Math.round(meanError)} ms off the beat.`}
+              ? summary.noBeatsLanded
+              : format(summary.averageTiming, { ms: Math.round(meanError) })}
           </Text>
         </View>
       )}
 
       <View style={styles.summaryColumn}>
-        <Text style={[styles.summaryHeading, { color: THEME.accent }]}>DEFENSE</Text>
-        <SummaryRow label="Defense score" value={String(round.score)} />
-        <SummaryRow label="Objects destroyed" value={String(round.targetsDestroyed)} />
-        <SummaryRow label="Objects missed" value={String(round.misses)} />
-        <SummaryRow label="Best hit combo" value={String(round.bestCombo)} />
+        <Text style={[styles.summaryHeading, { color: THEME.accent }]}>{summary.defense}</Text>
+        <SummaryRow label={summary.defenseScore} value={String(round.score)} />
+        <SummaryRow label={summary.objectsDestroyed} value={String(round.targetsDestroyed)} />
+        <SummaryRow label={summary.objectsMissed} value={String(round.misses)} />
+        <SummaryRow label={summary.bestHitCombo} value={String(round.bestCombo)} />
         <Text style={styles.summaryDetail}>
-          Show Integrity left: {round.integrity} of {round.level.startingIntegrity}.
+          {format(summary.integrityLeft, {
+            left: round.integrity,
+            total: round.level.startingIntegrity,
+          })}
         </Text>
       </View>
     </View>
@@ -242,6 +285,8 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 
 export function Overlays(props: OverlayProps) {
   const { flow, stage, state, round, rhythm, story, audioAvailable } = props;
+  const strings = useStrings();
+  const stageStrings = strings.stages[stage.id];
 
   if (flow.screen === 'STORY') {
     return (
@@ -252,8 +297,10 @@ export function Overlays(props: OverlayProps) {
   if (flow.screen === 'TITLE') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.title}>WORST GIG EVER</Text>
-        <Text style={styles.tagline}>Keep the beat. Survive the gig.</Text>
+        {/* Not a catalogue string: docs/release/product-identity.md forbids
+            translating the title, so it is a constant that cannot be. */}
+        <Text style={styles.title}>{PRODUCT_TITLE}</Text>
+        <Text style={styles.tagline}>{strings.title.tagline}</Text>
         <View style={styles.stageRow}>
           {STAGES.map((entry, index) => (
             <StageButton
@@ -265,14 +312,23 @@ export function Overlays(props: OverlayProps) {
           ))}
         </View>
         <View style={styles.buttonRowLayout}>
-          <Button label="How to play" onPress={props.onShowBriefing} tone="secondary" compact />
-          <Button label="Story" onPress={props.onReplayStory} tone="secondary" compact />
+          <Button
+            label={strings.title.howToPlay}
+            onPress={props.onShowBriefing}
+            tone="secondary"
+            compact
+          />
+          <Button
+            label={strings.title.story}
+            onPress={props.onReplayStory}
+            tone="secondary"
+            compact
+          />
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
+          <LanguageToggle onPress={props.onCycleLocale} />
         </View>
         {!audioAvailable && (
-          <Text style={styles.warning}>
-            Audio unavailable in this build — rebuild the development client to hear the show.
-          </Text>
+          <Text style={styles.warning}>{strings.title.audioUnavailable}</Text>
         )}
       </View>
     );
@@ -289,8 +345,10 @@ export function Overlays(props: OverlayProps) {
   if (flow.screen === 'BRIEFING') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.briefingKicker}>STAGE {stage.number}</Text>
-        <Text style={styles.briefingTitle}>{stage.name}</Text>
+        <Text style={styles.briefingKicker}>
+          {format(strings.common.stageNumber, { number: stage.number })}
+        </Text>
+        <Text style={styles.briefingTitle}>{stageStrings.name}</Text>
         {/**
          * The indicator is on, deliberately. A briefing that silently hides its
          * second half teaches nothing — and at the MVP playtest this card was
@@ -303,20 +361,20 @@ export function Overlays(props: OverlayProps) {
         >
           {stage.briefingFigures !== undefined && (
             <View style={styles.figureRow}>
-              {stage.briefingFigures.map((figure) => (
-                <View key={figure.id} style={styles.figure}>
+              {stage.briefingFigures.map((figureId) => (
+                <View key={figureId} style={styles.figure}>
                   <Image
-                    source={BRIEFING_FIGURE_ART[figure.id]}
+                    source={BRIEFING_FIGURE_ART[figureId]}
                     style={styles.figureArt}
                     resizeMode="contain"
                     fadeDuration={0}
                   />
-                  <Text style={styles.figureCaption}>{figure.caption}</Text>
+                  <Text style={styles.figureCaption}>{strings.briefingFigures[figureId]}</Text>
                 </View>
               ))}
             </View>
           )}
-          {stage.briefing.map((line) => (
+          {stageStrings.briefing.map((line) => (
             <View key={line} style={styles.briefingItem}>
               <Text style={styles.briefingBullet}>▸</Text>
               <Text style={styles.briefingText}>{line}</Text>
@@ -324,8 +382,13 @@ export function Overlays(props: OverlayProps) {
           ))}
         </ScrollView>
         <View style={styles.buttonRowLayout}>
-          <Button label="Start the show" onPress={props.onBeginRound} />
-          <Button label="Back" onPress={props.onBackToTitle} tone="secondary" compact />
+          <Button label={strings.briefing.start} onPress={props.onBeginRound} />
+          <Button
+            label={strings.common.back}
+            onPress={props.onBackToTitle}
+            tone="secondary"
+            compact
+          />
         </View>
       </View>
     );
@@ -360,12 +423,13 @@ export function Overlays(props: OverlayProps) {
   if (state === 'PAUSED') {
     return (
       <View style={styles.scrim}>
-        <Text style={styles.title}>Paused</Text>
+        <Text style={styles.title}>{strings.pause.title}</Text>
         <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
         <View style={styles.buttonRowLayout}>
-          <Button label="Resume" onPress={props.onResume} />
+          <Button label={strings.pause.resume} onPress={props.onResume} />
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
-          <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon />
+          <LanguageToggle onPress={props.onCycleLocale} />
+          <Button label={strings.common.quitToTitle} onPress={props.onQuit} tone="secondary" icon />
         </View>
       </View>
     );
@@ -378,9 +442,15 @@ export function Overlays(props: OverlayProps) {
   return (
     <View style={styles.scrim}>
       <Text style={[styles.title, { color: complete ? THEME.integrityFull : THEME.accent }]}>
-        {nextStageWaiting ? `STAGE ${stage.number} CLEARED` : complete ? 'SHOW COMPLETE' : 'SHOW RUINED'}
+        {nextStageWaiting
+          ? format(strings.results.stageCleared, { number: stage.number })
+          : complete
+            ? strings.results.showComplete
+            : strings.results.showRuined}
       </Text>
-      <Text style={styles.body}>{outcomeLine(stage, complete, nextStageWaiting)}</Text>
+      <Text style={styles.body}>
+        {outcomeLine(strings.results, stage, complete, nextStageWaiting)}
+      </Text>
       <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
       {/**
        * The buttons are drawn immediately and deaf for a moment (M18.1).
@@ -393,15 +463,21 @@ export function Overlays(props: OverlayProps) {
        */}
       <View style={styles.buttonRowLayout}>
         {nextStageWaiting ? (
-          <Button label="Next stage" onPress={props.onNextStage} disabled={!armed} />
+          <Button label={strings.results.nextStage} onPress={props.onNextStage} disabled={!armed} />
         ) : (
           <Button
-            label={complete ? 'Play again' : 'Retry stage'}
+            label={complete ? strings.results.playAgain : strings.results.retryStage}
             onPress={props.onRestart}
             disabled={!armed}
           />
         )}
-        <Button label="Quit to title" onPress={props.onQuit} tone="secondary" icon disabled={!armed} />
+        <Button
+          label={strings.common.quitToTitle}
+          onPress={props.onQuit}
+          tone="secondary"
+          icon
+          disabled={!armed}
+        />
       </View>
     </View>
   );
@@ -413,11 +489,16 @@ export function Overlays(props: OverlayProps) {
  * Stage-aware, because the encouragement after a defense-only stage must not
  * tell the player they failed to keep a beat they were never asked for.
  */
-function outcomeLine(stage: StageDefinition, complete: boolean, nextStageWaiting: boolean): string {
-  if (nextStageWaiting) return 'You can hold the line. Now do it while you drum.';
-  if (complete) return 'You kept the groove alive. Somehow.';
-  if (!stage.groove) return 'The kit took three hits. Watch the crowd, not the floor.';
-  return 'The gig fell apart. Try to keep the beat while you defend the kit.';
+function outcomeLine(
+  results: Catalogue['results'],
+  stage: StageDefinition,
+  complete: boolean,
+  nextStageWaiting: boolean,
+): string {
+  if (nextStageWaiting) return results.outcomeStageCleared;
+  if (complete) return results.outcomeShowComplete;
+  if (!stage.groove) return results.outcomeDefenseRuined;
+  return results.outcomeGrooveRuined;
 }
 
 const styles = StyleSheet.create({

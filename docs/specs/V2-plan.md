@@ -67,7 +67,7 @@ One external action remains and it **blocks EAS builds**: the EAS project is
 still named `worst-band-ever` on expo.dev and must be renamed there. See
 `docs/specs/M18.5-final-release-identity-report.md`.
 
-### M19 — Locale foundation
+### M19 — Locale foundation — **IMPLEMENTED (2026-09-04), not yet played**
 
 Every user-visible string into typed localization catalogues. **English only —
 no translation yet.** Locale detection plus an explicit in-game language
@@ -75,6 +75,24 @@ selector, because a language you cannot select is a language you cannot check.
 
 Ends with the game looking identical, running out of a catalogue, and a test
 that fails if any user-visible literal is left behind.
+
+Delivered as specified, on `m19/locale-foundation`. Spec and decisions:
+`docs/specs/M19-locale-foundation.md`. `npm run verify` green at 390 tests.
+
+Three things the plan above did not settle, decided in the spec:
+
+- **No i18n runtime.** `expo-localization` is the one dependency, and only for
+  reading the device's languages. `Catalogue = typeof en` makes a locale's
+  completeness a `tsc` error, which is worth more here than plural rules and
+  lazy loading.
+- **The domain lost its prose.** `stages.ts` and `storyState.ts` hold ids;
+  the catalogue holds the sentences, keyed by the same ids.
+- **The language control is invisible until there is a choice.** It is built,
+  wired and tested; adding `pt-BR` to `SUPPORTED_LOCALES` is all that makes it
+  appear.
+
+Outstanding: a native module was added, so the dev client needs rebuilding, and
+**nothing has been run on a device.**
 
 ### M20 — Translation-safe layout
 
@@ -134,9 +152,10 @@ and in the pause overlay, nowhere else.
 1. **Which languages?** pt-BR is certain. Spanish is the cheapest next reach;
    English is already there. Every added locale is ongoing cost on every copy
    change, so this is a commitment, not a checkbox.
-2. **Does the title translate?** Recommended no — see above. Saying yes costs
-   an art regeneration of `01_poster.jpg` per locale and a store identity per
-   market.
+2. **Does the title translate?** **Settled: no.** Recorded at M18.5 in
+   `docs/release/product-identity.md` and enforced at M19 by keeping
+   `WORST GIG EVER` a constant in `game/config/product.ts` rather than a
+   catalogue string, with a test that fails if it becomes one.
 3. **Who writes pt-BR?** Recommended: the owner, because the jokes are the
    product. If it is me, the lines need reviewing rather than accepting.
 4. **Where does the music sync go?** It is decided, unbuilt, and unrelated to

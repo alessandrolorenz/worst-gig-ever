@@ -16,6 +16,8 @@ import { GROOVE_PULSE, isUnscoredLeadBeat } from '../config/rhythm.ts';
 import { REFERENCE_CANVAS } from '../config/stage.ts';
 import { GROOVE_PANEL, GROOVE_PANEL_ROWS, HUD_MARGIN } from './hudLayout.ts';
 import { THEME } from './theme.ts';
+import { format } from '../i18n/format.ts';
+import { useStrings } from '../i18n/LocaleContext.tsx';
 import {
   isPadPulsing,
   judgementFreshness,
@@ -34,6 +36,7 @@ export function Hud({
   rhythm: RhythmState;
   grooveEnabled: boolean;
 }) {
+  const strings = useStrings();
   const secondsLeft = Math.ceil(remainingMs(round) / 1000);
   const multiplier = comboMultiplier(round.combo);
   const timeFraction = 1 - remainingMs(round) / round.level.durationMs;
@@ -42,27 +45,29 @@ export function Hud({
     <>
       <View style={styles.root} pointerEvents="none">
         <View style={styles.left}>
-          <Text style={styles.label}>DEFENSE</Text>
+          <Text style={styles.label}>{strings.hud.defense}</Text>
           <Text style={styles.score}>{round.score}</Text>
           {/* Fixed-height row, so the combo appearing cannot move the score. */}
           <View style={styles.comboRow}>
             {round.combo > 0 && (
               <Text style={styles.combo}>
-                {round.combo} HIT COMBO {multiplier > 1 ? `x${multiplier}` : ''}
+                {multiplier > 1
+                  ? format(strings.hud.comboMultiplied, { count: round.combo, multiplier })
+                  : format(strings.hud.combo, { count: round.combo })}
               </Text>
             )}
           </View>
         </View>
 
         <View style={styles.centre}>
-          <Text style={styles.timer}>{secondsLeft}s</Text>
+          <Text style={styles.timer}>{format(strings.hud.secondsLeft, { seconds: secondsLeft })}</Text>
           <View style={styles.timerTrack}>
             <View style={[styles.timerFill, { width: `${Math.min(100, timeFraction * 100)}%` }]} />
           </View>
         </View>
 
         <View style={styles.right}>
-          <Text style={styles.label}>SHOW INTEGRITY</Text>
+          <Text style={styles.label}>{strings.hud.showIntegrity}</Text>
           <View style={styles.pips}>
             {Array.from({ length: round.level.startingIntegrity }, (_, i) => (
               <View
@@ -100,6 +105,7 @@ export function Hud({
  * targets arrive — see `hudLayout.ts`.
  */
 function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }) {
+  const strings = useStrings();
   const clockMs = pulseClockMs(round.state, round.elapsedMs, round.countdownMs);
   const leadIn =
     isPadPulsing(round.state) && (clockMs < 0 || isUnscoredLeadBeat(upcomingBeatIndex(clockMs)));
@@ -108,12 +114,14 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
 
   return (
     <View style={styles.groovePanel} pointerEvents="none">
-      <Text style={styles.grooveLabel}>GROOVE</Text>
+      <Text style={styles.grooveLabel}>{strings.hud.groove}</Text>
       <Text style={styles.grooveScore}>{rhythm.score}</Text>
 
       <View style={styles.grooveStreakRow}>
         {rhythm.streak > 0 && (
-          <Text style={styles.grooveStreak}>{rhythm.streak} BEAT STREAK</Text>
+          <Text style={styles.grooveStreak}>
+            {format(strings.hud.beatStreak, { count: rhythm.streak })}
+          </Text>
         )}
       </View>
 
@@ -125,7 +133,7 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
        */}
       <View style={styles.grooveJudgementRow}>
         {leadIn ? (
-          <Text style={styles.grooveLeadIn}>GET READY</Text>
+          <Text style={styles.grooveLeadIn}>{strings.hud.getReady}</Text>
         ) : (
           labelAge > 0 &&
           judgement !== null && (
@@ -138,7 +146,7 @@ function GrooveHud({ round, rhythm }: { round: RoundState; rhythm: RhythmState }
                 },
               ]}
             >
-              {judgement.grade === 'perfect' ? 'PERFECT' : 'GOOD'}
+              {judgement.grade === 'perfect' ? strings.hud.perfect : strings.hud.good}
             </Text>
           )
         )}

@@ -4,10 +4,11 @@
  * Source of truth: docs/specs/M15-story-briefings-and-two-stages.md
  *
  * This module owns *when* the story advances and nothing about how it looks.
- * It imports no React and no React Native and names no image file, so the
- * whole sequence is assertable without a renderer (AGENTS.md rule 4). The
- * mapping from a panel id to a bundled JPEG is made once, in
- * `game/rendering/storyAssets.ts`.
+ * It imports no React and no React Native, names no image file and — since
+ * M19 — carries no caption, so the whole sequence is assertable without a
+ * renderer (AGENTS.md rule 4). A panel id is resolved to a bundled JPEG in
+ * `game/rendering/storyAssets.ts` and to a caption in
+ * `game/i18n/catalogues/en.ts`, each exactly once.
  *
  * ## One clock, and it is the engine's
  *
@@ -23,11 +24,19 @@
  * per-frame JavaScript applies to a menu as much as to a round.
  */
 
+/**
+ * The five panels, as a literal union.
+ *
+ * The id is the key into two registries — `storyAssets.ts` for the JPEG and
+ * the string catalogue for the caption — so it is a union rather than
+ * `string`: a panel added without a still or without a caption is a type error
+ * rather than a blank screen.
+ */
+export type StoryPanelId = 'poster' | 'arrival' | 'setup' | 'performance' | 'soundDesk';
+
 export interface StoryPanel {
-  /** Stable key; `storyAssets.ts` maps it to a file. */
-  readonly id: string;
-  /** The single line printed under the still. */
-  readonly caption: string;
+  /** Stable key; `storyAssets.ts` maps it to a file and the catalogue to a caption. */
+  readonly id: StoryPanelId;
   /** How long this panel holds before the story advances by itself. */
   readonly holdMs: number;
 }
@@ -52,11 +61,11 @@ const DEFAULT_HOLD_MS = 3600;
  * anywhere else. It holds longer than the rest for that reason.
  */
 export const STORY_PANELS: readonly StoryPanel[] = [
-  { id: 'poster', caption: 'One night only. Nobody asked for it.', holdMs: DEFAULT_HOLD_MS },
-  { id: 'arrival', caption: 'You went anyway.', holdMs: DEFAULT_HOLD_MS },
-  { id: 'setup', caption: 'Load in. Bolt it down. Hope.', holdMs: DEFAULT_HOLD_MS },
-  { id: 'performance', caption: 'For about four songs, it worked.', holdMs: DEFAULT_HOLD_MS },
-  { id: 'soundDesk', caption: 'Then a beer found the mixing desk.', holdMs: 4400 },
+  { id: 'poster', holdMs: DEFAULT_HOLD_MS },
+  { id: 'arrival', holdMs: DEFAULT_HOLD_MS },
+  { id: 'setup', holdMs: DEFAULT_HOLD_MS },
+  { id: 'performance', holdMs: DEFAULT_HOLD_MS },
+  { id: 'soundDesk', holdMs: 4400 },
 ];
 
 export interface StoryState {

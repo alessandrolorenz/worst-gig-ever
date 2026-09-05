@@ -16,8 +16,49 @@ and their migration is pre-release debt tracked in ADR 0010.
 Galaxy S23 FE: *"achei que esta tudo massa... Daí acho que fechou o mvp."*
 
 This is the first time the project has had a build the owner played end to end
-and asked nothing further of. Everything below is either done or deliberately
-deferred; nothing is in progress.
+and asked nothing further of.
+
+**V2 is now under way and its focus is internationalization** — owner decision,
+2026-09-04: *"o foco da v2 será a internacionalização."* Road map:
+`docs/specs/V2-plan.md`.
+
+| | Milestone | State |
+|---|---|---|
+| M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
+| M19 | Locale foundation | **implemented, unplayed** (2026-09-04) on `m19/locale-foundation`. See below |
+| M20 | Translation-safe layout | not started |
+| M21 | pt-BR | not started |
+
+### M19 — locale foundation (implemented 2026-09-04, not yet played)
+
+Every user-visible string is out of the components and into a typed catalogue.
+**No translation and no copy change**: the strings in `game/i18n/catalogues/en.ts`
+are the strings that were on screen the day before, character for character, so
+the game is meant to look identical.
+
+| | |
+|---|---|
+| Spec | `docs/specs/M19-locale-foundation.md` |
+| Catalogue | `game/i18n/catalogues/en.ts`; `Catalogue = typeof en`, so a locale missing a key fails in `tsc` rather than at runtime in that locale |
+| Dependency added | `expo-localization` (~16.1.6) — **one**, and only for reading the device's languages. No i18n runtime: AGENTS.md rule 18, and a library would trade away the compile-time completeness above |
+| Domain change | `stages.ts` and `storyState.ts` now carry ids and no prose. `stage.name/subtitle/briefing` and `panel.caption` are gone; the catalogue is keyed by the same ids the JPEG registry already used |
+| Title | `WORST GIG EVER` is a constant in `game/config/product.ts`, deliberately **not** a catalogue string — `docs/release/product-identity.md` forbids translating it |
+| Language control | Built, wired to `flow.locale`, drawn on the title and pause rows. **Invisible while one locale exists**, which is M19's own state; adding `pt-BR` to `SUPPORTED_LOCALES` is the whole of what makes it appear |
+| Gate | `npm run verify` green — 390 tests, 0 failures (20 new in `tests/localization.test.ts`) |
+
+**A native module was added, so the dev client must be rebuilt** before the app
+will start — `npx expo run:android`. An Android bundle exports cleanly and every
+extracted string appears exactly once in it, but **nothing has been run on a
+device or emulator**. That is the outstanding validation, and the thing to look
+for is a screen where text vanished rather than moved.
+
+**The briefing-overflow budget in `tests/mugDrink.test.ts` now measures English
+and only English.** It is the exact bug the V2 plan predicts will repeat:
+Portuguese runs 15-25% longer, so this gate passing says nothing about whether
+the card holds a translation. Making it length-independent is M20, before any
+translation lands, not after.
+
+Everything else below is either done or deliberately deferred.
 
 ### What the MVP is
 

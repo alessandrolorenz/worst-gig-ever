@@ -18,11 +18,14 @@ import { createSceneEntities, type GameEntities } from '../entities/sceneEntitie
 import { Overlays } from '../rendering/Overlays.tsx';
 import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
+import { detectLocale } from '../i18n/deviceLocale.ts';
+import { LocaleProvider } from '../i18n/LocaleContext.tsx';
 import { stageAt } from '../levels/stages.ts';
 import type { GameState } from '../state/gameState.ts';
 import {
   advanceToNextStage,
   beginRound,
+  cycleLocale,
   finishIntro,
   recordStageCleared,
   replayIntro,
@@ -56,9 +59,15 @@ export default function GameEngine() {
 
   const entitiesRef = useRef<GameEntities | null>(null);
   if (entitiesRef.current === null) {
+    /*
+     * The device's language is read once, here, at the boundary that already
+     * owns the device — not inside `createAppFlow`, which stays pure so the
+     * domain tests can build a flow without a native module (M19).
+     */
     entitiesRef.current = createSceneEntities(
       audioRef.current,
       SceneRenderer as unknown as React.ComponentType<never>,
+      detectLocale(),
     );
   }
 
@@ -159,6 +168,19 @@ export default function GameEngine() {
    */
   const handleToggleClick = useCallback(() => {
     toggleClick(entities.scene.flow);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
+  /**
+   * The language control (M19).
+   *
+   * Exactly the shape of the click switch above: it flips a field on the flow
+   * and nothing else. No round is touched, no audio call is made, and nothing
+   * is reset — a player switching language mid-pause resumes the same round,
+   * reading it in the other language.
+   */
+  const handleCycleLocale = useCallback(() => {
+    cycleLocale(entities.scene.flow);
     refreshFlow();
   }, [entities, refreshFlow]);
 
@@ -279,37 +301,40 @@ export default function GameEngine() {
   const scene = entities.scene;
 
   return (
-    <View style={styles.root}>
-      <EngineComponent
-        systems={[flowSystem, roundSystem]}
-        entities={entities}
-        running
-        style={styles.engine}
-      >
-        <Overlays
-          flow={scene.flow}
-          stage={scene.stage}
-          state={uiState}
-          round={scene.round}
-          rhythm={scene.rhythm}
-          story={scene.story}
-          audioAvailable={audio.available}
-          onStoryAdvance={handleStoryAdvance}
-          onStorySkip={handleStorySkip}
-          onSelectStage={handleSelectStage}
-          onReplayStory={handleReplayStory}
-          onShowBriefing={handleShowBriefing}
-          onBeginRound={handleBeginRound}
-          onBackToTitle={handleBackToTitle}
-          onPause={handlePause}
-          onResume={handleResume}
-          onRestart={handleRestart}
-          onNextStage={handleNextStage}
-          onQuit={handleQuit}
-          onToggleClick={handleToggleClick}
-        />
-      </EngineComponent>
-    </View>
+    <LocaleProvider locale={scene.flow.locale}>
+      <View style={styles.root}>
+        <EngineComponent
+          systems={[flowSystem, roundSystem]}
+          entities={entities}
+          running
+          style={styles.engine}
+        >
+          <Overlays
+            flow={scene.flow}
+            stage={scene.stage}
+            state={uiState}
+            round={scene.round}
+            rhythm={scene.rhythm}
+            story={scene.story}
+            audioAvailable={audio.available}
+            onStoryAdvance={handleStoryAdvance}
+            onStorySkip={handleStorySkip}
+            onSelectStage={handleSelectStage}
+            onReplayStory={handleReplayStory}
+            onShowBriefing={handleShowBriefing}
+            onBeginRound={handleBeginRound}
+            onBackToTitle={handleBackToTitle}
+            onPause={handlePause}
+            onResume={handleResume}
+            onRestart={handleRestart}
+            onNextStage={handleNextStage}
+            onQuit={handleQuit}
+            onToggleClick={handleToggleClick}
+            onCycleLocale={handleCycleLocale}
+          />
+        </EngineComponent>
+      </View>
+    </LocaleProvider>
   );
 }
 

@@ -23,6 +23,7 @@ import {
   STORY_PANELS,
   tickStory,
 } from '../game/state/storyState.ts';
+import { en } from '../game/i18n/catalogues/en.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,8 +39,11 @@ test('the story is the five owner-supplied beats, in narrative order', () => {
 });
 
 test('every panel has a caption and a positive hold', () => {
+  // M19: the caption moved to the catalogue, keyed by the same panel id the
+  // JPEG registry uses. The pairing is what is asserted; the panel itself no
+  // longer carries English.
   for (const panel of STORY_PANELS) {
-    assert.ok(panel.caption.trim().length > 0, `${panel.id} has no caption`);
+    assert.ok(en.story[panel.id].trim().length > 0, `${panel.id} has no caption`);
     assert.ok(panel.holdMs > 0, `${panel.id} would never advance`);
   }
 });
