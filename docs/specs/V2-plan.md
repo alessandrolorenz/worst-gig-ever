@@ -211,7 +211,7 @@ Additional commercially safe tracks on the same rhythmic contract.
 | | |
 |---|---|
 | **Music on the beat clock** | **DONE 2026-09-05.** Built after the owner picked it as the next phase. It was not the milestone this row described: the show's loop was not drifting at 90 BPM, it was a 120 BPM track, and the gate measured file duration so it could never have said so. Stages 3 and 4 now play a generated 32-beat bed, and a tempo claim now requires a committed generator as evidence. See `docs/assets/AUDIO-SOURCES.md`. |
-| **Audio weight** | `crowd_applause.wav` is still the untrimmed 39 s / 6.9 MB source and the effects are not volume-normalized. Store-relevant, so M23 at the latest — but it belongs with the music work above if that lands first. |
+| **Audio weight** | **Already done, and this row was stale when it was written.** The applause was trimmed at M16 on 2026-09-04 to 5.00 s / 0.88 MB and recorded as a derivative; three documents including this one went on describing the 39 s source. Measured 2026-09-05: all nine audio files total 7.9 MB, the largest is now the stage-1 rock loop at 3.8 MB, and the only clipping anywhere is 13 samples in a third-party file. The "not volume-normalized" half is a misreading of `MIX`, which sets a deliberate per-sound level with a reason for each. |
 | **Integrity healing, drunk meter** | Deferred at M18 with reasons; each needs its own playtest. |
 | **`level01` retune (M17.1)** | Owner is leaning yes — *"acho que sim, nao estou certo"* — and it makes every past device observation incomparable when it lands. Better decided than carried. |
 | **Hermes** | Named as the lever *if* performance failed. It passed. |

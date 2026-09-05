@@ -240,9 +240,16 @@ straight to Stage 2's briefing without passing through the title.
 2. The bottom of the reference canvas can sit under the Android gesture area.
    The owner reported no swallowed taps during the M13.1 re-test; keep watching
    bottom-edge Groove Pad taps on other devices.
-3. The Groove clock intentionally is not synchronized to the music.
-4. `crowd_applause.wav` remains a 39-second, 6.9 MB source and the five audio
-   files have not been volume-normalized.
+3. The Groove clock intentionally is not driven by the music, and that has not
+   changed. What changed on 2026-09-05 is that the music no longer *disagrees*
+   with it: the show's bed used to be a 120 BPM track under a 90 BPM clock.
+   See `docs/assets/AUDIO-SOURCES.md`.
+4. **Done, and this entry was stale from M16 to 2026-09-05.** The applause was
+   trimmed on 2026-09-04 — it is 5.00 s / 0.88 MB, not 39 s / 6.9 MB — and the
+   derivative was recorded in `docs/assets/AUDIO-SOURCES.md` at the time; only
+   this list was never updated. The "not volume-normalized" half is not a
+   defect either: `MIX` sets a per-sound level with a stated reason for each,
+   so normalizing the files would discard tuning rather than add any.
 5. **Done at M18.5.** The Expo slug is `worst-gig-ever` and the application id
    is `com.worstgigever.app`. Anything installed before M18.5 uses the old
    package id and will not upgrade — uninstall it. The EAS project rename on
