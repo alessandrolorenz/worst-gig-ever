@@ -410,11 +410,22 @@ test('the round composition is the same at any tick size', () => {
    * cadence is re-based on the tick that reopens a phase, which is M4
    * behaviour that predates this milestone and is untouched by it. The test
    * above is what holds the countdown responsible for the schedule.
+   *
+   * Durations are compared within a tolerance rather than exactly, and only
+   * since M17.1 put curves on the show. A curve is sampled at the spawn
+   * instant, and that instant is the re-based one above, so a coarser tick can
+   * sample it a few milliseconds along and scale the drawn duration very
+   * slightly differently. It is bounded and small: measured across tick sizes
+   * from 8 ms to the 100 ms clamp, no throw ever changed kind or window and
+   * the worst duration difference was 0.33 ms on the show and 1.03 ms on the
+   * encore, against approaches of 1400-2350 ms. What rule 5 is about — which
+   * objects come, and whether they are fast — stays exact, and is asserted
+   * exactly below.
    */
   const play = (stepMs: number) => {
     const state = counting();
     while (state.state === 'COUNTDOWN') tickRound(state, stepMs);
-    const spawns: string[] = [];
+    const spawns: { id: number; kind: string; durationMs: number }[] = [];
     let lastId = 0;
     while (state.elapsedMs < state.level.durationMs) {
       tickRound(state, stepMs);
@@ -423,7 +434,7 @@ test('the round composition is the same at any tick size', () => {
       for (const target of state.targets) {
         if (target.id > lastId) {
           lastId = target.id;
-          spawns.push(`${target.id}:${target.kind}:${Math.round(target.durationMs)}`);
+          spawns.push({ id: target.id, kind: target.kind, durationMs: target.durationMs });
         }
       }
     }
@@ -432,8 +443,23 @@ test('the round composition is the same at any tick size', () => {
 
   const fine = play(16);
   assert.ok(fine.length > 20, 'expected a useful number of spawns');
-  assert.deepEqual(play(33), fine);
-  assert.deepEqual(play(50), fine);
+
+  /** Far below the gap between a fast window and a normal one, which is 200 ms. */
+  const TOLERANCE_MS = 5;
+
+  for (const stepMs of [33, 50, 100]) {
+    const coarse = play(stepMs);
+    assert.equal(coarse.length, fine.length, `tick ${stepMs} threw a different count`);
+    for (let i = 0; i < fine.length; i += 1) {
+      assert.equal(coarse[i].id, fine[i].id, `tick ${stepMs} reordered the throws`);
+      assert.equal(coarse[i].kind, fine[i].kind, `tick ${stepMs} threw a different object`);
+      assert.ok(
+        Math.abs(coarse[i].durationMs - fine[i].durationMs) <= TOLERANCE_MS,
+        `tick ${stepMs} moved throw ${fine[i].id} by ` +
+          `${Math.abs(coarse[i].durationMs - fine[i].durationMs).toFixed(3)}ms`,
+      );
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------

@@ -237,7 +237,48 @@ The trade is not avoidable. To redistribute a fixed load into a ramp, one end
 has to come down, and the end available is the one with the physical baseline
 behind it. Both stay well clear of the encore at their peak — 809 ms of gap
 against its 567, 1544 ms of approach against its 1404, 3.7 fastballs against
-its 7.3. The reason to hold the line here is
+its 7.3.
+
+### Decided, 2026-09-05: B, and M17.1 is done
+
+The owner chose **B** against this table, which is the explicit go-ahead the
+milestone required and the one time it was allowed to ask. `level01` now
+carries `speedCurve: { start: 1.0, end: 0.88 }`, `fastballCurve:
+{ start: 0.2, end: 0.28 }`, and ramped cadence on its second and third phases.
+Structure is untouched.
+
+**The guard did not go away when the baseline moved.** `level01` came off the
+pre-M17 golden list, which now proves the no-op for the two teaching rounds
+only, and got a signature of its own — `2f1801cdbe5c9c35`, the retuned stream,
+recorded the day it was approved. `stageFlow.test.ts` separately pins the half
+of the decision that was the *reason* to pick B: the first phase's flat 1800 ms
+cadence, its absent ramp, and both curves starting at the validated round's own
+values. Moving any of them fails a test rather than a playtest.
+
+Five other tests moved, and each for its own reason rather than to make the
+build green:
+
+- **Phase lookup and window bounds** read the show's numbers directly. The
+  windows are now *scaled* by `speedCurve`, so a bottle drawn at its 1450 ms
+  floor late in the round legitimately crosses in 1276 ms; asserting the raw
+  window would have called the curve a bug.
+- **The tick-size test** now compares durations within 5 ms instead of exactly.
+  A curve is sampled at the spawn instant, and that instant is re-based on the
+  tick that reopens a phase, so a coarser tick samples it slightly along.
+  Measured from 8 ms to the 100 ms clamp: **no throw ever changed kind or
+  window**, and the worst duration difference was 0.33 ms on the show and
+  1.03 ms on the encore against approaches of 1400-2350 ms. Which objects come
+  and whether they are fast — what rule 5 is actually about — is still
+  asserted exactly. The encore has had this property since M17 and nothing
+  covered it; the show is what exposed it.
+- **The curve-identity test** dropped `level01` from its list, because the show
+  now declares curves. The two teaching rounds still prove the machinery stays
+  inert where nothing opts in.
+
+**Every earlier device observation of the show is now measured against a
+different round.** That was the known price, it is why the milestone was
+allowed exactly one question, and it is why the retest checklist gets a new
+section. The reason to hold the line here is
 concrete rather than procedural: `level01` is the only round with a physical
 baseline behind it, and the moment it is retuned, every earlier device
 observation stops being comparable. A decision made against measured

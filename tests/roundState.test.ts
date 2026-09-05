@@ -479,9 +479,9 @@ test('concurrent targets never exceed the configured maximum', () => {
 test('phase lookup matches the level schedule', () => {
   assert.equal(phaseAt(level01, 0)?.spawnEveryMs, 1800);
   assert.equal(phaseAt(level01, 14_999)?.spawnEveryMs, 1800);
-  assert.equal(phaseAt(level01, 15_000)?.spawnEveryMs, 1300);
+  assert.equal(phaseAt(level01, 15_000)?.spawnEveryMs, 1350);
   assert.equal(phaseAt(level01, 40_000), null, 'the vocalist window must be unscheduled');
-  assert.equal(phaseAt(level01, 50_000)?.spawnEveryMs, 850);
+  assert.equal(phaseAt(level01, 50_000)?.spawnEveryMs, 880);
   assert.equal(phaseAt(level01, level01.durationMs), null);
 });
 
@@ -625,14 +625,25 @@ test('a round throws from both windows, and never from between them', () => {
 
   const throws = [...thrown.values()];
   assert.ok(throws.length > 10, `only ${throws.length} throws in a full round`);
+
+  /*
+   * The windows are *scaled* since M17.1 put a `speedCurve` on the show, so a
+   * throw is checked against the widest span the curve can produce rather than
+   * against the authored numbers. A bottle drawn at its 1450 ms floor late in
+   * the round legitimately crosses in 1276 ms, and asserting the raw window
+   * would call the curve a bug.
+   */
+  const curve = level01.speedCurve ?? { start: 1, end: 1 };
+  const widest = Math.max(curve.start, curve.end);
+  const tightest = Math.min(curve.start, curve.end);
   const isFast = ({ kind, durationMs }: { kind: 'beerBottle' | 'beerMug'; durationMs: number }) =>
-    durationMs <= TARGET_DEFINITIONS[kind].fastApproachMs.maxMs;
+    durationMs <= TARGET_DEFINITIONS[kind].fastApproachMs.maxMs * widest;
 
   for (const target of throws) {
     const { approachMs, fastApproachMs } = TARGET_DEFINITIONS[target.kind];
     const window = isFast(target) ? fastApproachMs : approachMs;
     assert.ok(
-      target.durationMs >= window.minMs && target.durationMs <= window.maxMs,
+      target.durationMs >= window.minMs * tightest && target.durationMs <= window.maxMs * widest,
       `a ${target.kind} crossed in ${target.durationMs.toFixed(0)}ms, outside both windows`,
     );
   }

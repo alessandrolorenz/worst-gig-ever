@@ -101,22 +101,19 @@ function mean(values: readonly number[]): number {
 // The machinery is a no-op on the levels that do not opt in
 // ---------------------------------------------------------------------------
 
-test('M17 does not move a single throw in any pre-M17 level', () => {
+test('M17 did not move a throw in the levels that never opted in', () => {
   /*
-   * The load-bearing test of this milestone.
+   * The load-bearing test of M17, narrowed by M17.1 rather than weakened.
    *
-   * `level01` is the round the owner validated at M13.1, approved at M14, and
-   * whose performance retest is *still open*. If M17 changed one spawn time,
-   * one duration, or one lane in it, that retest would be measuring a
-   * different round than the APK it is being compared against.
+   * These two signatures are still the pre-M17 ones, recorded from the tree
+   * immediately before the scheduler was rewritten, so they encode the *old*
+   * behaviour and any drift at all breaks them. Neither level has taken a
+   * curve and neither is expected to.
    *
-   * These signatures are the full spawn stream — time, kind, duration to six
-   * decimals, and lane — hashed. They were recorded from the tree immediately
-   * before the scheduler was rewritten, so they encode the *old* behaviour and
-   * any drift at all breaks them.
+   * `level01` used to be on this list and moved to the test below. It is not a
+   * relaxation: it now has a signature of its own, pinned just as hard.
    */
   const golden: readonly [string, LevelDefinition, number, string][] = [
-    ['level01', level01, 37, 'b660a9171763ef75'],
     ['defenseDrill', defenseDrill, 31, '26919fa035ee6f90'],
     ['findTheBeat', findTheBeat, 10, 'a939ba26283c2800'],
   ];
@@ -126,6 +123,25 @@ test('M17 does not move a single throw in any pre-M17 level', () => {
     assert.equal(spawns.length, count, `${name} spawn count moved`);
     assert.equal(signature(spawns), hash, `${name} schedule changed under M17`);
   }
+});
+
+test('the show is pinned to the schedule M17.1 was approved on', () => {
+  /*
+   * `level01` is the round the owner validated at M13.1 and approved at M14,
+   * and it was byte-identical from then until M17.1 retuned it on 2026-09-05
+   * with an explicit go-ahead, given against the measurement table in
+   * `docs/specs/M17-difficulty-curve-and-throw-patterns.md`.
+   *
+   * The guard does not go away just because the baseline moved once, on
+   * purpose, with permission. This signature is the retuned stream, recorded
+   * the day it was approved: the show is again a round that cannot drift
+   * without somebody being told. Every device observation from before that
+   * date is measured against a different round, which is exactly why the
+   * retune needed asking for.
+   */
+  const spawns = playSchedule(level01);
+  assert.equal(spawns.length, 37, 'the show spawn count moved');
+  assert.equal(signature(spawns), '2f1801cdbe5c9c35', 'the show schedule changed after M17.1');
 });
 
 test('a level with no curves makes exactly the generator calls it always did', () => {
@@ -153,7 +169,10 @@ test('a level with no curves makes exactly the generator calls it always did', (
 });
 
 test('the curve helpers are identities when a level declares no curve', () => {
-  for (const level of [level01, defenseDrill, findTheBeat]) {
+  // `level01` is no longer in this list: M17.1 gave the show a curve of its
+  // own. The two teaching rounds still declare none, and this is what proves
+  // the machinery stays inert for them.
+  for (const level of [defenseDrill, findTheBeat]) {
     for (const atMs of [0, level.durationMs / 2, level.durationMs]) {
       assert.equal(speedScaleAt(level, atMs), 1, `${level.id} scaled a duration`);
       assert.equal(fastballChanceAt(level, atMs), FASTBALL_CHANCE, `${level.id} moved fastballs`);

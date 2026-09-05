@@ -35,6 +35,7 @@ import {
   STAGES,
   stageAt,
 } from '../game/levels/stages.ts';
+import { FASTBALL_CHANCE } from '../game/config/targets.ts';
 import { en } from '../game/i18n/catalogues/en.ts';
 import { defenseDrill } from '../game/levels/defenseDrill.ts';
 import { encore } from '../game/levels/encore.ts';
@@ -118,21 +119,49 @@ test('every stage draws from its own seed', () => {
   assert.equal(new Set(seeds).size, seeds.length, 'two stages would rehearse each other');
 });
 
-test('Stage 3 is the validated round, untouched', () => {
-  // The M13.1/M14 difficulty freeze, read from the level the stage points at.
+test("Stage 3 keeps the validated round's structure, and its opening", () => {
+  /*
+   * The M13.1/M14 freeze, read from the level the stage points at. M17.1
+   * retuned the show's *curve* on 2026-09-05 with the owner's explicit
+   * go-ahead; it did not touch the round's shape, and the difference matters
+   * enough to assert separately.
+   */
   assert.equal(level01.durationMs, 60_000);
   assert.equal(level01.startingIntegrity, 3);
   assert.equal(level01.vocalistEventAtMs, 41_000);
   assert.equal(level01.maxConcurrentTargets, 4);
   assert.equal(level01.randomSeed, 1);
   assert.deepEqual(
-    level01.phases.map((phase) => [phase.fromMs, phase.toMs, phase.spawnEveryMs]),
+    level01.phases.map((phase) => [phase.fromMs, phase.toMs]),
     [
-      [0, 15_000, 1800],
-      [15_000, 35_000, 1300],
-      [45_000, 60_000, 850],
+      [0, 15_000],
+      [15_000, 35_000],
+      [45_000, 60_000],
     ],
+    'the phase boundaries are structure, not tuning, and M17.1 did not move them',
   );
+
+  /*
+   * The opening is the half of the retune the owner chose. Of two measured
+   * candidates, the one taken leaves the first phase alone — flat cadence,
+   * bottles only — and starts both curves at the values the validated round
+   * already ran at, so a player's first twenty seconds are the ones that were
+   * approved on a physical device. If any of these three move, that promise
+   * is gone and it should be a decision rather than a diff.
+   */
+  assert.equal(level01.phases[0].spawnEveryMs, 1800, 'the show opens at its validated cadence');
+  assert.equal(level01.phases[0].spawnEveryToMs, undefined, 'the opening phase must not ramp');
+  assert.equal(level01.speedCurve?.start, 1, 'the show must open at the validated approach speed');
+  assert.equal(
+    level01.fastballCurve?.start,
+    FASTBALL_CHANCE,
+    'the show must open at the validated fastball chance',
+  );
+
+  // And the escalation only ever tightens. A curve that ended above its start
+  // would be an anticlimax dressed as a ramp, which is the defect M17.1 fixed.
+  assert.ok(level01.speedCurve && level01.speedCurve.end < level01.speedCurve.start);
+  assert.ok(level01.fastballCurve && level01.fastballCurve.end > level01.fastballCurve.start);
 });
 
 test('the drill is a real, losable round rather than a demo', () => {

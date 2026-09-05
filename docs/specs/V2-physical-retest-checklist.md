@@ -86,7 +86,26 @@ screen. The mug used to play in the bottom-right corner, under one of them.
       rather than as a picture pasted on the screen.
 - [ ] Two mugs drunk in quick succession still play one animation, not two.
 
-## 7. Anything that got worse
+## 7. The show's difficulty (M17.1, 2026-09-05)
+
+Stage 3 was retuned. Its opening is deliberately the round you already
+approved — flat 1800 ms cadence, bottles only, same approach speed — so the
+first twenty seconds should feel like nothing changed. Everything after should
+build.
+
+- [ ] The first twenty seconds feel like the show you validated.
+- [ ] The last third feels like a climax rather than just a busier middle.
+      Measured, it now gets faster objects and more fastballs, not only a
+      tighter cadence; before this it got *slower* objects.
+- [ ] It is still clearly easier than the Encore.
+- [ ] It is not *too* hard now: the round is net harder on purpose, about nine
+      fastballs a play against seven and a half.
+
+**This is the one to be honest about.** Every earlier device observation of the
+show is now measured against a different round, so if the difficulty is wrong
+here it has to be said rather than carried.
+
+## 8. Anything that got worse
 
 The briefing card, the HUD columns and the results summary all changed shape in
 M20. They were measured, not eyeballed, so the thing to report is anything that
