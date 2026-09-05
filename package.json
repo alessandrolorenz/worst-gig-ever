@@ -27,6 +27,7 @@
     "make:bed": "node scripts/make-groove-bed.mjs",
     "verify": "npm run type-check && npm run lint && npm test && npm run validate:art -- --require-ready && npm run measure:art -- --require-continuity",
     "measure:art": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-art-bounds.mjs",
+    "measure:rounds": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/measure-round-pressure.mjs",
     "make:gulp": "node scripts/make-mug-gulp.mjs"
   },
   "dependencies": {

@@ -181,7 +181,63 @@ So M17 splits:
 Asked on 2026-09-04 whether M17.1 may retune `level01`, the owner answered
 *"acho que sim, não estou certo"* — leaning yes, not decided. That is recorded
 as a **leaning, not an approval**, and M17.1 must therefore ask again, once,
-with the measurement table in hand. The reason to hold the line here is
+with the measurement table in hand.
+
+### The measurement, taken 2026-09-05
+
+`npm run measure:rounds` replays every round through the real `tickRound` and
+reports the four figures this milestone asks for. Two things had to be got
+right before any number here meant anything:
+
+**One seed is not a measurement.** Retuning the cadence changes *when* throws
+happen, which changes the order draws come out of the seeded generator, which
+changes which throws are fast. At the show's own seed the fastballs fall 3/4/1
+across its thirds, and a candidate that *raises* the fastball chance at the end
+still came out 3/3/1 — not because the tuning failed but because the stream
+moved. Every figure below is a mean over **200 seeds**.
+
+**Approach time is dominated by the object, not the curve.** A mug's window is
+1800-2350 ms against a bottle's 1450-1950. The show's first phase is
+bottles-only and its later phases are not, so the raw approach column must be
+read within a phase and never across the round.
+
+| | gap 1/2/3 | approach 1/2/3 | fastballs 1/2/3 | total |
+|---|---|---|---|---|
+| **Show, as validated** | 1700 / 1300 / 850 | 1640 / 1764 / 1767 | 2.2 / 2.5 / 2.8 | 37.0 throws, 7.5 fast (20.3%) |
+| Encore | 1508 / 771 / 567 | 1749 / 1623 / 1404 | 0.9 / 3.8 / 7.3 | 54.7 throws, 12.0 fast (22.0%), 8.1 volleys |
+
+**The diagnosis is sharper than "the show does not use the curve".** The show
+escalates on exactly one axis. Its cadence tightens properly, 1700 to 850 —
+but its objects get *slower* across the round, 1640 to 1767, and its fastballs
+are flat at 2.2 / 2.5 / 2.8. Measured on object speed, the show's final phase,
+the one the spec calls "peak pressure to the end of the show", is its **easiest
+stretch**. The encore ramps all three together, which is what makes it read as
+a climb.
+
+Both candidates keep `durationMs`, `startingIntegrity`, `vocalistEventAtMs`,
+`maxConcurrentTargets` and `randomSeed` untouched — the retune is the curve,
+not the round's structure — and neither takes volleys, which stay the encore's
+identity.
+
+| | gap 1/2/3 | approach 1/2/3 | fastballs 1/2/3 | total |
+|---|---|---|---|---|
+| **A** — redistribute | 1627 / 1245 / 817 | 1769 / 1770 / 1585 | 1.5 / 2.2 / 3.8 | 38.0 throws, 7.5 fast (19.7%) |
+| **B** — preserve the opening | 1707 / 1252 / 809 | 1596 / 1644 / 1544 | 2.3 / 3.0 / 3.7 | 37.0 throws, 9.1 fast (24.5%) |
+
+**A** spends nothing: the same 7.5 fastballs, redistributed from flat into a
+ramp. It buys that by making the first twenty seconds lighter than the round
+the owner validated — `speedCurve` opens at 1.08, so throws start 8% slower.
+
+**B** leaves the opening where it is (`speedCurve` starts at 1.0 and
+`fastballCurve` at 0.2, which are the validated show's own values; third 1
+moves by 7 ms of gap and 0.2 of a fastball) and adds the escalation behind it.
+That makes the round net harder: 9.1 fastballs against 7.5.
+
+The trade is not avoidable. To redistribute a fixed load into a ramp, one end
+has to come down, and the end available is the one with the physical baseline
+behind it. Both stay well clear of the encore at their peak — 809 ms of gap
+against its 567, 1544 ms of approach against its 1404, 3.7 fastballs against
+its 7.3. The reason to hold the line here is
 concrete rather than procedural: `level01` is the only round with a physical
 baseline behind it, and the moment it is retuned, every earlier device
 observation stops being comparable. A decision made against measured

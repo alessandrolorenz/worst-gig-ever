@@ -772,7 +772,7 @@ device is *judging* the encore, not building it.
 | C fastball chance ramps | done — `LevelDefinition.fastballCurve` |
 | D volleys — the authored figures | done — four templates, arrival-time authored, whole or nothing |
 | E Stage 4 "Encore" | done — where the ramp and the figures are actually played |
-| **M17.1 retune of `level01`** | **not started, still gated** on the M14.1 retest and an explicit go-ahead |
+| **M17.1 retune of `level01`** | **measured 2026-09-05, awaiting the owner's one question.** The M14.1 retest gate opened on 2026-09-04 (`PERFORMANCE_OK`); this row said otherwise until now. Two candidates are measured over 200 seeds in `docs/specs/M17-difficulty-curve-and-throw-patterns.md`; `npm run measure:rounds` reproduces the table |
 
 **The no-op is proven, not asserted.** `tests/difficultyCurve.test.ts` replays
 `level01`, `defenseDrill` and `findTheBeat` and hashes each one's *entire*
