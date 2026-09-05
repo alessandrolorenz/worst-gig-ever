@@ -27,7 +27,7 @@ and asked nothing further of.
 | M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
 | M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
 | M20 | Translation-safe layout | **implemented, emulator-validated** (2026-09-05) on `m20/translation-safe-layout`. Owner device verdict outstanding. See below |
-| M21 | pt-BR | not started |
+| M21 | pt-BR | **draft implemented, emulator-validated** (2026-09-05) on `m21/pt-br`. **The copy needs the owner's read before it is done.** See below |
 
 ### M19 — locale foundation (implemented 2026-09-04, emulator-validated 2026-09-05)
 
@@ -63,6 +63,45 @@ hit combo, TAP THE SINGER, GO!, Paused/Resume, SHOW COMPLETE, STAGE n CLEARED,
 Play again, Next stage. Same mechanism, covered by tests, but not read off a
 screen. The owner's phone was attached to adb throughout and was **not**
 installed to.
+
+### M21 — pt-BR (draft implemented 2026-09-05, copy not yet reviewed)
+
+**The engineering is finished. The words are a draft.** The V2 plan says *"Do
+not machine-translate and ship"* and recommends the owner writes these lines
+because the jokes are the product. These are written rather than generated, and
+every line where the joke had to be re-invented is marked `REVIEW:` in
+`game/i18n/catalogues/pt-BR.ts` and tabled in `docs/specs/M21-pt-br.md`.
+
+The ones to argue with first:
+
+| English | pt-BR |
+|---|---|
+| *"You kept the groove alive. Somehow."* | *"Você manteve o groove vivo. Sabe-se lá como."* |
+| *"The gig fell apart."* | *"O show desandou."* |
+| *"You can hold the line."* | *"Você aguenta o tranco."* |
+| *"Hold the line"* (fase 1) | *"Segure as pontas"* |
+| *"It keeps escalating"* (fase 4) | *"Só piora"* |
+| *"Load in. Bolt it down. Hope."* | *"Descarrega. Parafusa. Reza."* |
+| *"Then a beer found the mixing desk."* | *"Aí uma cerveja achou a mesa de som."* |
+
+`Groove` and `pad` stay English on purpose — they are the on-screen names of two
+mechanisms and what a Brazilian drummer actually says. The mug rule's caption is
+*"Ao alcance da mão"*, which is the owner's own phrase from the M18.1 playtest.
+
+**The integration was three lines and no layout work** — a typed catalogue, an
+entry in `SUPPORTED_LOCALES`, an endonym — and every layout budget passed on the
+first run. That is the return on M20.
+
+**The language control is now visible to players**, since there are two
+shippable locales. A Brazilian device gets pt-BR at startup without touching it:
+validated by setting a per-app locale on the emulator and cold-starting, which
+is the first time `detectLocale()` has been proven against a real Android
+locale list rather than a unit test.
+
+Two defects it found in its own tooling: the pseudo-locale was padding past the
+full stop, so its briefing entries were not sentences; and the "whole sentence,
+not a fragment" rule was English-only, when a translator splitting one sentence
+into two is exactly how that defect comes back.
 
 ### M20 — translation-safe layout (implemented and validated 2026-09-05)
 

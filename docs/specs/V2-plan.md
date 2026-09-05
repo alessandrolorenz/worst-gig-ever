@@ -142,11 +142,29 @@ What made it work, and none of it was in the plan:
 - A `▾` cue, because `persistentScrollbar` draws dark grey on a near-black
   scrim and is invisible to anyone not looking for it.
 
-### M21 — pt-BR
+### M21 — pt-BR — **DRAFT IMPLEMENTED (2026-09-05), awaiting owner review**
 
 Complete Brazilian Portuguese translation, with human review of the humour and
 voice. The owner's own language, so the only one that can be judged rather than
 trusted.
+
+Code complete on `m21/pt-br`; `npm run verify` green at 405 tests. Spec:
+`docs/specs/M21-pt-br.md`.
+
+**The words are a draft and the milestone is not done until they are read.**
+Open question 3 above recommends the owner writes these lines. What exists is
+written rather than generated, and every line where the joke had to be
+re-invented instead of translated is marked `REVIEW:` in the catalogue and
+tabled in the spec — *"Sabe-se lá como"* for *"Somehow"*, *"O show desandou"*,
+*"Segure as pontas"*, *"Só piora"*, *"Descarrega. Parafusa. Reza."*
+
+The integration was three lines and no layout work: a typed catalogue, an entry
+in `SUPPORTED_LOCALES`, an endonym. **Every layout budget passed on the first
+run.** That is what M20 was spent on.
+
+Validated on the emulator by setting a per-app locale and cold-starting: the
+game opened in Portuguese with nothing touched, which is the first proof that
+`detectLocale()` reads a real device.
 
 ### M22 — Local memory and sharing
 

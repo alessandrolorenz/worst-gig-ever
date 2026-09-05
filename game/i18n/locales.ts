@@ -12,11 +12,13 @@
 /**
  * Every locale the game ships strings for.
  *
- * M19 ships one. Adding `'pt-BR'` here is a compile error until
- * `catalogues/pt-BR.ts` exists and is complete, which is the whole point of
- * typing the catalogue off the English one.
+ * M19 shipped one and M21 added the second. Adding a locale here is a compile
+ * error until its catalogue exists and is complete, which is the whole point of
+ * typing the catalogue off the English one — `pt-BR` was registered by writing
+ * the file until `tsc` stopped complaining, and there was never a moment where
+ * a missing key could have reached a screen.
  */
-export const SUPPORTED_LOCALES = ['en'] as const;
+export const SUPPORTED_LOCALES = ['en', 'pt-BR'] as const;
 
 /**
  * Locales that exist for development and can never ship (M20).
@@ -48,6 +50,7 @@ export const DEFAULT_LOCALE: ShippableLocale = 'en';
  */
 export const LOCALE_ENDONYMS: Record<Locale, string> = {
   en: 'English',
+  'pt-BR': 'Português (BR)',
   /* Not an endonym. Nothing calls itself this, which is the point. */
   pseudo: 'Pseúdó',
 };

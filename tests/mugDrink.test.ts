@@ -20,6 +20,7 @@ import {
 } from '../game/state/roundState.ts';
 import { STAGES } from '../game/levels/stages.ts';
 import { en } from '../game/i18n/catalogues/en.ts';
+import { allCatalogues } from '../game/i18n/catalogue.ts';
 import type { RoundEvent } from '../game/state/roundEvents.ts';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -398,18 +399,29 @@ test('M18.1: the drink has a sound, and it is one this repository generates', ()
  * card can actually show.
  */
 test('M18.1: every briefing entry is a whole sentence, not a fragment', () => {
-  for (const stage of STAGES) {
-    for (const line of en.stages[stage.id].briefing) {
-      assert.match(
-        line,
-        /[.!?]$/,
-        `stage ${stage.number}: "${line}" does not end a sentence — the renderer ` +
-          'gives every entry its own bullet, so a fragment reads as a broken list',
-      );
-      assert.ok(
-        line.trim().length > 0 && /^[A-Z“"]/.test(line.trim()),
-        `stage ${stage.number}: "${line}" does not start a sentence`,
-      );
+  /*
+   * Extended to every locale at M21. The defect this catches — a rule written
+   * as four fragments, each given its own bullet by the renderer — is a
+   * property of how the copy is written, not of which language it is in, and a
+   * translator splitting one sentence into two is exactly how it comes back.
+   *
+   * `\p{Lu}` rather than `A-Z`, because a Portuguese sentence may open on an
+   * accented capital and an ASCII range would call that a fragment.
+   */
+  for (const [locale, catalogue] of allCatalogues()) {
+    for (const stage of STAGES) {
+      for (const line of catalogue.stages[stage.id].briefing) {
+        assert.match(
+          line,
+          /[.!?]$/,
+          `${locale}, stage ${stage.number}: "${line}" does not end a sentence — the ` +
+            'renderer gives every entry its own bullet, so a fragment reads as a broken list',
+        );
+        assert.ok(
+          line.trim().length > 0 && /^[\p{Lu}“"]/u.test(line.trim()),
+          `${locale}, stage ${stage.number}: "${line}" does not start a sentence`,
+        );
+      }
     }
   }
 });

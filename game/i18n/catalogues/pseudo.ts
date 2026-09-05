@@ -75,11 +75,23 @@ function accent(text: string): string {
 }
 
 /**
+ * Sentence-ending punctuation, with any closing quote or bracket after it.
+ *
+ * The padding is inserted *before* this rather than after, so a pseudo string
+ * is still a sentence. It is not a cosmetic point: `tests/mugDrink.test.ts`
+ * requires every briefing entry to end in a full stop — the rule that caught
+ * the mug rule being written as four fragments — and a generator that appends
+ * padding past the full stop fails a real contract with a fake string.
+ */
+const SENTENCE_END = /([.!?…]+["'”’)\]]*)$/;
+
+/**
  * Lengthens one string to roughly `PSEUDO_EXPANSION` times its length.
  *
- * The padding goes at the **end**, after a space, rather than being woven
- * through: a longer last word is what stresses wrapping, and it keeps the
- * original sentence readable enough to tell which string you are looking at.
+ * The padding goes at the **end of the words**, after a space, rather than
+ * being woven through: a longer last word is what stresses wrapping, and it
+ * keeps the original sentence readable enough to tell which string you are
+ * looking at. Terminal punctuation stays terminal.
  *
  * Explicit newlines are expanded per line, so a caption written as two
  * deliberate lines stays two deliberate — and longer — lines.
@@ -98,7 +110,13 @@ function expandLine(line: string): string {
 
   let padding = '';
   while (padding.length < needed) padding += PADDING;
-  return `${transformed} ${padding.slice(0, needed).trim()}`;
+  const tail = padding.slice(0, needed).trim();
+
+  const ending = SENTENCE_END.exec(transformed);
+  if (ending === null) return `${transformed} ${tail}`;
+
+  const body = transformed.slice(0, ending.index);
+  return `${body} ${tail}${ending[1]}`;
 }
 
 function pseudoString(value: string): string {

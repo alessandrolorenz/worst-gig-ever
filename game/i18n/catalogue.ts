@@ -16,6 +16,7 @@
  */
 import { DEFAULT_LOCALE, type Locale } from './locales.ts';
 import { en } from './catalogues/en.ts';
+import { ptBR } from './catalogues/pt-BR.ts';
 import { pseudo } from './catalogues/pseudo.ts';
 
 export type Catalogue = typeof en;
@@ -29,6 +30,7 @@ export type Catalogue = typeof en;
  */
 const CATALOGUES: Record<Locale, Catalogue> = {
   en,
+  'pt-BR': ptBR,
   /*
    * Generated from `en`, so it cannot drift from it and needs no maintenance
    * when copy changes. It is registered here — a catalogue a build cannot

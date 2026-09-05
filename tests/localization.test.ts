@@ -21,6 +21,7 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { en } from '../game/i18n/catalogues/en.ts';
+import { ptBR } from '../game/i18n/catalogues/pt-BR.ts';
 import { allCatalogues, stringsFor } from '../game/i18n/catalogue.ts';
 import { format, placeholdersIn } from '../game/i18n/format.ts';
 import {
@@ -539,6 +540,66 @@ test('M19: an unknown locale still gets a playable game', () => {
   // The types are supposed to prevent this. If one ever gets through, the
   // right outcome in a player's hands is an English game, not no game.
   assert.equal(stringsFor('klingon' as Locale), en);
+});
+
+// ---------------------------------------------------------------------------
+// M21 — the second language
+// ---------------------------------------------------------------------------
+
+test('M21: pt-BR ships, and a Brazilian device gets it without touching a control', () => {
+  assert.ok(
+    (SUPPORTED_LOCALES as readonly string[]).includes('pt-BR'),
+    'pt-BR is a shippable locale, not a development one',
+  );
+  assert.equal(LOCALE_ENDONYMS['pt-BR'], 'Português (BR)');
+
+  // The resolution rule M19 wrote against a locale that did not exist yet.
+  assert.equal(resolveLocale(['pt-BR']), 'pt-BR');
+  assert.equal(resolveLocale(['pt']), 'pt-BR', 'a device asking for plain Portuguese');
+  assert.equal(resolveLocale(['pt-PT']), 'pt-BR', 'and one asking for the European variant');
+  assert.equal(resolveLocale(['en-GB', 'pt-BR']), 'en', 'order is the device preference');
+  assert.equal(resolveLocale(['ja']), 'en', 'and everything else still lands on English');
+});
+
+test('M21: the language control is now drawn in a release build', () => {
+  /*
+   * A visible product change, and the first time M19's control has anything to
+   * do. It was built to be invisible with one locale; with two it appears in
+   * the two rows a player is already stopped in, without a settings screen.
+   */
+  assert.equal(
+    hasLocaleChoice(availableLocales(false)),
+    true,
+    'two shippable languages must give a player a way to switch between them',
+  );
+});
+
+test('M21: the translation is not the English strings with accents on', () => {
+  /*
+   * A machine translation that fell through would most likely leave a string
+   * identical to its English original. Short shared words are legitimately the
+   * same in both — GROOVE is the mechanism's name and stays English on purpose
+   * — so this looks only at the sentences, where sameness means untranslated.
+   */
+  const english = leaves(en);
+  const portuguese = leaves(ptBR);
+
+  const untranslated: string[] = [];
+  for (const [path, value] of portuguese) {
+    const source = english.get(path);
+    if (source === undefined) continue;
+    /*
+     * Sentences only. A string whose only content is placeholders and
+     * punctuation — `{hits} / {judged}` — has no words to translate and is
+     * correctly identical in both languages.
+     */
+    const words = source.replace(/\{\w+\}/g, ' ');
+    if (!/\p{L}/u.test(words)) continue;
+    if (!/\s/.test(source.trim())) continue;
+    if (source === value) untranslated.push(path);
+  }
+
+  assert.deepEqual(untranslated, [], 'these sentences are still in English');
 });
 
 // ---------------------------------------------------------------------------
