@@ -210,7 +210,7 @@ Additional commercially safe tracks on the same rhythmic contract.
 
 | | |
 |---|---|
-| **Music on the beat clock** | The owner already decided this — *"drift is not accepted"* — and open item 13's condition ("only worth building if the mechanic proves fun") is met. It is the biggest quality jump still available and it has nothing to do with i18n. It wants its own milestone, and it is the strongest candidate to slot in beside M21. |
+| **Music on the beat clock** | **DONE 2026-09-05.** Built after the owner picked it as the next phase. It was not the milestone this row described: the show's loop was not drifting at 90 BPM, it was a 120 BPM track, and the gate measured file duration so it could never have said so. Stages 3 and 4 now play a generated 32-beat bed, and a tempo claim now requires a committed generator as evidence. See `docs/assets/AUDIO-SOURCES.md`. |
 | **Audio weight** | `crowd_applause.wav` is still the untrimmed 39 s / 6.9 MB source and the effects are not volume-normalized. Store-relevant, so M23 at the latest — but it belongs with the music work above if that lands first. |
 | **Integrity healing, drunk meter** | Deferred at M18 with reasons; each needs its own playtest. |
 | **`level01` retune (M17.1)** | Owner is leaning yes — *"acho que sim, nao estou certo"* — and it makes every past device observation incomparable when it lands. Better decided than carried. |

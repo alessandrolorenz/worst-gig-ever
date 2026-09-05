@@ -102,9 +102,10 @@ const stageOne: StageDefinition = {
   level: defenseDrill,
   groove: false,
   /*
-   * The rock loop, and its 417 ms-per-loop drift against 90 BPM does not
-   * matter here: no beat is scheduled, scored, or missed on this stage, so
-   * there is no clock for the music to disagree with.
+   * The rock loop keeps this stage, and the fact that it is a 120 BPM track
+   * against a 90 BPM clock does not matter here: no beat is scheduled, scored,
+   * or missed on this stage, so there is no clock for the music to disagree
+   * with. It is also the track the game has always opened on.
    */
   music: 'showTheme',
   briefingFigures: ['smash', 'drink'],
@@ -147,13 +148,11 @@ const stageThree: StageDefinition = {
   level: level01,
   groove: true,
   /*
-   * Still the rock loop, and this is the **one open piece of M16**: the show
-   * scores beats, so its bed should be tempo-locked too, and this one is not.
-   * The click carries the beat here in the meantime. Replacing it is a music
-   * choice that belongs to the owner rather than to a generator — see
-   * `docs/specs/M16-beat-clarity-and-progressive-teaching.md`, section E.
+   * The generated show bed, which closes the last open piece of M16. The show
+   * scores beats, so its bed has to agree with them; the rock loop it used to
+   * play never did, because it is at 120 BPM rather than drifting at 90.
    */
-  music: 'showTheme',
+  music: 'showBed',
 };
 
 /**
@@ -175,12 +174,12 @@ const stageFour: StageDefinition = {
   level: encore,
   groove: true,
   /*
-   * The teaching bed, because it is the only tempo-locked one that exists and
-   * a stage that scores beats must not play music that drifts against them.
-   * It is the wrong music for an encore and it is the right *property*; when
-   * the show gets a tempo-locked bed of its own, this stage takes it.
+   * The show bed, as this stage's own comment promised it would take as soon
+   * as one existed. It had been playing the *teaching* bed — the right
+   * property and the wrong music, since an encore backed by four bars of
+   * kick-snare-root is an anticlimax.
    */
-  music: 'grooveBed',
+  music: 'showBed',
 };
 
 export const STAGES: readonly StageDefinition[] = [stageOne, stageTwo, stageThree, stageFour];

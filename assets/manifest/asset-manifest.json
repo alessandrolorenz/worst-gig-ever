@@ -483,6 +483,14 @@
       "loopBeats": 16,
       "requiredForMvp": true
     },
+    "showBed90": {
+      "runtime": "assets/audio/music/runtime/show_bed_90.wav",
+      "generator": "scripts/make-show-bed.mjs",
+      "origin": "generated",
+      "tempoLockedBpm": 90,
+      "loopBeats": 32,
+      "requiredForMvp": true
+    },
     "beatClick": {
       "path": "assets/audio/sfx/beat_click.wav",
       "generator": "scripts/make-beat-click.mjs",

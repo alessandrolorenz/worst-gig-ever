@@ -174,6 +174,20 @@ test('M6A: the live manifest retains the complete audio contract unchanged', () 
       loopBeats: 16,
       requiredForMvp: true,
     },
+    /*
+     * The show's bed, added 2026-09-05. It is `requiredForMvp: true` because
+     * two of the four stages play it: the rock loop it replaced is at 120 BPM
+     * against a 90 BPM clock, which is the correction recorded in
+     * `docs/assets/AUDIO-SOURCES.md`.
+     */
+    showBed90: {
+      runtime: 'assets/audio/music/runtime/show_bed_90.wav',
+      generator: 'scripts/make-show-bed.mjs',
+      origin: 'generated',
+      tempoLockedBpm: 90,
+      loopBeats: 32,
+      requiredForMvp: true,
+    },
     beatClick: {
       path: 'assets/audio/sfx/beat_click.wav',
       generator: 'scripts/make-beat-click.mjs',
