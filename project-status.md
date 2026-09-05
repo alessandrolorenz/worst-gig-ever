@@ -844,7 +844,7 @@ Build facts, exactly as run:
 | Screen | 2424 x 1080 physical, 420 dpi — **923 x 411 dp** in landscape |
 | Gradle | `BUILD SUCCESSFUL`, `app-debug.apk`, 354 tasks |
 | Autolinking | `expo-modules-autolinking resolve -p android` reports **15** modules (ADR 0006 threshold) |
-| Package | `com.worstbandever.app` (retained; ADR 0010) |
+| Package | `com.worstbandever.app` — *the id at the time of this run; migrated to `com.worstgigever.app` at M18.5* |
 | Launcher label | **Worst Gig Ever** — confirmed in the dev-client header |
 
 | Check | Result |

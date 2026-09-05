@@ -25,4 +25,10 @@ web-build/
 .DS_Store
 
 yarn.lock
-package-lock.json
+
+# package-lock.json is deliberately NOT ignored (M18.5).
+#
+# It was, by the template default above, and that is what made dependency
+# resolution non-reproducible across machines — the direct cause of the
+# autolinking failure in ADR 0006. This project uses npm; the lockfile is the
+# only record of what actually resolved.

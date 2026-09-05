@@ -45,9 +45,10 @@ Two things about it are worth knowing before it is handed to anyone:
   `cli.appVersionSource` is not set and remote versioning started over. They
   install over each other on the shared signing key, so this is harmless today
   and would not be in a store. Setting `appVersionSource` is v2 work.
-- **`RECORD_AUDIO` is still declared** in `app.json` and the game never
-  records. Left in deliberately so this APK is the build the owner approved,
-  rather than an untested variation of it. It moves before any submission.
+- **`RECORD_AUDIO` was still declared** in that build, and the game never
+  records. It was left in deliberately so the 1.1.0 APK is the build the owner
+  approved rather than an untested variation of it. **Removed at M18.5**, which
+  is after this build: 1.1.0 still requests it, anything built since does not.
 
 ### Local release builds — no EAS, no cost, no queue
 
@@ -82,7 +83,7 @@ unzip -o -q app-release.apk assets/index.android.bundle -d /tmp/apk
 grep -c YOUR_NEW_SYMBOL /tmp/apk/assets/index.android.bundle
 
 # 2. it launches without a runtime error
-adb shell monkey -p com.worstbandever.app -c android.intent.category.LAUNCHER 1
+adb shell monkey -p com.worstgigever.app -c android.intent.category.LAUNCHER 1
 adb logcat -d -t 300 | grep -iE "AndroidRuntime|FATAL|redbox"
 ```
 
@@ -242,14 +243,19 @@ straight to Stage 2's briefing without passing through the title.
 3. The Groove clock intentionally is not synchronized to the music.
 4. `crowd_applause.wav` remains a 39-second, 6.9 MB source and the five audio
    files have not been volume-normalized.
-5. Technical identifiers still use `worst-band-ever` /
-   `com.worstbandever.app`; migrate them only in a dedicated pre-release
-   identity milestone.
-6. The generated Android manifest requests `RECORD_AUDIO` through the current
-   Expo audio plugin even though the game does not record; remove it before a
-   store submission.
-7. `package-lock.json` remains ignored, so dependency resolution is not yet
-   reproducible across machines.
+5. **Done at M18.5.** The Expo slug is `worst-gig-ever` and the application id
+   is `com.worstgigever.app`. Anything installed before M18.5 uses the old
+   package id and will not upgrade — uninstall it. The EAS project rename on
+   expo.dev is an external action and is still outstanding; **EAS builds fail
+   until it is done**. See `docs/release/product-identity.md`.
+6. **Done at M18.5.** `RECORD_AUDIO` is gone. The game only ever calls
+   `createAudioPlayer` and `setAudioModeAsync`, so it was provably unused;
+   expo-audio's plugin adds it by default, so it is switched off explicitly
+   with `microphonePermission: false` rather than merely dropped from the
+   permissions array, or prebuild would put it back.
+7. **Done at M18.5.** `package-lock.json` is tracked. It was ignored by
+   the template default, which is what made dependency resolution
+   non-reproducible across machines.
 
 ## Operational constraints
 
