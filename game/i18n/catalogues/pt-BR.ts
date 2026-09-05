@@ -58,10 +58,18 @@ export const ptBR: Catalogue = {
   hud: {
     defense: 'DEFESA',
     groove: 'GROOVE',
-    showIntegrity: 'INTEGRIDADE',
+    showIntegrity: 'INTEGRIDADE DO SHOW',
     combo: 'COMBO DE {count}',
     comboMultiplied: 'COMBO DE {count} x{multiplier}',
-    beatStreak: '{count} BATIDAS SEGUIDAS',
+    /*
+     * "SEQUÊNCIA: {count}" rather than "{count} BATIDAS SEGUIDAS", and this is
+     * a bug rather than a preference: the streak is drawn from 1 upward, and
+     * "1 BATIDAS SEGUIDAS" is wrong in a way "1 BEAT STREAK" is not. There is
+     * no plural machinery in this catalogue on purpose (M19), so a counted
+     * noun has to be written to read correctly at one and at many — a colon
+     * does that and a plural noun does not.
+     */
+    beatStreak: 'SEQUÊNCIA: {count}',
     getReady: 'PREPARE-SE',
     perfect: 'PERFEITO',
     good: 'BOM',
@@ -151,10 +159,10 @@ export const ptBR: Catalogue = {
       subtitle: 'Só defesa',
       briefing: [
         'A plateia está jogando o que estava bebendo.',
-        'Toque numa garrafa ou num copo para quebrar antes que chegue na sua bateria.',
+        'Toque nas garrafas e nos copos para quebrar antes que cheguem na sua bateria.',
         'Copos são a exceção, e a distância é a regra inteira: acerte um de longe e ele quebra como qualquer outro, mas deixe chegar ao alcance da mão e o baterista pega e bebe, o que vale mais.',
         'Três coisas passam e o show acabou.',
-        'Nenhum ritmo para segurar ainda. Isso é a próxima fase. Só defenda.',
+        'Ainda não tem ritmo para segurar. Isso é a próxima fase. Só defenda.',
       ],
     },
     'stage-2-beat': {
@@ -162,17 +170,17 @@ export const ptBR: Catalogue = {
       subtitle: 'Groove primeiro',
       briefing: [
         'Você é o baterista. Antes que joguem qualquer coisa, ache o ritmo.',
-        'Duas marcas deslizam uma na direção da outra no pad. Toque no pad quando elas se encontram.',
+        'Duas marcas deslizam uma na direção da outra no pad. Toque no pad quando elas se encontrarem.',
         'Conte: um, dois, três, quatro.',
-        'As garrafas começam na metade — quebre, ou o show acaba.',
+        'As garrafas começam na metade — quebre todas, ou o show acaba.',
       ],
     },
     'stage-3-groove': {
       name: 'Segure o ritmo',
       subtitle: 'Groove + defesa',
       briefing: [
-        'Agora os dois trabalhos ao mesmo tempo, e a plateia esquentou.',
-        'Segure o ritmo no pad enquanto limpa o que vem na bateria.',
+        'Agora as duas tarefas ao mesmo tempo, e a plateia esquentou.',
+        'Segure o ritmo no pad enquanto quebra o que vem na bateria.',
         'Os copos voltaram: deixe um chegar até você e você bebe em vez de quebrar.',
         'Uma batida perdida custa a sequência. Uma garrafa perdida custa o show.',
         'Alguém pode entrar na sua frente. Resolva.',
@@ -187,7 +195,7 @@ export const ptBR: Catalogue = {
       briefing: [
         'A plateia quer mais uma. E trouxe mais garrafas.',
         'Começa fácil e não continua assim: mais rápido, e mais junto.',
-        'Vêm de três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
+        'Vêm de três em três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
         'Segure o ritmo no pad. Três passam pela bateria e o show acabou.',
       ],
     },

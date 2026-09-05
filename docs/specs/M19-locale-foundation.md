@@ -40,7 +40,16 @@ preferred languages, which React Native does not expose portably. No i18n
 The reason is AGENTS.md rule 18. What a library would give this project is
 plural rules, gender, date and number formatting, and lazy catalogue loading.
 The game has none of those problems: it has about a hundred short strings, no
-dates, and numbers that are already rendered by the domain. What it does need
+dates, and numbers that are already rendered by the domain.
+
+> **Corrected at M21.** "None of those problems" was one too many. The Groove
+> streak is drawn from 1 upward, so `{count} BEAT STREAK` is a counted noun —
+> harmless in English, wrong in Portuguese, where *"1 BATIDAS SEGUIDAS"* does
+> not agree. The decision stands and the rule that comes with it is now
+> written down: **a string that interpolates a count must read correctly at one
+> and at many.** pt-BR does it with a colon — *"SEQUÊNCIA: {count}"* — which is
+> the sort of thing a translator can solve in the sentence and a plural library
+> would solve with machinery this game does not otherwise need. What it does need
 is the thing a library gives up — **compile-time completeness**. With
 
 ```ts

@@ -1,6 +1,7 @@
 # M21 — Brazilian Portuguese
 
-**Status:** draft translation implemented, 2026-09-05, on `m21/pt-br`.
+**Status:** draft translation implemented and self-reviewed, 2026-09-05, on
+`m21/pt-br`.
 **The translation itself is not accepted until the owner has read it.**
 **Parent:** `docs/specs/V2-plan.md`, "M21 — pt-BR".
 **Depends on:** M19 (the catalogue) and M20 (the layout that can hold it), both
@@ -69,6 +70,22 @@ its effort so that this milestone would not have to.
 while there was one locale; there are two, so it is in the title screen's
 button row and in the pause overlay, labelled with the endonym of the current
 language. A Brazilian device gets pt-BR at startup without touching it.
+
+## The one thing M19 got wrong
+
+M19 argued against an i18n runtime partly because "the game has none of those
+problems", plurals included. It has one. The Groove streak renders from 1
+upward, so `{count} BEAT STREAK` is a counted noun: harmless in English,
+ungrammatical in Portuguese as *"1 BATIDAS SEGUIDAS"*.
+
+The decision not to add a plural library still stands — one string is not a
+reason for machinery. What the milestone adds is the rule that replaces it:
+**a string that interpolates a count must be written to read correctly at one
+and at many.** pt-BR uses a colon, *"SEQUÊNCIA: {count}"*, which is the kind of
+fix a translator can make inside the sentence.
+
+This is the sort of defect no test in the project would have caught, and it was
+found by reading the catalogue back rather than by running anything.
 
 ## Two defects this milestone found in its own tooling
 
