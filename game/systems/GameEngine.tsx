@@ -9,7 +9,7 @@
  * second copy of the truth.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Platform, StyleSheet, View } from 'react-native';
+import { AppState, Platform, Share, StyleSheet, View } from 'react-native';
 import { GameEngine as ReactGameEngine } from 'react-native-game-engine';
 import { GameEngine as WebGameEngine } from 'react-game-engine';
 
@@ -20,12 +20,19 @@ import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
 import { detectLocale } from '../i18n/deviceLocale.ts';
 import { LocaleProvider } from '../i18n/LocaleContext.tsx';
+import { stringsFor } from '../i18n/catalogue.ts';
+import { format } from '../i18n/format.ts';
+import { PRODUCT_TITLE } from '../config/product.ts';
+import { emptyRecords, recordRound, type Records } from '../state/records.ts';
+import { SCHEMA_VERSION, type UnknownFields } from '../state/persistence.ts';
+import { loadSave, writeSave } from '../state/storage.ts';
 import { stageAt } from '../levels/stages.ts';
 import type { GameState } from '../state/gameState.ts';
 import {
   advanceToNextStage,
   beginRound,
   cycleLocale,
+  setLocale,
   finishIntro,
   recordStageCleared,
   replayIntro,
@@ -83,6 +90,63 @@ export default function GameEngine() {
   const [, setFlowVersion] = useState(0);
   const refreshFlow = useCallback(() => setFlowVersion((version) => version + 1), []);
 
+  /* ---- saved state (M22) ---- */
+
+  /*
+   * Records live in React rather than on the entity map: nothing in the game
+   * loop reads them, and the overlays are the only thing that draws them. The
+   * ref beside the state is what lets the round-ended effect read the current
+   * value without listing it as a dependency and re-running on every change.
+   */
+  const [records, setRecordsState] = useState<Records>(emptyRecords());
+  const recordsRef = useRef<Records>(emptyRecords());
+  const applyRecords = useCallback((next: Records) => {
+    recordsRef.current = next;
+    setRecordsState(next);
+  }, []);
+
+  /** True when the round just finished set a best. Cleared when one starts. */
+  const [beatRecord, setBeatRecord] = useState(false);
+
+  /**
+   * What the file carried that this build has no opinion about, plus whether
+   * it was readable at all.
+   *
+   * An unreadable file is never overwritten. It is the only evidence of
+   * whatever went wrong, and a high score is not worth destroying it.
+   */
+  const savedRef = useRef<{ unknown: UnknownFields; unreadable: boolean }>({
+    unknown: {},
+    unreadable: false,
+  });
+
+  /*
+   * Whether the player has chosen a language, as opposed to being given one by
+   * their phone. Only a choice is persisted: saving the detected locale would
+   * freeze the game into whatever the device said the first time it ran, and a
+   * player who later changes their phone's language would not see the game
+   * follow.
+   */
+  const localeChosenRef = useRef(false);
+
+  const persist = useCallback(
+    (nextRecords: Records) => {
+      if (savedRef.current.unreadable) return;
+      const { flow } = entitiesRef.current!.scene;
+      void writeSave(
+        {
+          schemaVersion: SCHEMA_VERSION,
+          records: nextRecords,
+          bestStageCleared: flow.bestStageCleared,
+          clickEnabled: flow.clickEnabled,
+          locale: localeChosenRef.current ? flow.locale : null,
+        },
+        savedRef.current.unknown,
+      );
+    },
+    [],
+  );
+
   // The domain decides when a round ends; React only follows.
   useEffect(() => {
     const scene = entities.scene;
@@ -96,6 +160,42 @@ export default function GameEngine() {
 
   // Release players on unmount, so a quit or reload cannot leave music running.
   useEffect(() => () => audio.dispose(), [audio]);
+
+  /**
+   * Load the save, once, and apply it when it arrives (M22).
+   *
+   * Deliberately **not** awaited before the first render. Blocking the opening
+   * frame on a disk read is the most literal possible way to break the rule
+   * that session progress must never gate a cold start (M15, restated in the
+   * V2 plan) — so the game starts on defaults and this lands a few frames into
+   * the story screen.
+   *
+   * The one visible cost is a player who chose a language seeing the first
+   * frames in their device's language instead. That is the right side of the
+   * trade against a game that will not open because a file is slow.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    void loadSave().then((loaded) => {
+      if (cancelled) return;
+      savedRef.current = { unknown: loaded.unknown, unreadable: loaded.unreadable };
+
+      const { flow } = entities.scene;
+      // Highest of the two, so a save cannot take away progress made in the
+      // seconds before it arrived.
+      flow.bestStageCleared = Math.max(flow.bestStageCleared, loaded.state.bestStageCleared);
+      flow.clickEnabled = loaded.state.clickEnabled;
+      if (loaded.state.locale !== null) {
+        setLocale(flow, loaded.state.locale);
+        localeChosenRef.current = true;
+      }
+      applyRecords(loaded.state.records);
+      refreshFlow();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [applyRecords, entities, refreshFlow]);
 
   /**
    * Rebuilds the round for the stage the flow currently points at.
@@ -168,8 +268,9 @@ export default function GameEngine() {
    */
   const handleToggleClick = useCallback(() => {
     toggleClick(entities.scene.flow);
+    persist(recordsRef.current);
     refreshFlow();
-  }, [entities, refreshFlow]);
+  }, [entities, persist, refreshFlow]);
 
   /**
    * The language control (M19).
@@ -181,8 +282,10 @@ export default function GameEngine() {
    */
   const handleCycleLocale = useCallback(() => {
     cycleLocale(entities.scene.flow);
+    localeChosenRef.current = true;
+    persist(recordsRef.current);
     refreshFlow();
-  }, [entities, refreshFlow]);
+  }, [entities, persist, refreshFlow]);
 
   const handleBackToTitle = useCallback(() => {
     returnToTitle(entities.scene.flow);
@@ -200,6 +303,7 @@ export default function GameEngine() {
    */
   const handleBeginRound = useCallback(() => {
     const scene = entities.scene;
+    setBeatRecord(false);
     beginRound(scene.flow);
     startRound(scene.round);
     audio.playMusic(scene.stage.music);
@@ -264,10 +368,54 @@ export default function GameEngine() {
    * mark, so running it again on a re-render costs nothing.
    */
   useEffect(() => {
-    if (uiState !== 'SHOW_COMPLETE') return;
-    recordStageCleared(entities.scene.flow);
+    if (uiState !== 'SHOW_COMPLETE' && uiState !== 'SHOW_RUINED') return;
+    const scene = entities.scene;
+
+    // Only a completed show is progress; a ruined one is a retry.
+    if (uiState === 'SHOW_COMPLETE') recordStageCleared(scene.flow);
+
+    /*
+     * A ruined show still scored, so it still counts for a record. Losing on
+     * the last object with the best Defense run of the player's life should
+     * not throw that number away.
+     */
+    const update = recordRound(recordsRef.current, scene.stage.id, {
+      defenseScore: scene.round.score,
+      grooveScore: scene.stage.groove ? scene.rhythm.score : null,
+    });
+    setBeatRecord(update.beatDefense || update.beatGroove);
+    if (update.records !== recordsRef.current) applyRecords(update.records);
+    persist(update.records);
     refreshFlow();
-  }, [entities, refreshFlow, uiState]);
+  }, [applyRecords, entities, persist, refreshFlow, uiState]);
+
+  /**
+   * The share sheet (M22).
+   *
+   * React Native's own `Share`, not `expo-sharing`: the built-in one already
+   * opens the OS sheet with a line of text, and a new native module for that
+   * would fail AGENTS.md rule 18.
+   *
+   * The strings come from `stringsFor(flow.locale)` rather than a hook, because
+   * this component renders the `LocaleProvider` and is therefore above it. The
+   * product name is interpolated from the constant, never translated.
+   */
+  const handleShare = useCallback(() => {
+    const scene = entities.scene;
+    const strings = stringsFor(scene.flow.locale);
+    const parameters = {
+      title: PRODUCT_TITLE,
+      stage: strings.stages[scene.stage.id].name,
+      defense: scene.round.score,
+      groove: scene.rhythm.score,
+    };
+    const message = scene.stage.groove
+      ? format(strings.share.withGroove, parameters)
+      : format(strings.share.defenseOnly, parameters);
+
+    // A cancelled share sheet rejects on some platforms. Nothing to report.
+    void Share.share({ message }).catch(() => undefined);
+  }, [entities]);
 
   // Leaving the app mid-show must not keep the clock or the music running.
   useEffect(() => {
@@ -331,6 +479,9 @@ export default function GameEngine() {
             onQuit={handleQuit}
             onToggleClick={handleToggleClick}
             onCycleLocale={handleCycleLocale}
+            records={records}
+            beatRecord={beatRecord}
+            onShare={handleShare}
           />
         </EngineComponent>
       </View>

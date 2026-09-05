@@ -57,6 +57,7 @@ import {
   type RhythmState,
 } from '../state/rhythmState.ts';
 import { resultsArmed, type RoundState } from '../state/roundState.ts';
+import { recordFor, type Records } from '../state/records.ts';
 
 interface OverlayProps {
   flow: AppFlowState;
@@ -82,6 +83,11 @@ interface OverlayProps {
   onQuit(): void;
   onToggleClick(): void;
   onCycleLocale(): void;
+  /** Bests per stage, loaded from disk and updated as rounds finish (M22). */
+  records: Records;
+  /** True when the round just finished set a new best on either dimension. */
+  beatRecord: boolean;
+  onShare(): void;
 }
 
 function Button({
@@ -230,10 +236,13 @@ function Summary({
   round,
   rhythm,
   grooveEnabled,
+  record,
 }: {
   round: RoundState;
   rhythm: RhythmState;
   grooveEnabled: boolean;
+  /** This stage's bests, or null before it has ever been finished (M22). */
+  record: { defenseScore: number; grooveScore: number | null } | null;
 }) {
   const strings = useStrings();
   const summary = strings.summary;
@@ -256,6 +265,9 @@ function Summary({
           <SummaryRow label={summary.good} value={String(rhythm.goods)} />
           <SummaryRow label={summary.beatsMissed} value={String(rhythm.misses)} />
           <SummaryRow label={summary.bestBeatStreak} value={String(rhythm.bestStreak)} />
+          {record?.grooveScore !== null && record !== null && (
+            <SummaryRow label={summary.best} value={String(record.grooveScore)} />
+          )}
           <Text style={styles.summaryDetail}>
             {meanError === null
               ? summary.noBeatsLanded
@@ -270,6 +282,9 @@ function Summary({
         <SummaryRow label={summary.objectsDestroyed} value={String(round.targetsDestroyed)} />
         <SummaryRow label={summary.objectsMissed} value={String(round.misses)} />
         <SummaryRow label={summary.bestHitCombo} value={String(round.bestCombo)} />
+        {record !== null && (
+          <SummaryRow label={summary.best} value={String(record.defenseScore)} />
+        )}
         <Text style={styles.summaryDetail}>
           {format(summary.integrityLeft, {
             left: round.integrity,
@@ -488,7 +503,12 @@ export function Overlays(props: OverlayProps) {
     return (
       <View style={styles.scrim}>
         <Text style={styles.title}>{strings.pause.title}</Text>
-        <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
+        <Summary
+          round={round}
+          rhythm={rhythm}
+          grooveEnabled={stage.groove}
+          record={props.records[stage.id] ?? null}
+        />
         <View style={styles.buttonRowLayout}>
           <Button label={strings.pause.resume} onPress={props.onResume} />
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
@@ -515,7 +535,14 @@ export function Overlays(props: OverlayProps) {
       <Text style={styles.body}>
         {outcomeLine(strings.results, stage, complete, nextStageWaiting)}
       </Text>
-      <Summary round={round} rhythm={rhythm} grooveEnabled={stage.groove} />
+      {/* Only when this round actually beat something (M22). */}
+      {props.beatRecord && <Text style={styles.newBest}>{strings.results.newBest}</Text>}
+      <Summary
+        round={round}
+        rhythm={rhythm}
+        grooveEnabled={stage.groove}
+        record={recordFor(props.records, stage.id)}
+      />
       {/**
        * The buttons are drawn immediately and deaf for a moment (M18.1).
        *
@@ -535,6 +562,13 @@ export function Overlays(props: OverlayProps) {
             disabled={!armed}
           />
         )}
+        <Button
+          label={strings.results.share}
+          onPress={props.onShare}
+          tone="secondary"
+          compact
+          disabled={!armed}
+        />
         <Button
           label={strings.common.quitToTitle}
           onPress={props.onQuit}
@@ -621,6 +655,15 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: 'center',
     marginBottom: 10,
+  },
+  /* One line, in the colour the game uses for something good happening. */
+  newBest: {
+    color: THEME.integrityFull,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 4,
   },
   body: {
     color: THEME.hudDim,

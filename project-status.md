@@ -26,6 +26,7 @@ and asked nothing further of.
 |---|---|---|
 | M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
 | M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
+| M22 | Local memory and sharing | **implemented, emulator-validated** (2026-09-05) on `m22/local-memory-and-sharing` |
 | M20 | Translation-safe layout | **implemented, emulator-validated** (2026-09-05) on `m20/translation-safe-layout`. Owner device verdict outstanding. See below |
 | M21 | pt-BR | **draft implemented, emulator-validated** (2026-09-05) on `m21/pt-br`. **The copy needs the owner's read before it is done.** See below |
 
@@ -63,6 +64,37 @@ hit combo, TAP THE SINGER, GO!, Paused/Resume, SHOW COMPLETE, STAGE n CLEARED,
 Play again, Next stage. Same mechanism, covered by tests, but not read off a
 screen. The owner's phone was attached to adb throughout and was **not**
 installed to.
+
+### M22 — local memory and sharing (implemented and validated 2026-09-05)
+
+High scores, progress and preferences survive a cold start; the results screen
+shares a line of text. **No backend, no accounts — and no new dependencies:**
+`expo-file-system` has shipped since M2 and React Native's own `Share` opens
+the sheet. A test fails if `async-storage` or `expo-sharing` ever appears.
+
+The constraint from M15 — *session progress must never gate a cold start* — is
+asserted rather than trusted. Twenty hostile saves (truncated, not JSON, wrong
+types, a version from the future, a prototype pollution attempt) are each
+parsed and then used to build a flow, and **every stage must still open**. It
+has a second reading the code obeys too: the app does not wait for storage to
+render. It starts on defaults and applies the save when it lands.
+
+Validated on the emulator with `adb run-as` reading the file back:
+
+- A finished round wrote `grooveScore: null` on a defense-only stage,
+  `bestStageCleared: -1` after a ruined show, and **`locale: null` while the
+  game was running in Portuguese** — the device had said so, the player had not
+  chosen, and only a choice is persisted.
+- An injected save cold-started into English *over* the device's Portuguese,
+  click off, stages 1–2 ticked, **3–4 still selectable**, Best 4560 / 880 shown.
+- A `futureField` the build knows nothing about survived being written back.
+
+**Two defects it found in the writing of it.** `JSON.parse` can produce an own
+`__proto__` key, and `unknown[key] = value` replaces the target's prototype
+rather than adding a property — small blast radius, and not something to leave
+working by accident. And a test that imported the storage adapter pulled in a
+native module Node cannot type-strip, taking the whole suite down; the file
+name was contract rather than mechanics and moved to `persistence.ts`.
 
 ### M21 — pt-BR (draft implemented 2026-09-05, copy not yet reviewed)
 

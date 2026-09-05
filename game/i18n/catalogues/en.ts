@@ -109,6 +109,21 @@ export const en = {
     nextStage: 'Next stage',
     playAgain: 'Play again',
     retryStage: 'Retry stage',
+    /* Only drawn when this round actually beat something (M22). */
+    newBest: 'A new best.',
+    share: 'Share',
+  },
+
+  /**
+   * The line the share sheet sends (M22).
+   *
+   * `{title}` is filled with the product name, which is a constant rather than
+   * a catalogue string — see `game/config/product.ts`. A translator moves the
+   * placeholder around the sentence; they never translate what goes into it.
+   */
+  share: {
+    withGroove: '{title} — {stage}: {defense} on defense, {groove} on the groove.',
+    defenseOnly: '{title} — {stage}: {defense} on defense.',
   },
 
   /** The two performances, side by side and never added together (M12). */
@@ -128,6 +143,8 @@ export const en = {
     objectsDestroyed: 'Objects destroyed',
     objectsMissed: 'Objects missed',
     bestHitCombo: 'Best hit combo',
+    /* The record, drawn only once the stage has been finished at least once. */
+    best: 'Best',
     integrityLeft: 'Show Integrity left: {left} of {total}.',
   },
 

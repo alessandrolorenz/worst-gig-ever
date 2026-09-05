@@ -119,6 +119,15 @@ export const ptBR: Catalogue = {
     nextStage: 'Próxima fase',
     playAgain: 'Jogar de novo',
     retryStage: 'Tentar de novo',
+    /* REVIEW: "Recorde novo." rather than "Um novo recorde." — shorter, and it
+       is how a placar reads in Portuguese. */
+    newBest: 'Recorde novo.',
+    share: 'Compartilhar',
+  },
+
+  share: {
+    withGroove: '{title} — {stage}: {defense} na defesa, {groove} no groove.',
+    defenseOnly: '{title} — {stage}: {defense} na defesa.',
   },
 
   summary: {
@@ -137,6 +146,7 @@ export const ptBR: Catalogue = {
     objectsDestroyed: 'Objetos destruídos',
     objectsMissed: 'Objetos perdidos',
     bestHitCombo: 'Melhor combo',
+    best: 'Recorde',
     integrityLeft: 'Integridade do show: {left} de {total}.',
   },
 

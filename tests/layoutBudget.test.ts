@@ -221,6 +221,7 @@ test('M20: a summary label never pushes its number out of the column', () => {
       strings.summary.objectsDestroyed,
       strings.summary.objectsMissed,
       strings.summary.bestHitCombo,
+      strings.summary.best,
     ];
 
     for (const label of labels) {
@@ -242,6 +243,17 @@ test('M20: a summary label never pushes its number out of the column', () => {
     /summaryValue:\s*\{[\s\S]*?flexShrink:\s*0/.test(overlaysSource),
     'the value must not shrink, or the number wraps instead of the label',
   );
+});
+
+test('M22: the new-best line fits under the outcome', () => {
+  /*
+   * It sits between the outcome line and the summary on a results screen that
+   * is already measured against 411 dp, so it has to be one line.
+   */
+  for (const [locale, strings] of locales) {
+    const lines = wrappedLines(strings.results.newBest, 14, MIN_VIEWPORT.width - 56);
+    assert.ok(lines <= 1, `${locale}: "${strings.results.newBest}" takes ${lines} lines`);
+  }
 });
 
 test('M20: the summary detail lines fit their column', () => {
@@ -289,6 +301,7 @@ test('M20: every button label fits its button', () => {
       ['common.quitToTitle', strings.common.quitToTitle],
     ];
     const compact: Array<[string, string]> = [
+      ['results.share', strings.results.share],
       ['common.back', strings.common.back],
       ['title.howToPlay', strings.title.howToPlay],
       ['title.story', strings.title.story],

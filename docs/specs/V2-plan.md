@@ -166,13 +166,36 @@ Validated on the emulator by setting a per-app locale and cold-starting: the
 game opened in Portuguese with nothing touched, which is the first proof that
 `detectLocale()` reads a real device.
 
-### M22 — Local memory and sharing
+### M22 — Local memory and sharing — **IMPLEMENTED (2026-09-05), emulator-validated**
 
 Local high scores, progress and preferences that survive a cold start, and
 result sharing. No backend, no accounts.
 
 One constraint from M15 and not negotiable: session progress must never gate a
 cold start. Persistence records what happened; it does not lock anything.
+
+Done on `m22/local-memory-and-sharing`; `npm run verify` green at 427 tests.
+Spec: `docs/specs/M22-local-memory-and-sharing.md`.
+
+**No new dependencies.** `expo-file-system` has been a dependency since M2 and
+writes one small JSON file; React Native's own `Share` opens the share sheet.
+`async-storage` and `expo-sharing` would each have been a native module for a
+job the existing stack already does (AGENTS.md rule 18), and a test now fails
+if either appears.
+
+The constraint is asserted directly rather than trusted: twenty hostile saves —
+truncated, not JSON, wrong types, a version from the future, a prototype
+pollution attempt — are each parsed and then used to build a flow, and every
+stage must still open. A corrupt save costs a high score and never the game.
+
+The file is versioned from its first write and unknown fields are preserved, so
+an older build cannot silently delete what a newer one saved. Validated on
+device: a `futureField` survived a write by a build that knows nothing about it.
+
+Also validated on device, and only observable there: the *detected* locale is
+not persisted, only a chosen one. A player whose phone is Portuguese gets
+Portuguese every launch; a player who picked English keeps English until they
+pick otherwise.
 
 ### M23 — Monetization and store readiness
 
