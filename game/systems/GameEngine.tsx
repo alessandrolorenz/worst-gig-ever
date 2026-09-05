@@ -14,6 +14,7 @@ import { GameEngine as ReactGameEngine } from 'react-native-game-engine';
 import { GameEngine as WebGameEngine } from 'react-game-engine';
 
 import { createAudioService, type AudioService } from '../audio/audioService.ts';
+import { OFFICIAL_SETLIST } from '../audio/setlist.ts';
 import { createSceneEntities, type GameEntities } from '../entities/sceneEntities.ts';
 import { Overlays } from '../rendering/Overlays.tsx';
 import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
@@ -27,6 +28,7 @@ import { emptyRecords, recordRound, type Records } from '../state/records.ts';
 import { SCHEMA_VERSION, type UnknownFields } from '../state/persistence.ts';
 import { loadSave, writeSave } from '../state/storage.ts';
 import { stageAt } from '../levels/stages.ts';
+import { trackForStage } from '../audio/setlist.ts';
 import type { GameState } from '../state/gameState.ts';
 import {
   advanceToNextStage,
@@ -62,7 +64,12 @@ export default function GameEngine() {
   // Created once per mount and mutated in place. In particular the Matter
   // world behind the shard debris must survive re-renders (ADR 0001).
   const audioRef = useRef<AudioService | null>(null);
-  if (audioRef.current === null) audioRef.current = createAudioService();
+  /*
+   * The official setlist is preloaded rather than the whole catalogue (M24A).
+   * Three players today, and still at most `SETLIST_SLOTS` when the catalogue
+   * is a library — see `preloadSetlist`.
+   */
+  if (audioRef.current === null) audioRef.current = createAudioService(OFFICIAL_SETLIST);
 
   const entitiesRef = useRef<GameEntities | null>(null);
   if (entitiesRef.current === null) {
@@ -209,6 +216,14 @@ export default function GameEngine() {
     const scene = entities.scene;
     const stage = stageAt(scene.flow.stageIndex);
     scene.stage = stage;
+    /*
+     * The one place a stage becomes a track (M24A). It used to be
+     * `scene.stage.music` read at Start; it is now the run's setlist, which on
+     * every path M24A ships is `OFFICIAL_SETLIST` — and
+     * `OFFICIAL_SETLIST[i] === STAGES[i].music`, so this resolves to the value
+     * the line it replaced returned.
+     */
+    scene.music = trackForStage(scene.flow.setlist, scene.flow.stageIndex);
     scene.round = createRound(stage.level);
     clearRhythm(scene.rhythm);
     clearEffects(scene.effects);
@@ -298,15 +313,16 @@ export default function GameEngine() {
    * was never the rhythm clock and is not being made into one — it simply
    * plays under the count, exactly as it played under M10's count-in.
    *
-   * The bed is the stage's own since M16: `grooveBed` under the stage that
-   * teaches the beat, the rock loop elsewhere.
+   * The bed comes from the run's setlist since M24A, which resolves to the
+   * stage's own authored track on every path that exists today: `grooveBed`
+   * under the stage that teaches the beat, the rock loop on Stage 1.
    */
   const handleBeginRound = useCallback(() => {
     const scene = entities.scene;
     setBeatRecord(false);
     beginRound(scene.flow);
     startRound(scene.round);
-    audio.playMusic(scene.stage.music);
+    audio.playMusic(scene.music);
     setUiState(scene.round.state);
     refreshFlow();
   }, [audio, entities, refreshFlow]);

@@ -1,6 +1,7 @@
 # M24 — Implementation plan
 
-**Status:** proposed, 2026-09-05. **Nothing started.**
+**Status:** M24A **implemented** 2026-09-05 on `m24/setlist-foundation`.
+M24B-D proposed.
 **Reads:** `M24-custom-setlist.md` (decisions), `M24-architecture.md` (shapes),
 `M24-test-plan.md` (tests), `../assets/M24-MUSIC-ACQUISITION-SPEC.md`.
 
@@ -35,13 +36,34 @@ Everything else in the brief's sequence stands.
 
 ---
 
-## M24A — Setlist foundation and tempo evidence
+## M24A — Setlist foundation and tempo evidence — **DONE (2026-09-05)**
 
 **Goal:** the game plays `OFFICIAL_SETLIST` instead of `stage.music`, and the
 audio contract can express an honest claim about a found file. **The player
 must not be able to tell anything changed.**
 
-Branch: `m24/setlist-foundation`.
+Branch: `m24/setlist-foundation`. `npm run verify` green at **464 tests**
+(430 before), plus the new `PASS_TEMPO_EVIDENCE` gate.
+
+### What changed against this plan
+
+Three deviations, each with a reason found during implementation:
+
+1. **`setlist.ts` went to `game/audio/`, not `game/levels/`** — the owner's
+   stated preference, and it groups the setlist with the catalogue it is made
+   of. It imports `STAGES` for the slot count and the official derivation; the
+   dependency runs one way and no level imports it back.
+2. **`parseSetlist` requires *selectable* tracks, not merely registered ones.**
+   Discovered by a test: `grooveBed` is a teaching floor and `showTheme` is a
+   120 BPM loop, and "is this a track?" would have let a save name either one.
+   `availableTracks()` is the gate, as a parameter with a default, mirroring
+   `availableLocales(includeDev)`. In M24A the library is empty, so every custom
+   setlist parses to `null` — the honest answer, and the fallback is the show.
+3. **The tempo tool gates on *grid agreement* rather than on best-fit tempo.**
+   "Do this file's onsets support 90 BPM?" is a narrower and far more robust
+   question than "what tempo is this?", and it is the one the project needs. The
+   best-fit tempo is still reported, and is advisory. See ADR 0013, including
+   the measured limitation on `rock_theme_song_loop.wav`.
 
 ### Work
 
@@ -60,21 +82,27 @@ Branch: `m24/setlist-foundation`.
 | 11 | `tests/audioContract.test.ts` | Migrate four assertions to `MUSIC_TRACKS`; add the setlist rules. |
 | 12 | `tests/setlist.test.ts` | **new.** See test plan §2. |
 
-### Definition of done
+### Definition of done — met
 
-- `npm run verify` green; test count rises, none removed.
+- `npm run verify` green, 464 tests, none removed. ✅
 - `OFFICIAL_SETLIST` deep-equals `['showTheme','grooveBed','showBed','showBed']`
-  by a pinned literal in a test.
-- `measure:tempo` run against the three existing tracks reports ~90 BPM for both
-  generated beds and ~120 BPM for `showTheme` — **the tool must reproduce the
-  known defect, or it is not measuring anything.** That is the acceptance test
-  for the tool itself.
-- Emulator: play Stage 1→4 and confirm the same music as before.
+  by a pinned literal in a test. ✅
+- The measurement reproduces the known defect. ✅ **with a correction to what
+  the defect measures as.** `showTheme` reads ~96 BPM rather than ~120: its
+  notated tempo is 120 (proved from the committed MIDI) but its riff is a
+  five-sixteenth cycle at 625 ms and its onsets barely mark the beat. It is
+  rejected from the 90 BPM grid on four independent grounds, which is what the
+  gate needs. The algorithm is verified against synthetic signals at 72, 90,
+  100, 120 and 140 BPM — each recovered within 1.5 BPM, and each a whole number
+  of beats long at 90 as well as at its own tempo, so duration divisibility
+  cannot tell them apart. Full evidence in ADR 0013.
+- Emulator run: **still owed.** Automated equivalence is proved; a device
+  confirmation that Stages 1-4 sound identical is an M24D line item.
 
-### Risk
+### Risk, in hindsight
 
-Low. The only behavioural change is where one identifier comes from, and the
-derived `OFFICIAL_SETLIST` makes the new value provably the old one.
+Low, as expected. The one surprise was the tempo tool, and it was a surprise
+about a *file* rather than about the design.
 
 ---
 

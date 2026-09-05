@@ -21,6 +21,7 @@
  * Pure data and pure transitions: no React, no React Native, no timers.
  */
 import { clampStageIndex, hasNextStage, STAGES, type StageDefinition, stageAt } from '../levels/stages.ts';
+import { OFFICIAL_SETLIST, type Setlist } from '../audio/setlist.ts';
 import { DEFAULT_LOCALE, nextLocale, type Locale } from '../i18n/locales.ts';
 
 export const APP_SCREENS = [
@@ -88,6 +89,22 @@ export interface AppFlowState {
    * object holds. `LocaleContext` reads it; it is not a second copy of it.
    */
   locale: Locale;
+  /**
+   * The setlist **this run** is playing (M24A).
+   *
+   * `OFFICIAL_SETLIST` unless a custom gig was started, and M24A never starts
+   * one — the field exists so that runtime music resolution goes through a
+   * setlist from the day the setlist exists, rather than being retrofitted
+   * later underneath a working game.
+   *
+   * On the flow rather than on the round, for the same reason `locale` and
+   * `clickEnabled` are: it is a choice about the whole run, and the round
+   * domain must not be able to see it. Nothing in `roundState.ts` or
+   * `rhythmState.ts` imports this module, and `tests/setlist.test.ts` holds
+   * that boundary — which is what makes "different music cannot change
+   * gameplay" structural instead of careful.
+   */
+  setlist: Setlist;
 }
 
 /**
@@ -105,7 +122,29 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
     introSeen: false,
     clickEnabled: true,
     locale: initialLocale,
+    setlist: OFFICIAL_SETLIST,
   };
+}
+
+/**
+ * Has the player earned the custom setlist? (M24A)
+ *
+ * **Derived, not stored.** `bestStageCleared` already means "the highest stage
+ * index finished", is already raised only by `SHOW_COMPLETE`, and is already
+ * persisted and restored. A separate `customSetlistUnlocked` boolean would be a
+ * second copy of a fact the save already holds, and two copies can disagree —
+ * which is the whole reason M24 reuses the existing completion state rather
+ * than inventing a second definition of victory.
+ *
+ * Note what it gates and what it does not: this decides whether a **screen** is
+ * reachable. No stage is locked by it, on a fresh install or a corrupt save, so
+ * the M15 rule that session progress must never gate a cold start survives
+ * intact.
+ *
+ * Nothing calls it in M24A. The unlock becomes visible at M24C.
+ */
+export function isCustomSetlistUnlocked(flow: AppFlowState): boolean {
+  return flow.bestStageCleared >= STAGES.length - 1;
 }
 
 /** The language control, from the title or from a paused round (M19). */
@@ -156,6 +195,13 @@ export function replayIntro(flow: AppFlowState): void {
  */
 export function startStage(flow: AppFlowState, index: number): void {
   flow.stageIndex = clampStageIndex(index);
+  /*
+   * A stage card always starts the **authored** show (M24A). The custom setlist
+   * is reached from its own screen and nowhere else, which is what makes
+   * "the player's setlist cannot overwrite the official one" true by
+   * construction rather than by remembering to reset it.
+   */
+  flow.setlist = OFFICIAL_SETLIST;
   flow.screen = 'BRIEFING';
 }
 
@@ -169,9 +215,10 @@ export function showBriefing(flow: AppFlowState): void {
   flow.screen = 'BRIEFING';
 }
 
-/** Back out of a briefing, or quit a round. */
+/** Back out of a briefing, or quit a round. Ends any custom run (M24A). */
 export function returnToTitle(flow: AppFlowState): void {
   flow.screen = 'TITLE';
+  flow.setlist = OFFICIAL_SETLIST;
 }
 
 /**

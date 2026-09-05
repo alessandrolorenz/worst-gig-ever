@@ -63,6 +63,39 @@ been 5.00 s / 0.88 MB since M16, recorded as a derivative at the time; three
 documents carried the old figure. There is no audio weight problem: nine files,
 7.9 MB total.
 
+### M24A — setlist foundation and tempo evidence (2026-09-05, `m24/setlist-foundation`)
+
+Architecture only. **No player-visible change**: Stage 1 still plays
+`showTheme`, Stage 2 `grooveBed`, Stages 3 and 4 `showBed`, and
+`OFFICIAL_SETLIST` is *derived* from the stage table rather than restating it,
+so the authored show is defined in one place and copied nowhere.
+
+| | |
+|---|---|
+| Specs | `docs/specs/M24-custom-setlist.md` and five companions |
+| ADR | `docs/decisions/0013-tempo-evidence-for-external-tracks.md` |
+| New modules | `game/audio/musicCatalogue.ts`, `game/audio/setlist.ts` |
+| Removed | `MUSIC_TEMPO_LOCKED` and `MUSIC_GENERATOR` — a boolean and its evidence kept in two places, replaced by one `TempoEvidence` union |
+| New gate | `npm run measure:tempo -- --require-locked`, in `npm run verify` |
+| Dependencies added | **none** (AGENTS.md rule 18). The FFT, onset detector and comb are ~200 lines in a committed script |
+| Gate | `npm run verify` green — **464 tests**, 0 failures (34 new), plus `PASS_TEMPO_EVIDENCE` |
+
+**The point of the milestone**, in one question the repository can now answer:
+*why are we allowed to believe this music matches the 90 BPM game?* Not because
+of a filename, not because a website said so, and not because someone set a
+boolean — but because a committed script measured the file's onsets and a build
+gate refuses the answer if they disagree.
+
+**A finding worth knowing.** `rock_theme_song_loop.wav` measures **~96 BPM**,
+not the 120 its MIDI notates. Both are true: the MIDI carries a single 120 BPM
+tempo event, and the audio's dominant periodicity is a five-sixteenth riff cycle
+at 625 ms whose onsets barely mark the beat (autocorrelation 0.04 at the notated
+500 ms beat, 0.30 at 625 ms). Every onset detector tried agrees. It changes
+nothing that matters — the track is rejected from the 90 BPM grid on four
+independent grounds — and it is recorded rather than tuned away, because a
+detector that answered 120 here would be one fitted to one file.
+Reproduce: `npm run measure:tempo`.
+
 ### Outstanding, and each needs the owner rather than code
 
 1. **Read the pt-BR `REVIEW:` lines.** M21 does not close without this.

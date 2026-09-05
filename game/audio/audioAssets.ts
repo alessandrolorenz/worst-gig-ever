@@ -5,14 +5,23 @@
  * refers to logical keys, so a file can be replaced, trimmed, or re-encoded
  * without touching a system (M2, audio architecture).
  *
- * Levels, pool sizes and the tempo-lock table are **not** here: they live in
- * `audioMix.ts`, because this module reaches for files through Metro's
- * `require` and therefore cannot be imported by a `node --test` run at all
- * (M16). Splitting them is what made the mix assertable.
+ * Levels and pool sizes are **not** here: they live in `audioMix.ts`, and the
+ * tracks themselves live in `musicCatalogue.ts`, because this module reaches
+ * for files through Metro's `require` and therefore cannot be imported by a
+ * `node --test` run at all (M16). Splitting them is what made the mix
+ * assertable.
  *
- * Paths and provenance are contracted by `assets/manifest/asset-manifest.json`
- * and `docs/assets/AUDIO-SOURCES.md`. The source MIDI is deliberately absent:
- * it is provenance only and there is no MIDI runtime (AGENTS.md rule 10).
+ * Since M24A the catalogue also holds each track's **path**, which is what
+ * `npm run measure:tempo` and the contract test read. That is not a second
+ * source of truth — the path was already in three places, and a mirrored
+ * constant is a constant that drifts. What stays here is the one thing that
+ * cannot move: Metro resolves `require` statically, so the literal argument
+ * below has to be written out. `tests/audioContract.test.ts` reads this file's
+ * source and proves every catalogue path appears in it.
+ *
+ * Provenance is contracted by `assets/manifest/asset-manifest.json` and
+ * `docs/assets/AUDIO-SOURCES.md`. The source MIDI is deliberately absent: it is
+ * provenance only and there is no MIDI runtime (AGENTS.md rule 10).
  */
 
 /*
@@ -21,17 +30,13 @@
  */
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-import type { MusicKey, SfxKey } from './audioMix.ts';
+import type { SfxKey } from './audioMix.ts';
+import type { MusicTrackId } from './musicCatalogue.ts';
 
-export {
-  MIX,
-  MUSIC_TEMPO_LOCKED,
-  SFX_POOL_SIZE,
-  type MusicKey,
-  type SfxKey,
-} from './audioMix.ts';
+export { MIX, SFX_POOL_SIZE, type SfxKey } from './audioMix.ts';
+export type { MusicTrackId } from './musicCatalogue.ts';
 
-export const MUSIC_SOURCES: Record<MusicKey, number> = {
+export const MUSIC_SOURCES: Record<MusicTrackId, number> = {
   /**
    * The CC0 rock loop the game has always used.
    *

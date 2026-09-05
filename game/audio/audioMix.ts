@@ -1,17 +1,27 @@
 /**
- * Audio *data*: which cues exist, how loud they sit, and which beds are
- * tempo-locked.
+ * Audio *data*: which cues exist and how loud they sit.
  *
- * Split out of `audioAssets.ts` in M16 for a concrete reason. That module is
- * the one place a concrete filename is named, and it names them through
- * Metro's `require`, which does not exist outside a bundler — so nothing in a
- * `node --test` run can import it, and until now nothing about the audio mix
- * was assertable at all.
+ * Split out of `audioAssets.ts` in M16 for a concrete reason. That module names
+ * files through Metro's `require`, which does not exist outside a bundler — so
+ * nothing in a `node --test` run can import it, and until then nothing about
+ * the audio mix was assertable at all.
  *
  * Everything here is plain data with no `require` in sight, so
- * `tests/audioContract.test.ts` can hold the rules that matter: the click is
- * mixed above the music it cues, and a stage that scores beats does not play a
- * bed that drifts away from them.
+ * `tests/audioContract.test.ts` can hold the rule that matters: the click is
+ * mixed above the music it cues.
+ *
+ * ## What left, at M24A
+ *
+ * `MusicKey`, `MUSIC_TEMPO_LOCKED` and `MUSIC_GENERATOR` used to live here.
+ * They are now `MusicTrackId` and `TempoEvidence` in `musicCatalogue.ts`,
+ * because the boolean could express only two of the three things that are true
+ * about a track's tempo and had no room at all for the one M24 is built around
+ * — an external file whose pulse has been *measured* rather than generated. A
+ * boolean beside a `MUSIC_GENERATOR` lookup was already two halves of one fact
+ * kept in two places; the catalogue is that fact in one place.
+ *
+ * What is left here is the mixing desk, which is a genuinely different subject
+ * from a catalogue of tracks.
  */
 
 export type SfxKey =
@@ -21,58 +31,6 @@ export type SfxKey =
   | 'crowdApplause'
   | 'beatClick'
   | 'mugDrink';
-
-/**
- * Which bed a stage plays (M16).
- *
- * Music became per-stage when the stages stopped wanting the same thing. A
- * stage that scores beats needs a bed that agrees with the beat clock; a stage
- * that scores none can play anything.
- */
-export type MusicKey = 'showTheme' | 'grooveBed' | 'showBed';
-
-/**
- * Whether a bed's pulse is `RHYTHM.bpm`.
- *
- * A stage that scores beats while playing a bed that is *not* tempo-locked is
- * telling the player two different things about when "now" is.
- *
- * **This used to mean "the file's length is a whole number of beats", and that
- * is not the same claim.** `showTheme` was recorded here as a 90 BPM track
- * that slipped 417 ms per loop; it is a 120 BPM track, and the arithmetic on
- * its duration could never have said so. Trimming it to 21.333 s would have
- * satisfied every check the project had while changing nothing a player hears.
- *
- * So a `true` here now means the file was **generated at `RHYTHM.bpm` by a
- * committed script**, which is a property a test can actually verify —
- * `MUSIC_GENERATOR` below is what it verifies against. A found file cannot be
- * marked `true`, because nothing in this repository can check that it is.
- */
-export const MUSIC_TEMPO_LOCKED: Record<MusicKey, boolean> = {
-  /**
-   * A CC0 track rendered from a **120 BPM** MIDI (measured; see
-   * `docs/assets/AUDIO-SOURCES.md`). Against a 90 BPM clock its beats coincide
-   * with the player's only once every two seconds and sit 167 ms away on the
-   * other two of every three — beyond `perfectWindowMs` by most of a window.
-   * It plays only on Stage 1, which scores no beats at all.
-   */
-  showTheme: false,
-  /** Generated at exactly 16 beats by `scripts/make-groove-bed.mjs`. */
-  grooveBed: true,
-  /** Generated at exactly 32 beats by `scripts/make-show-bed.mjs`. */
-  showBed: true,
-};
-
-/**
- * The committed generator behind each tempo-locked bed, or `null` for a found
- * file. This is the evidence for the claim above, and the contract test refuses
- * a `true` without it.
- */
-export const MUSIC_GENERATOR: Record<MusicKey, string | null> = {
-  showTheme: null,
-  grooveBed: 'scripts/make-groove-bed.mjs',
-  showBed: 'scripts/make-show-bed.mjs',
-};
 
 /**
  * How many players to keep per effect. Glass breaks and stick swings overlap

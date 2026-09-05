@@ -14,7 +14,7 @@ import {
   MUSIC_SOURCES,
   SFX_POOL_SIZE,
   SFX_SOURCES,
-  type MusicKey,
+  type MusicTrackId,
   type SfxKey,
 } from './audioAssets.ts';
 
@@ -32,13 +32,34 @@ export interface AudioService {
   readonly available: boolean;
   readonly failureReason: string | null;
   /**
-   * Starts a stage's bed from the top, stopping whatever was playing (M16).
+   * Creates players for exactly these tracks and releases every other (M24A).
    *
-   * The key is required rather than defaulted: every caller knows which stage
-   * it is starting, and a default is how the teaching stage would silently
-   * come up on the drifting rock loop the day someone adds a fourth stage.
+   * The seam the music library needs. Until M24A every registered track got a
+   * player at construction, which was right for three of them and would be
+   * wrong for a dozen: a catalogue of twelve would hold twelve decoders open
+   * for a session that never plays more than four.
+   *
+   * Called with a **setlist**, so the ceiling is `SETLIST_SLOTS` rather than
+   * the catalogue's size — and called early, at the title or the setlist
+   * screen, so the reason the eager preload existed still holds. Swapping a
+   * source is asynchronous on both platforms; a player created at the briefing
+   * would still be loading when the round started and the first bars would be
+   * silent.
+   *
+   * Idempotent: a track already loaded is kept, not recreated.
    */
-  playMusic(key: MusicKey): void;
+  preloadSetlist(ids: readonly MusicTrackId[]): void;
+  /**
+   * Starts a track from the top, stopping whatever was playing (M16).
+   *
+   * The id is required rather than defaulted: every caller knows what it is
+   * starting, and a default is how the teaching stage would silently come up on
+   * the wrong bed the day someone adds a fifth slot.
+   *
+   * Loads the track if `preloadSetlist` did not — correctness over the race,
+   * since a late player is better than no music at all.
+   */
+  playMusic(id: MusicTrackId): void;
   pauseMusic(): void;
   resumeMusic(): void;
   stopMusic(): void;
@@ -52,6 +73,7 @@ function createSilentService(reason: string): AudioService {
   return {
     available: false,
     failureReason: reason,
+    preloadSetlist() {},
     playMusic() {},
     pauseMusic() {},
     resumeMusic() {},
@@ -62,7 +84,12 @@ function createSilentService(reason: string): AudioService {
   };
 }
 
-export function createAudioService(): AudioService {
+/**
+ * `preload` is a parameter rather than a read of `OFFICIAL_SETLIST` inside, so
+ * this module stays ignorant of stages and levels — the same boundary M19 drew
+ * around `expo-localization`. `GameEngine` passes the run's setlist.
+ */
+export function createAudioService(preload: readonly MusicTrackId[] = []): AudioService {
   let expoAudio: typeof import('expo-audio');
   try {
     // Required lazily so a missing native module degrades to silence.
@@ -73,18 +100,47 @@ export function createAudioService(): AudioService {
   }
 
   /**
-   * One player per track, and a reference to whichever is playing.
+   * A player per *loaded* track, and a reference to whichever is playing.
    *
-   * Two players rather than one player re-pointed at a new source: swapping a
-   * source is asynchronous on both platforms, so a stage transition would
-   * start the round before its bed had loaded and the first bars would be
-   * silent. Preloading both costs a few hundred kilobytes of decoder state and
+   * A player each rather than one player re-pointed at a new source: swapping a
+   * source is asynchronous on both platforms, so a stage transition would start
+   * the round before its bed had loaded and the first bars would be silent.
+   * Holding them costs a few hundred kilobytes of decoder state each and
    * removes the race entirely.
+   *
+   * Which tracks are in here is `preloadSetlist`'s business since M24A. Before
+   * that it was every track in the registry, which stops being reasonable the
+   * moment the registry is a library rather than three beds.
    */
-  const tracks = new Map<MusicKey, PlayerLike>();
+  const tracks = new Map<MusicTrackId, PlayerLike>();
   let music: PlayerLike | null = null;
   const pools = new Map<SfxKey, { players: PlayerLike[]; next: number }>();
   let disposed = false;
+
+  /** Creates a looping player for one track, or returns the one that exists. */
+  const load = (id: MusicTrackId): PlayerLike | null => {
+    const existing = tracks.get(id);
+    if (existing) return existing;
+    const source = MUSIC_SOURCES[id];
+    if (source === undefined) return null;
+    const player = expoAudio.createAudioPlayer(source) as unknown as PlayerLike;
+    player.loop = true;
+    player.volume = MIX.music;
+    tracks.set(id, player);
+    return player;
+  };
+
+  const release = (id: MusicTrackId): void => {
+    const player = tracks.get(id);
+    if (!player) return;
+    tracks.delete(id);
+    try {
+      player.pause();
+      player.remove();
+    } catch {
+      /* Already released. */
+    }
+  };
 
   try {
     expoAudio
@@ -93,12 +149,7 @@ export function createAudioService(): AudioService {
         /* Non-fatal: playback still works with the default session. */
       });
 
-    for (const key of Object.keys(MUSIC_SOURCES) as MusicKey[]) {
-      const player = expoAudio.createAudioPlayer(MUSIC_SOURCES[key]) as unknown as PlayerLike;
-      player.loop = true;
-      player.volume = MIX.music;
-      tracks.set(key, player);
-    }
+    for (const id of preload) load(id);
 
     for (const key of Object.keys(SFX_SOURCES) as SfxKey[]) {
       const players: PlayerLike[] = [];
@@ -126,9 +177,21 @@ export function createAudioService(): AudioService {
     available: true,
     failureReason: null,
 
-    playMusic(key: MusicKey) {
+    preloadSetlist(ids: readonly MusicTrackId[]) {
       safely(() => {
-        const next = tracks.get(key);
+        const wanted = new Set(ids);
+        for (const id of [...tracks.keys()]) {
+          // Never release what is sounding: a setlist change while music plays
+          // would cut it off mid-bar, and the next playMusic swaps it anyway.
+          if (!wanted.has(id) && tracks.get(id) !== music) release(id);
+        }
+        for (const id of wanted) load(id);
+      });
+    },
+
+    playMusic(id: MusicTrackId) {
+      safely(() => {
+        const next = load(id);
         if (!next) return;
         // Silence the outgoing stage's bed before the incoming one starts, or
         // "Next stage" plays two loops at once.
@@ -180,14 +243,7 @@ export function createAudioService(): AudioService {
     dispose() {
       if (disposed) return;
       disposed = true;
-      for (const player of tracks.values()) {
-        try {
-          player.pause();
-          player.remove();
-        } catch {
-          /* Already released. */
-        }
-      }
+      for (const id of [...tracks.keys()]) release(id);
       tracks.clear();
       for (const pool of pools.values()) {
         for (const player of pool.players) {

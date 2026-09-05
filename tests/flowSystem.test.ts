@@ -33,6 +33,7 @@ function silentAudio(): AudioService {
   return {
     available: false,
     failureReason: null,
+    preloadSetlist: () => {},
     playMusic: () => {},
     pauseMusic: () => {},
     resumeMusic: () => {},

@@ -32,6 +32,7 @@ function createRecordingAudio(): RecordingAudio {
     calls,
     available: true,
     failureReason: null,
+    preloadSetlist: () => void calls.push('preloadSetlist'),
     playMusic: () => void calls.push('playMusic'),
     pauseMusic: () => void calls.push('pauseMusic'),
     resumeMusic: () => void calls.push('resumeMusic'),

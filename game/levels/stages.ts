@@ -29,7 +29,7 @@
  * panel id. What is left describes what a stage *is*, which is the only thing
  * a domain module should have known in the first place.
  */
-import type { MusicKey } from '../audio/audioMix.ts';
+import type { MusicTrackId } from '../audio/musicCatalogue.ts';
 import { defenseDrill } from './defenseDrill.ts';
 import { encore } from './encore.ts';
 import { findTheBeat } from './findTheBeat.ts';
@@ -61,14 +61,20 @@ export interface StageDefinition {
    */
   readonly groove: boolean;
   /**
-   * Which bed this stage plays (M16).
+   * Which bed this stage plays in the **official** show (M16, M24A).
    *
    * Per stage rather than one track for the game, because the stages stopped
    * wanting the same thing the moment one of them existed to *teach* the beat.
    * A stage that scores beats wants a bed that agrees with the beat clock; a
    * stage that scores none can play anything.
+   *
+   * Still the authored answer after M24A, and deliberately not moved into the
+   * setlist module: `OFFICIAL_SETLIST` is derived from this field, so the show
+   * the owner approved is defined here and copied nowhere. What changed is that
+   * a *run* resolves its music through its setlist rather than reading this
+   * directly — see `game/audio/setlist.ts`.
    */
-  readonly music: MusicKey;
+  readonly music: MusicTrackId;
   /**
    * Pictures on the briefing, shown above the bullets (M18.1).
    *

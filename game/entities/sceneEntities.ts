@@ -20,6 +20,8 @@ import { createAppFlow, type AppFlowState } from '../state/appFlow.ts';
 import { createStory, type StoryState } from '../state/storyState.ts';
 import type { GameState } from '../state/gameState.ts';
 import { stageAt, FIRST_STAGE_INDEX, type StageDefinition } from '../levels/stages.ts';
+import { OFFICIAL_SETLIST, trackForStage } from '../audio/setlist.ts';
+import type { MusicTrackId } from '../audio/musicCatalogue.ts';
 import { DEFAULT_LOCALE, type Locale } from '../i18n/locales.ts';
 
 export interface SceneEntity {
@@ -35,6 +37,16 @@ export interface SceneEntity {
    * `stage.groove` without importing a screen.
    */
   stage: StageDefinition;
+  /**
+   * The track this round plays, resolved from the run's setlist (M24A).
+   *
+   * Held next to `stage` and set with it, for exactly the reason `stage` is
+   * held next to `round`: the two are decided together, and the alternative is
+   * `GameEngine` reaching into the flow at the moment it starts the music —
+   * which is how the wrong bed comes up when a screen transition and a round
+   * start disagree about which stage is current.
+   */
+  music: MusicTrackId;
   /** Which screen the player is on: story, title, briefing, or round (M15). */
   flow: AppFlowState;
   /** The opening story's own clock, ticked by `flowSystem` (M15). */
@@ -81,6 +93,7 @@ export function createSceneEntities(
       round: createRound(stage.level),
       rhythm: createRhythm(),
       stage,
+      music: trackForStage(OFFICIAL_SETLIST, FIRST_STAGE_INDEX),
       flow: createAppFlow(initialLocale),
       story: createStory(),
       effects: createEffects(),

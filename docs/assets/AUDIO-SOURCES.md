@@ -127,11 +127,15 @@ strongest form of one.
   `tests/audioContract.test.ts`
 
 Reason it exists: a stage that scores beats must not play music that disagrees
-with the beat clock. `rock_theme_song_loop.wav` is 21.75 s, which at 90 BPM is
-32.625 beats — it slips about 417 ms every loop, more than twice the GOOD
-window, and is in antiphase with the pad after two. Stage 2 spends its first
-twelve seconds on nothing but the beat, so a bed sliding out of phase
-underneath would teach the opposite of the lesson.
+with the beat clock. `rock_theme_song_loop.wav` does — see the correction below
+for what is actually wrong with it, and *Measured tempo* for the numbers. Stage 2
+spends its first twelve seconds on nothing but the beat, so a bed that does not
+agree with the pad would teach the opposite of the lesson.
+
+(This paragraph described the rock loop as slipping 417 ms per loop until
+2026-09-05. That was the arithmetic the correction below overturns; it is
+restated here rather than deleted because the wrong reason is the whole reason
+`measure:tempo` exists.)
 
 Reason it is generated rather than found: searching CC0 libraries for a track
 that happens to be at exactly 90 BPM *and* happens to loop on a bar line is
@@ -237,6 +241,36 @@ double its size for nothing.
 
 ---
 
+## Measured tempo, 2026-09-05 (M24A)
+
+`npm run measure:tempo` measures each track's **pulse** from its own onsets and
+gates `npm run verify` on the result. It is the answer to "why are we allowed to
+believe this music matches the 90 BPM game?", and it accepts no filename, no
+metadata field and no hand-set boolean as an answer. Design and limits:
+`docs/decisions/0013-tempo-evidence-for-external-tracks.md`.
+
+Reproduce with `npm run measure:tempo`; do not trust the table without it.
+
+| Track | Best fit | Agreement with the 90 BPM grid | Rank | Verdict |
+|---|--:|--:|--:|---|
+| `rock_theme_song_loop.wav` | 96.0 BPM | **-0.018** | 9th | **not on the grid** |
+| `groove_bed_90.wav` | 90.0 BPM | 0.839 | 1st | on the grid |
+| `show_bed_90.wav` | 90.0 BPM | 0.731 | 1st | on the grid |
+
+The rock loop reads as **96 BPM rather than 120**, and that is worth stating
+plainly rather than quietly. Its notated tempo is unambiguous — the committed
+source MIDI carries a single tempo event of 500 000 µs per quarter, 4/4 — but
+its riff is a five-sixteenth cycle repeating every 625 ms, and its onsets sit
+near-evenly across the eighth-note grid instead of accenting the beat. Measured
+autocorrelation at the notated 500 ms beat is 0.04; at 625 ms it is 0.30. Every
+onset detector tried agrees, so a tool that answered 120 here would be one
+fitted to this one file.
+
+None of that changes what the project needs to know, which is narrower: this
+file is **not** at 90 BPM, and the measurement rejects it on four independent
+grounds against beds that pass on all four. It keeps Stage 1, where no beat is
+scored.
+
 ## Keeping these records true
 
 `npm run audit:provenance` re-derives every checkable claim in this file from
@@ -246,8 +280,13 @@ count against its size, recorded duration against its WAVE header — and
 opposite direction, which is the one rule 14 is about: a runtime asset quietly
 replaced without its record being updated.
 
-**It covers the structured records below and nothing else, and that limit is
-deliberate.** Prose is not parsed, because "it was 39.15 s before the trim" and
+It is one of three gates over this file, and they check different things:
+`audit:provenance` checks that a record still describes its file,
+`tests/audioContract.test.ts` checks the beat/bar contract on a file's length,
+and `measure:tempo` checks the pulse. Only the third can see a wrong tempo.
+
+**`audit:provenance` covers the structured records below and nothing else, and
+that limit is deliberate.** Prose is not parsed, because "it was 39.15 s before the trim" and
 "it is still 39.15 s" are the same sentence to a regex and opposite claims to a
 reader; a guard that failed on correct history would teach people to delete
 history. Prose accuracy is editorial, and the practice that replaces it is to
