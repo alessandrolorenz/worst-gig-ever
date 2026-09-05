@@ -68,31 +68,124 @@ export const CROWD_FRONT_RECT: Rect = { x: 0, y: 482, width: 1920, height: 520 }
  */
 export const DRUM_KIT_DROP = 120;
 
+/** Authored size of both M18 drink frames, in source px. */
+const DRINK_ART_FRAME = { width: 1440, height: 1224 } as const;
+
+/**
+ * The mug's own extent inside that frame, in source px, measured at alpha > 8
+ * on `mug_drink_01_catch` — the taller of the two frames, because its foam
+ * throws a splash above the rim.
+ *
+ * The frame is mostly forearm, so the drawn box always overstates the mug:
+ * scaling that box to a share of the screen would leave the mug's real height
+ * to however much padding the conditioning happened to keep. Measuring the mug
+ * itself is what makes `DRINK_MUG_SCREEN_FRACTION` mean what it says.
+ *
+ * There is no right edge here on purpose. The fist closes over the handle, so
+ * there is no column where the mug stops and something else starts, and every
+ * rule about the drink is about how tall it is and how far in from the corner,
+ * never how wide. Re-measure these when the frames are regenerated.
+ */
+const DRINK_MUG_CONTENT = { left: 72, top: 128, bottom: 907 } as const;
+
+/**
+ * How much of the screen's height the mug fills while the drink plays.
+ *
+ * The owner's number, from the 1.2.0 device build (2026-09-05). The drink was
+ * drawn small in the bottom-right corner, which in landscape is exactly where
+ * a thumb rests: *"como as maos ficam nas laterais com os dedoes sobre a tela
+ * a animacao bebendo a cerveja esta obstruida pelos dedos... quero que a
+ * caneca tome 70% da altura da tela e fique mais posicionada para o centro da
+ * tela"*. Both halves of `DRINK_RECT` come from that one report — a mug this
+ * large cannot hide behind a thumb, and one drawn near the centre is not under
+ * one to begin with.
+ *
+ * Walked down to 0.55 over three device builds the same afternoon: 0.7, then
+ * *"achei que ficou bom, so deixaria um pouco menor"* at 0.65, then
+ * *"acho melhor 55%"*. The owner is the only person who can judge this — it is
+ * a question about a hand holding a phone — so the number is theirs.
+ *
+ * What each step costs is `x`, and it is worth knowing before going lower. The
+ * forearm has to reach the right edge of the screen or it reads as a floating
+ * stump, so a shorter arm has to start further right and the mug is dragged
+ * along with it:
+ *
+ * | fraction | mug's left edge |
+ * |---|---|
+ * | 0.70 | 670 |
+ * | 0.65 | 765 |
+ * | 0.55 | **945** |
+ *
+ * At 0.55 the mug clears the canvas centre line by 15 px, so "drawn near the
+ * centre" is now barely true — the next step down stops being true at all.
+ *
+ * **The hard floor is 0.5125.** Below it there is no `y` at all: the arm is too
+ * short to reach the bottom of the canvas without the mug landing on the Groove
+ * Pad. 0.55 already narrows that window to 16 px, which is why `y` below is a
+ * much more delicate number than it looks.
+ */
+export const DRINK_MUG_SCREEN_FRACTION = 0.55;
+
+/** Source px to canvas px, set by the height the mug has to end up at. */
+const DRINK_SCALE =
+  (REFERENCE_CANVAS.height * DRINK_MUG_SCREEN_FRACTION) /
+  (DRINK_MUG_CONTENT.bottom - DRINK_MUG_CONTENT.top + 1);
+
 /**
  * Where the M18 drink is drawn: the drummer's own forearm, nearer to the
  * camera than anything else on stage.
  *
- * The spec placed it at x 1380-1900 / y 640-1080, and it has moved twice from
- * there for two different reasons.
+ * The size is derived rather than authored — see `DRINK_MUG_SCREEN_FRACTION`.
+ * Only the origin is a composition choice, and it is pinned between three
+ * edges that leave it around fifteen px of room in each direction:
  *
- * It bleeds **past the screen corner**, because the conditioned art carries
- * 34 px of transparent margin on its right and 13 px below the forearm; an arm
- * that stops short of the edge reads as a floating stump rather than as the
- * player's own limb. Content right lands at 1928 and content bottom at 1083,
- * both just outside the 1920 x 1080 canvas.
+ * - **The groove pad.** The catch frame's mug bottom lands at y 857 and
+ *   `padBounds()` starts at 865, so the pad stays visible through the whole
+ *   gesture and the player never loses the beat behind their own drinking
+ *   hand. That is what stops `y` going any lower — by eight px, at 0.55.
+ * - **The bottom of the canvas.** The wrist has to run off it, which needs
+ *   `y` at or above 1080 - 1211s. At 0.55 that is y 158, so the whole legal
+ *   window for `y` is 158–173 and this number is not a free choice. Both edges
+ *   move with the fraction; re-derive them rather than nudging `y` by eye.
+ * - **The right edge of the screen.** The forearm has to leave the frame
+ *   rather than stop inside it, or it reads as a floating stump instead of the
+ *   player's own limb. 463 rows of it run past x 1920, and the wrist runs 14 px
+ *   past the bottom.
  *
- * It is also **larger and further into the frame** than the first device build
- * (owner, 2026-09-04: *"pode ser um pouco maior, e mais para dentro do quadro
- * um pouco também, mas só um pouco pra ficar visível"*). 520x440 at x 1428
- * became 600x510 at x 1360 — 15% bigger, 68 px further in. The box matches the
- * art's own 640x544 aspect exactly, so `resizeMode="contain"` letterboxes
- * nothing and the margins above are the real ones.
- *
- * It still clears `padBounds()` (x 640-1280, y 865-1075) by 80 px, so the
- * player never loses the beat behind their own drinking hand.
+ * `x` is the half the owner's first report was actually about, and it is set as
+ * far left as that last constraint allows: the mug's left edge lands at 945,
+ * still inside the left half of the screen, so the centre line runs through the
+ * mug rather than past it.
  */
-export const DRINK_RECT: Rect = { x: 1360, y: 585, width: 600, height: 510 };
+export const DRINK_RECT: Rect = {
+  x: 890,
+  y: 166,
+  width: Math.round(DRINK_ART_FRAME.width * DRINK_SCALE),
+  height: Math.round(DRINK_ART_FRAME.height * DRINK_SCALE),
+};
 
+/**
+ * Where the mug itself lands on the canvas, once `resizeMode="contain"` has
+ * fitted the frame into `DRINK_RECT`.
+ *
+ * The drawn box is the arm; this is the beer. Every assertion about the drink
+ * reads this rather than `DRINK_RECT`, because the rect is padding and forearm
+ * in every direction and says almost nothing about what the player sees.
+ */
+export function drinkMugOnCanvas(): { left: number; top: number; bottom: number; height: number } {
+  const fit = Math.min(
+    DRINK_RECT.width / DRINK_ART_FRAME.width,
+    DRINK_RECT.height / DRINK_ART_FRAME.height,
+  );
+  const top = DRINK_RECT.y + DRINK_MUG_CONTENT.top * fit;
+  const bottom = DRINK_RECT.y + (DRINK_MUG_CONTENT.bottom + 1) * fit;
+  return {
+    left: DRINK_RECT.x + DRINK_MUG_CONTENT.left * fit,
+    top,
+    bottom,
+    height: bottom - top,
+  };
+}
 
 /**
  * Foreground drum kit.

@@ -31,8 +31,12 @@ import { DRINK_MIN_CLOSENESS, TARGET_DEFINITIONS } from '../game/config/targets.
 import { SCORING } from '../game/config/scoring.ts';
 import { countdownDurationMs, padBounds } from '../game/config/rhythm.ts';
 import { closenessAt } from '../game/systems/approach.ts';
-import { DRINK_RECT } from '../game/rendering/composition.ts';
-import { STAGE } from '../game/config/stage.ts';
+import {
+  DRINK_MUG_SCREEN_FRACTION,
+  DRINK_RECT,
+  drinkMugOnCanvas,
+} from '../game/rendering/composition.ts';
+import { REFERENCE_CANVAS } from '../game/config/stage.ts';
 import {
   DRINK_CATCH_MS,
   DRINK_DRINK_MS,
@@ -221,28 +225,43 @@ test('M18: quitting clears the drink along with every other effect', () => {
   assert.equal(effects.drink, null);
 });
 
-test('M18: the drink is drawn clear of the groove pad and the centre lanes', () => {
-  const pad = padBounds();
-  const right = DRINK_RECT.x + DRINK_RECT.width;
+test('M22.1: the mug is 70% of the screen and away from the corner a thumb covers', () => {
+  const mug = drinkMugOnCanvas();
 
+  // The owner's number, reported against the 1.2.0 build: the drink played in
+  // the bottom-right corner, which in landscape is under a thumb.
   assert.ok(
-    DRINK_RECT.x > pad.right,
-    'the drink must not cover the pad, or the player loses the beat every time they drink',
+    Math.abs(mug.height / REFERENCE_CANVAS.height - DRINK_MUG_SCREEN_FRACTION) < 0.01,
+    `the mug is ${(mug.height / REFERENCE_CANVAS.height * 100).toFixed(1)}% of the screen's height`,
   );
 
-  // The corridor the player reads targets down. The rect may overlap the
-  // outermost lane — the arm is nearer to the camera than anything on stage —
-  // but it must never reach the centre line the throws converge on.
-  assert.ok(DRINK_RECT.x > STAGE.vanishingPoint.x, 'the drink entered the central sightline');
-  for (const lane of STAGE.laneXs.slice(0, 4)) {
-    assert.ok(lane < DRINK_RECT.x, `lane ${lane} is covered by the drink`);
-  }
-
-  // It bleeds past the screen corner on purpose: the conditioned art carries
-  // transparent margin, and an arm that stops short reads as a floating stump.
-  assert.ok(right >= 1920, 'the arm must run off the right edge of the screen');
+  // "mais posicionada para o centro da tela": a mug this tall whose left edge
+  // is inside the left half straddles the centre line rather than sitting in
+  // the corner, where 1.2.0 drew it entirely to the right of x 1398.
   assert.ok(
-    DRINK_RECT.y + DRINK_RECT.height >= 1080,
+    mug.left < REFERENCE_CANVAS.width / 2,
+    `the mug starts at x ${mug.left.toFixed(0)}, back in the corner a thumb covers`,
+  );
+
+  // Both frames have to fit between the top edge and the pad, and the drink
+  // frame raises the mug higher than the catch frame this box is measured on.
+  assert.ok(mug.top >= 0, 'the catch frame is clipped by the top of the canvas');
+  assert.ok(
+    mug.bottom <= padBounds().top,
+    'the mug covers the pad, so the player loses the beat every time they drink',
+  );
+});
+
+test('M18: the arm still leaves the frame rather than ending inside it', () => {
+  // It bleeds past the screen corner on purpose: an arm that stops short reads
+  // as a floating stump rather than as the player's own limb. Only the corner
+  // is asserted here; `npm run measure:art` checks the silhouette itself.
+  assert.ok(
+    DRINK_RECT.x + DRINK_RECT.width >= REFERENCE_CANVAS.width,
+    'the arm must run off the right edge of the screen',
+  );
+  assert.ok(
+    DRINK_RECT.y + DRINK_RECT.height >= REFERENCE_CANVAS.height,
     'the arm must run off the bottom of the screen',
   );
 });

@@ -72,7 +72,21 @@ ever, for any reason.
       scores, in your language.
 - [ ] Cancelling it returns to the results screen with nothing broken.
 
-## 6. Anything that got worse
+## 6. The drink (M18, re-placed 2026-09-05)
+
+Hold the phone the way you normally play — a hand at each side, thumbs on the
+screen. The mug used to play in the bottom-right corner, under one of them.
+
+- [ ] Catch a mug close in. The mug fills most of the screen's height and sits
+      near the middle, not in the corner.
+- [ ] **Neither thumb covers it**, in the grip you actually use.
+- [ ] The Groove Pad stays visible underneath for the whole 480 ms — you can
+      still see the beat while you drink.
+- [ ] The arm still runs off the right edge, and still reads as your own arm
+      rather than as a picture pasted on the screen.
+- [ ] Two mugs drunk in quick succession still play one animation, not two.
+
+## 7. Anything that got worse
 
 The briefing card, the HUD columns and the results summary all changed shape in
 M20. They were measured, not eyeballed, so the thing to report is anything that
