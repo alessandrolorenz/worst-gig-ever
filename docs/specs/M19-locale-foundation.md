@@ -1,6 +1,7 @@
 # M19 — Locale Foundation
 
-**Status:** in progress on `m19/locale-foundation`.
+**Status:** implemented and validated on emulator, 2026-09-05, on `m19/locale-foundation`.
+Owner device verdict outstanding.
 **Parent:** `docs/specs/V2-plan.md`, "M19 — Locale foundation".
 **Depends on:** M18.5, which is done. The identity contract already fixes the
 one product decision this milestone would otherwise have to make — the title is
@@ -152,6 +153,54 @@ this job.
 - The language control exists, is wired to the flow, and is tested.
 - The game is visually unchanged in English.
 - `npm run verify` is green.
+
+## Emulator validation, 2026-09-05
+
+Pixel_9 (Android emulator, 2424x1080 landscape), debug build after
+`npx expo run:android`. The APK was checked for the `ExpoLocalization` class
+before anything else, because a native module that fails to link would be
+caught by `detectLocale`'s try/catch and go silently missing — it is present in
+`classes3.dex` and `classes6.dex`.
+
+Confirmed rendering from the catalogue, screen by screen: the story caption and
+Skip; the title's tagline, all four stage names and subtitles, How to play,
+Story and Click: on; stage 1's kicker, name, both figure captions and all five
+briefing bullets; Start the show and Back; the in-round DEFENSE, GROOVE,
+SHOW INTEGRITY, GET READY and the `{seconds}s` timer; and the results screen's
+SHOW RUINED, its outcome line, both summary headings, all ten row labels, and
+both interpolated strings — `0 / 32` and `Show Integrity left: 0 of 3.`
+
+**No language control is drawn**, which is the intended M19 state.
+
+Not seen, because they need a round actually played: PERFECT/GOOD, the beat
+streak, the hit combo, TAP THE SINGER, GO!, Paused/Resume, SHOW COMPLETE,
+STAGE n CLEARED, Play again and Next stage. They use the same mechanism as the
+strings above and are covered by the contract test, but they have not been read
+off a screen.
+
+The owner's phone was attached to adb throughout and was **not** installed to;
+its package list is unchanged.
+
+## What the emulator found, and it is M20's
+
+Stage 1's briefing **overflows its card in English**, today, on this viewport:
+at rest the third bullet is cut mid-sentence and bullets four and five are
+below the fold. Scrolling reaches all five, so this is M18.1's fold rather than
+a new defect and nothing about M19 caused it — no style, font size or sentence
+changed. It is recorded here because M19 is where it was measured.
+
+The part worth acting on is that **`tests/mugDrink.test.ts` passes on this**.
+Its budget is `VIEWPORT_PX * 1.6` — 320 px against a 200 px card — so the gate
+permits 60% overflow by construction. It was written as a loose proxy to catch
+a briefing that had doubled in length, and it does that; it has never been a
+fits-on-screen check, and reading it as one is a mistake this note exists to
+prevent.
+
+Measured against the test's own model, stage 1 scores 290 of an allowed 320.
+Measured on the device, roughly 270 px of content sits in a 200 px scroll.
+**The English card is already ~35% over**, before a translation that runs
+15-25% longer. The V2 plan predicted this would start happening in pt-BR; it is
+happening now.
 
 ## Known follow-on, recorded here rather than discovered later
 

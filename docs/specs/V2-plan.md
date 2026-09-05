@@ -67,7 +67,7 @@ One external action remains and it **blocks EAS builds**: the EAS project is
 still named `worst-band-ever` on expo.dev and must be renamed there. See
 `docs/specs/M18.5-final-release-identity-report.md`.
 
-### M19 — Locale foundation — **IMPLEMENTED (2026-09-04), not yet played**
+### M19 — Locale foundation — **IMPLEMENTED (2026-09-04), emulator-validated (2026-09-05)**
 
 Every user-visible string into typed localization catalogues. **English only —
 no translation yet.** Locale detection plus an explicit in-game language
@@ -91,8 +91,9 @@ Three things the plan above did not settle, decided in the spec:
   wired and tested; adding `pt-BR` to `SUPPORTED_LOCALES` is all that makes it
   appear.
 
-Outstanding: a native module was added, so the dev client needs rebuilding, and
-**nothing has been run on a device.**
+Validated on the Pixel_9 emulator on 2026-09-05: every screen reachable without
+playing a round renders from the catalogue, both interpolated strings included,
+and no language control is drawn. Owner device verdict outstanding.
 
 ### M20 — Translation-safe layout
 
@@ -101,6 +102,18 @@ layout assumptions removed, silent clipping prevented.
 
 Before translating, not after: translating into a layout that cannot hold it
 produces four broken languages instead of one.
+
+**Upgraded from preparatory to corrective by the M19 emulator run.** The
+prediction above — that stage 1 "now fits its 200 px card *in English*, with
+little to spare" — is wrong. It does not fit. On a 2424x1080 landscape phone
+the card shows two and a half of its five bullets at rest, and the mug rule is
+the sentence cut in half. Everything is reachable by scrolling, so it is
+M18.1's fold rather than a new break, but the card is already ~35% over in the
+language it was tuned for.
+
+And `tests/mugDrink.test.ts` passes on it, because its budget allows 320 px
+against a 200 px card. **The first job of M20 is a gate that measures what fits,
+not one that permits 60% overflow.**
 
 ### M21 — pt-BR
 

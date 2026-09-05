@@ -25,11 +25,11 @@ and asked nothing further of.
 | | Milestone | State |
 |---|---|---|
 | M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
-| M19 | Locale foundation | **implemented, unplayed** (2026-09-04) on `m19/locale-foundation`. See below |
+| M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
 | M20 | Translation-safe layout | not started |
 | M21 | pt-BR | not started |
 
-### M19 — locale foundation (implemented 2026-09-04, not yet played)
+### M19 — locale foundation (implemented 2026-09-04, emulator-validated 2026-09-05)
 
 Every user-visible string is out of the components and into a typed catalogue.
 **No translation and no copy change**: the strings in `game/i18n/catalogues/en.ts`
@@ -46,17 +46,42 @@ the game is meant to look identical.
 | Language control | Built, wired to `flow.locale`, drawn on the title and pause rows. **Invisible while one locale exists**, which is M19's own state; adding `pt-BR` to `SUPPORTED_LOCALES` is the whole of what makes it appear |
 | Gate | `npm run verify` green — 390 tests, 0 failures (20 new in `tests/localization.test.ts`) |
 
-**A native module was added, so the dev client must be rebuilt** before the app
-will start — `npx expo run:android`. An Android bundle exports cleanly and every
-extracted string appears exactly once in it, but **nothing has been run on a
-device or emulator**. That is the outstanding validation, and the thing to look
-for is a screen where text vanished rather than moved.
+**Validated on the Pixel_9 emulator, 2026-09-05** (debug build; a native module
+was added, so the dev client had to be rebuilt). The `ExpoLocalization` class
+was confirmed present in the APK first — a native module that failed to link
+would be swallowed by `detectLocale`'s try/catch and go silently missing.
 
-**The briefing-overflow budget in `tests/mugDrink.test.ts` now measures English
-and only English.** It is the exact bug the V2 plan predicts will repeat:
-Portuguese runs 15-25% longer, so this gate passing says nothing about whether
-the card holds a translation. Making it length-independent is M20, before any
-translation lands, not after.
+Read off the screen: the story caption and Skip; the title's tagline, all four
+stage cards, and its button row; stage 1's kicker, name, both figure captions
+and all five briefing bullets; the in-round DEFENSE / GROOVE / SHOW INTEGRITY /
+GET READY and the `{seconds}s` timer; and the whole results screen including
+both interpolated strings — `0 / 32` and `Show Integrity left: 0 of 3.` No
+language control is drawn, which is the intended state. **Nothing had vanished.**
+
+Not seen, because they need a round actually played: PERFECT/GOOD, beat streak,
+hit combo, TAP THE SINGER, GO!, Paused/Resume, SHOW COMPLETE, STAGE n CLEARED,
+Play again, Next stage. Same mechanism, covered by tests, but not read off a
+screen. The owner's phone was attached to adb throughout and was **not**
+installed to.
+
+### The emulator found the M20 bug already, in English
+
+Stage 1's briefing **overflows its card at rest** on a 2424x1080 landscape
+phone: the third bullet is cut mid-sentence and bullets four and five are below
+the fold. Scrolling reaches all five, so this is M18.1's fold rather than a new
+defect, and **M19 did not cause it** — no style, font size or sentence changed.
+
+What is worth acting on is that **`tests/mugDrink.test.ts` passes on this.** Its
+budget is `VIEWPORT_PX * 1.6`: 320 px against a 200 px card, so the gate permits
+60% overflow by construction. It was written as a loose proxy to catch a
+briefing that had doubled in length — it does that, it has never been a
+fits-on-screen check, and reading it as one is the mistake to avoid.
+
+By the test's own model stage 1 scores 290 of an allowed 320. On the device,
+roughly 270 px of content sits in a 200 px scroll. **The English card is already
+~35% over**, before a translation that runs 15-25% longer. The V2 plan predicted
+this would start in pt-BR; it is already true in English, which makes M20 a
+correctness milestone rather than a preparatory one.
 
 Everything else below is either done or deliberately deferred.
 
