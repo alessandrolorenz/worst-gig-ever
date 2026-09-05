@@ -22,13 +22,54 @@ and asked nothing further of.
 2026-09-04: *"o foco da v2 será a internacionalização."* Road map:
 `docs/specs/V2-plan.md`.
 
+**Merged to `main` 2026-09-05** as `a3da411`, after the owner approved the beat
+clock work. Everything below had been stacked on `m22/local-memory-and-sharing`
+while every device build came off the branch; the trunk has caught up.
+`npm run verify` green on `main` at 429 tests.
+
 | | Milestone | State |
 |---|---|---|
-| M18.5 | Final release identity | **done** (2026-09-04). One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** |
-| M19 | Locale foundation | **implemented, emulator-validated** (2026-09-05) on `m19/locale-foundation`. Owner device verdict outstanding. See below |
-| M22 | Local memory and sharing | **implemented, emulator-validated** (2026-09-05) on `m22/local-memory-and-sharing` |
-| M20 | Translation-safe layout | **implemented, emulator-validated** (2026-09-05) on `m20/translation-safe-layout`. Owner device verdict outstanding. See below |
-| M21 | pt-BR | **draft implemented, emulator-validated** (2026-09-05) on `m21/pt-br`. **The copy needs the owner's read before it is done.** See below |
+| M18.5 | Final release identity | **done** (2026-09-04), on `main`. One external action outstanding: the EAS project is still named `worst-band-ever` on expo.dev and must be renamed there, which **blocks EAS builds** — local release builds are unaffected |
+| M19 | Locale foundation | **done**, on `main`. Emulator-validated 2026-09-05 |
+| M20 | Translation-safe layout | **done**, on `main`. Emulator-validated 2026-09-05 |
+| M21 | pt-BR | **draft on `main`, not finished.** The copy needs the owner's read: lines marked `REVIEW:` in `game/i18n/catalogues/pt-BR.ts` are where the joke was re-invented rather than translated |
+| M22 | Local memory and sharing | **done**, on `main`. Emulator- and device-validated 2026-09-05 |
+
+### After the merge, from device play on 2026-09-05
+
+Both are corrections rather than features, and both were the same failure: a
+written claim nobody re-measured.
+
+**The drink was drawn where a thumb sits.** In landscape the bottom-right
+corner is under the player's hand, so the 480 ms payoff played behind their own
+fingers. The mug is now sized from the *mug* rather than from its drawn box —
+the frame is mostly forearm — at a fraction the owner walked down over four
+device builds to 55%. Each step down costs horizontal centring, because the arm
+must still reach the right edge; there is a hard floor at 51.25%. Spec section
+`M18-mug-drink-reaction.md` §C.1.
+
+**The show's music was at 120 BPM, not drifting at 90.** Recorded that way for
+three milestones. The "417 ms per loop" was arithmetic on the file's 21.75 s
+length against a 90 BPM grid; nobody had measured its pulse. Aligning the CC0
+package's own source MIDI against the audio put all ten best fits between 119.6
+and 120.0 BPM. Stages 3 and 4 now play a generated 32-beat bed, and
+`MUSIC_TEMPO_LOCKED` now means "generated at `RHYTHM.bpm` by a committed
+script" rather than "the file's length divides evenly" — the old meaning would
+have blessed a trimmed 120 BPM loop. `docs/assets/AUDIO-SOURCES.md`.
+
+**A third stale claim, found the same day.** The roadmap's "audio weight" item
+described `crowd_applause.wav` as an untrimmed 39 s / 6.9 MB source. It has
+been 5.00 s / 0.88 MB since M16, recorded as a derivative at the time; three
+documents carried the old figure. There is no audio weight problem: nine files,
+7.9 MB total.
+
+### Outstanding, and each needs the owner rather than code
+
+1. **Read the pt-BR `REVIEW:` lines.** M21 does not close without this.
+2. **Rename the EAS project** on expo.dev from `worst-band-ever`. EAS builds
+   fail until then.
+3. **Finish the V2 device retest** — `docs/specs/V2-physical-retest-checklist.md`.
+   Section 6, the drink, was validated on 2026-09-05; sections 1-5 and 7 are open.
 
 ### M19 — locale foundation (implemented 2026-09-04, emulator-validated 2026-09-05)
 
