@@ -42,6 +42,8 @@ import {
   startStage,
   currentStage,
 } from '../game/state/appFlow.ts';
+import { SETLIST_SLOTS } from '../game/audio/setlist.ts';
+import { availableTracks } from '../game/audio/musicCatalogue.ts';
 import { allCatalogues } from '../game/i18n/catalogue.ts';
 import { format, placeholdersIn } from '../game/i18n/format.ts';
 import { PRODUCT_TITLE } from '../game/config/product.ts';
@@ -278,11 +280,95 @@ test('M22: a full save survives a round trip unchanged', () => {
     bestStageCleared: 2,
     clickEnabled: false,
     locale: 'pt-BR',
+    /* Every field, so a new one added without a round trip fails here (M24C). */
+    customSetlist: availableTracks(true).slice(0, SETLIST_SLOTS),
   } as const;
 
   const parsed = parseSave(serializeSave(original));
   assert.deepEqual(parsed.state, original);
   assert.equal(parsed.unreadable, false);
+});
+
+// ---------------------------------------------------------------------------
+// The saved custom setlist (M24C)
+// ---------------------------------------------------------------------------
+
+test('M24C: a fresh save has no setlist and does not pretend to', () => {
+  const empty = emptySave();
+  assert.equal(empty.customSetlist, null, 'a fresh install came with a setlist');
+  assert.equal(
+    parseSave(null).state.customSetlist,
+    null,
+    'no file on disk produced a setlist',
+  );
+  assert.equal(
+    parseSave('not json at all').state.customSetlist,
+    null,
+    'an unreadable file produced a setlist',
+  );
+  // And the schema did not have to move for an additive optional field.
+  assert.equal(empty.schemaVersion, 1, 'the schema was bumped without a reader needing it');
+});
+
+test('M24C: a saved setlist comes back exactly as it was written', () => {
+  const chosen = availableTracks(false).slice(0, SETLIST_SLOTS);
+  assert.equal(chosen.length, SETLIST_SLOTS, 'the shipping library is smaller than the show');
+
+  const written = serializeSave({ ...emptySave(), customSetlist: chosen });
+  const restored = parseSave(written).state.customSetlist;
+
+  assert.deepEqual(restored, chosen, 'the setlist did not survive a cold start');
+  assert.notEqual(restored, null);
+});
+
+test('M24C: a malformed saved setlist falls back rather than half-loading', () => {
+  /*
+   * Every way a setlist on disk can be wrong, and every one of them has the
+   * same answer: `null`, which puts the player in front of an empty builder —
+   * a state they know how to fix — rather than into a run they never built.
+   *
+   * Rejecting rather than repairing is the point. A three-slot setlist padded
+   * out with a track nobody chose would start a gig the player did not build,
+   * and it would look like the game deciding for them.
+   */
+  const library = availableTracks(false);
+  const good = library.slice(0, SETLIST_SLOTS);
+
+  const broken: Array<[string, unknown]> = [
+    ['not an array', 'noRefunds'],
+    ['an object', { 0: good[0] }],
+    ['too short', good.slice(0, SETLIST_SLOTS - 1)],
+    ['too long', [...good, library[SETLIST_SLOTS]]],
+    ['a duplicate', [good[0], good[0], good[1], good[2]]],
+    ['a bed nobody may choose', ['showBed', 'grooveBed', 'showTheme', 'showBed']],
+    ['a track from a future build', [...good.slice(1), 'someTrackThisBuildHasNeverHeardOf']],
+    ['a hole', [good[0], null, good[2], good[3]]],
+    ['nested rubbish', [[good[0]], good[1], good[2], good[3]]],
+  ];
+
+  for (const [why, value] of broken) {
+    const raw = JSON.stringify({ ...emptySave(), customSetlist: value });
+    const parsed = parseSave(raw);
+    assert.equal(parsed.state.customSetlist, null, `a setlist with ${why} was accepted`);
+    // And it cost nothing else: the rest of the save is still readable.
+    assert.equal(parsed.unreadable, false, `${why} made the whole save unreadable`);
+    assert.equal(parsed.state.clickEnabled, true, `${why} took the rest of the save with it`);
+  }
+});
+
+test('M24C: the setlist is a known field, so an old build cannot duplicate it', () => {
+  /*
+   * The passthrough is for fields this build has *no opinion* about. Now that
+   * it has one, `customSetlist` must not also arrive in `unknown` — writing it
+   * twice would let a stale copy win, since unknown fields are spread first.
+   */
+  const chosen = availableTracks(false).slice(0, SETLIST_SLOTS);
+  const parsed = parseSave(JSON.stringify({ ...emptySave(), customSetlist: chosen }));
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(parsed.unknown, 'customSetlist'),
+    false,
+    'the saved setlist is being carried as an unknown field as well as a known one',
+  );
 });
 
 // ---------------------------------------------------------------------------

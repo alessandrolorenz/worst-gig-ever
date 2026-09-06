@@ -212,7 +212,10 @@ test('Stage 1 can be cleared, and clearing it leads into Stage 2', () => {
   assert.deepEqual(scene.rhythm, createRhythm());
 
   // What the results screen then does.
-  assert.deepEqual(recordStageCleared(scene.flow), { hasNext: true });
+  assert.deepEqual(recordStageCleared(scene.flow), {
+    hasNext: true,
+    unlockedCustomSetlist: false,
+  });
   assert.equal(advanceToNextStage(scene.flow), true);
   assert.equal(scene.flow.screen, 'BRIEFING');
 

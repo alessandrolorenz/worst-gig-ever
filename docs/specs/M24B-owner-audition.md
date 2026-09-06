@@ -1,5 +1,33 @@
 # M24B — the audition
 
+**Status: CLOSED, 2026-09-06. The owner auditioned all eleven and kept all
+eleven.**
+
+```text
+11 / 11 KEEP
+0 MAYBE
+0 REJECT
+```
+
+> All of the songs worked well in the actual game.
+> The more groove-oriented tracks were especially enjoyable.
+> None should be removed.
+
+All eleven were promoted to `release: 'production'` with `ownerConfirmed: true`
+at M24C, and the files moved from `assets/audio/music/candidates/` to
+`assets/audio/music/library/`. What the player now chooses from is exactly this
+pool. See `docs/specs/M24C-custom-setlist.md`.
+
+**Everything below is kept as it was written**, in the state it was in before
+the audition — the candidate framing, the "nothing here has been approved", the
+empty checklists. It is the record of what was asked and on what evidence, and
+rewriting it to match the answer would destroy the only account of the question.
+Read it as history from here down.
+
+---
+
+<!-- Historical from this point. Status at the time of writing: -->
+
 **Status:** eleven candidates are in the build and waiting to be listened to.
 **Nothing here has been approved.** Every track is `release: 'candidate'` and
 `ownerConfirmed: false`; a release build cannot reach any of them.
@@ -23,7 +51,8 @@ adb install -r build-out/worst-gig-ever-audition.apk
 That is a release-type build with `EXPO_PUBLIC_AUDITION_BUILD=1`, which is the
 only thing that keeps the audition row in a bundle that has no `__DEV__`. See
 `game/config/buildFlags.ts` for why that is not a way for unapproved music to
-reach a player, and `npm run build:candidates -- --verify` for the audio itself.
+reach a player, and `npm run build:library -- --verify` for the audio itself
+(named `build:candidates` at the time this was written).
 
 A plain `npm run build:preview` or any EAS `preview`/`production` build has the
 flag **off** and will show no audition row at all — that is deliberate, and it

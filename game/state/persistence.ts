@@ -29,6 +29,7 @@
 import { emptyRecords, type Records, type StageRecord } from './records.ts';
 import { isLocale, type Locale } from '../i18n/locales.ts';
 import { STAGES, type StageId } from '../levels/stages.ts';
+import { parseSetlist, type Setlist } from '../audio/setlist.ts';
 
 /** Bumped only when the shape changes in a way a reader must know about. */
 export const SCHEMA_VERSION = 1;
@@ -54,6 +55,22 @@ export interface SavedState {
   readonly clickEnabled: boolean;
   /** An explicit override. Null means "use whatever the device asks for". */
   readonly locale: Locale | null;
+  /**
+   * The setlist the player built, or null if they never have (M24C).
+   *
+   * **Additive and optional, so `SCHEMA_VERSION` stays 1.** A build that
+   * predates this field reads a file containing it and carries it through
+   * untouched — that is what the unknown-field passthrough is for — and a build
+   * that has it reads an older file and gets `null`, which is exactly right for
+   * a player who has not built one. Neither direction loses anything, which is
+   * the rule this module's version number exists to police.
+   *
+   * Not a *validated* setlist by the time it reaches here — it is, because
+   * `parseSave` runs it through `parseSetlist`, which drops anything that is
+   * not four distinct selectable tracks. See `parseSave` for why that rejects
+   * rather than repairs.
+   */
+  readonly customSetlist: Setlist | null;
 }
 
 /** What a fresh install has. Also what any unreadable file becomes. */
@@ -64,6 +81,7 @@ export function emptySave(): SavedState {
     bestStageCleared: -1,
     clickEnabled: true,
     locale: null,
+    customSetlist: null,
   };
 }
 
@@ -89,6 +107,7 @@ const KNOWN_FIELDS = new Set([
   'bestStageCleared',
   'clickEnabled',
   'locale',
+  'customSetlist',
 ]);
 
 /**
@@ -194,6 +213,18 @@ export function parseSave(raw: string | null): ParsedSave {
       bestStageCleared: bestStageCleared < -1 ? -1 : bestStageCleared,
       clickEnabled: typeof decoded.clickEnabled === 'boolean' ? decoded.clickEnabled : true,
       locale: typeof locale === 'string' && isLocale(locale) ? (locale as Locale) : null,
+      /*
+       * Rejects rather than repairs, like everything else here (M24C).
+       *
+       * `parseSetlist` returns null for a wrong length, a duplicate, a track
+       * this build does not ship, and a track that exists but is not
+       * selectable. Every one of those degrades to "no saved setlist", which
+       * puts the player in front of an empty builder — a state they know how
+       * to fix — rather than into a run they never built. It never throws, so
+       * a save written by a build with a larger library cannot stop this one
+       * opening.
+       */
+      customSetlist: parseSetlist(decoded.customSetlist),
     },
     unknown,
     unreadable: false,
@@ -209,5 +240,6 @@ export function serializeSave(state: SavedState, unknown: UnknownFields = {}): s
     bestStageCleared: state.bestStageCleared,
     clickEnabled: state.clickEnabled,
     locale: state.locale,
+    customSetlist: state.customSetlist,
   });
 }

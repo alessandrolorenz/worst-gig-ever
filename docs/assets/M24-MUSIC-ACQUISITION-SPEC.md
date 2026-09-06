@@ -313,5 +313,5 @@ ceiling is now enforced rather than advisory — see `TEMPO_MAX_CONDITIONING`.
 line. The derivatives need a sampler-style loop crossfade, which `ffmpeg` cannot
 express cleanly, so the reproducible artifact is
 `scripts/condition-track.mjs` — committed, deterministic, and pinned per track
-by `assets/audio/music/candidates/SOURCES.json`. That is the same standing the
+by `assets/audio/music/library/SOURCES.json`. That is the same standing the
 generated beds already have, whose "conditioning command" is likewise a script.

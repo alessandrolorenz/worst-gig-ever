@@ -20,8 +20,21 @@
  *
  * Pure data and pure transitions: no React, no React Native, no timers.
  */
-import { clampStageIndex, hasNextStage, STAGES, type StageDefinition, stageAt } from '../levels/stages.ts';
-import { OFFICIAL_SETLIST, type Setlist } from '../audio/setlist.ts';
+import {
+  clampStageIndex,
+  FIRST_STAGE_INDEX,
+  hasNextStage,
+  STAGES,
+  type StageDefinition,
+  stageAt,
+} from '../levels/stages.ts';
+import {
+  OFFICIAL_SETLIST,
+  SETLIST_SLOTS,
+  isValidCustomSetlist,
+  type Setlist,
+} from '../audio/setlist.ts';
+import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import { DEFAULT_LOCALE, nextLocale, type Locale } from '../i18n/locales.ts';
 
 export const APP_SCREENS = [
@@ -29,6 +42,19 @@ export const APP_SCREENS = [
   'STORY',
   /** Title, stage picker, and the way back into the story. */
   'TITLE',
+  /**
+   * The setlist builder (M24C).
+   *
+   * Between the title and the briefing because that is where it sits in the
+   * player's path: it is reached from the title, and leaving it by START THE
+   * GIG opens Stage 1's briefing exactly as a stage card would.
+   *
+   * Unreachable until `isCustomSetlistUnlocked(flow)`. `openSetlist` is the
+   * only transition into it and it refuses while the show has not been
+   * survived, so the screen is gated by a function rather than by whether a
+   * button happens to be drawn.
+   */
+  'SETLIST',
   /** The stage's how-to-play card, shown immediately before its round. */
   'BRIEFING',
   /**
@@ -105,6 +131,41 @@ export interface AppFlowState {
    * gameplay" structural instead of careful.
    */
   setlist: Setlist;
+  /**
+   * The setlist the player is **building**, one entry per slot (M24C).
+   *
+   * Separate from `setlist` on purpose, and the separation is the feature's
+   * whole safety story. `setlist` is what a run resolves its music through and
+   * is `OFFICIAL_SETLIST` on every authored path; `draftSetlist` is a screen's
+   * working state that only ever becomes a run's setlist by passing through
+   * `startCustomGig`, which validates it first. A half-built draft is therefore
+   * unable to reach a round even in principle.
+   *
+   * `null` is an unfilled slot rather than a missing one: the array is always
+   * `SETLIST_SLOTS` long, so the builder can index it without checking and a
+   * draft can never be *partly* the wrong shape.
+   */
+  draftSetlist: readonly (MusicTrackId | null)[];
+  /**
+   * Which slot the next chosen song lands in.
+   *
+   * On the flow rather than in React state because the builder's whole
+   * interaction — tap a song, watch the cursor move to the next empty slot —
+   * is a transition of this value, and a transition that lives in a component
+   * cannot be tested without a renderer. `tests/setlist.test.ts` drives the
+   * entire four-tap path through `assignSlot` alone.
+   */
+  activeSlot: number;
+}
+
+/**
+ * A draft with nothing chosen: one `null` per slot.
+ *
+ * Built from `SETLIST_SLOTS` rather than written out, so a fifth stage gives
+ * the builder a fifth row instead of a silently short array.
+ */
+export function emptyDraft(): readonly (MusicTrackId | null)[] {
+  return Object.freeze(new Array<MusicTrackId | null>(SETLIST_SLOTS).fill(null));
 }
 
 /**
@@ -123,6 +184,8 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
     clickEnabled: true,
     locale: initialLocale,
     setlist: OFFICIAL_SETLIST,
+    draftSetlist: emptyDraft(),
+    activeSlot: 0,
   };
 }
 
@@ -141,7 +204,9 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
  * the M15 rule that session progress must never gate a cold start survives
  * intact.
  *
- * Nothing calls it in M24A. The unlock becomes visible at M24C.
+ * M24C is where it starts deciding something: it draws the title's way into the
+ * builder, it is the transition `recordStageCleared` reports crossing, and
+ * `openSetlist` refuses while it is false.
  */
 export function isCustomSetlistUnlocked(flow: AppFlowState): boolean {
   return flow.bestStageCleared >= STAGES.length - 1;
@@ -205,6 +270,164 @@ export function startStage(flow: AppFlowState, index: number): void {
   flow.screen = 'BRIEFING';
 }
 
+/* ---------------------------------------------------------------- *
+ * The custom setlist (M24C)
+ * ---------------------------------------------------------------- */
+
+/**
+ * The first slot with nothing in it, or the last slot when the draft is full.
+ *
+ * The last slot rather than -1 so the cursor is always somewhere a tap can
+ * land: a full draft that a player wants to change is the common case once the
+ * feature has been used, and a cursor pointing at nothing would make the next
+ * song silently do nothing.
+ */
+function firstEmptySlot(draft: readonly (MusicTrackId | null)[]): number {
+  const empty = draft.findIndex((entry) => entry === null);
+  return empty === -1 ? Math.max(0, draft.length - 1) : empty;
+}
+
+/**
+ * Opens the setlist builder, or refuses.
+ *
+ * Returns false when the show has not been survived, and that refusal is the
+ * gate — not the absence of a button. A screen whose only protection is that
+ * nothing draws a way in is a screen one stray render reopens; this way the
+ * unlock is a property of the transition and `tests/setlist.test.ts` can ask it
+ * without a renderer.
+ *
+ * The cursor is placed on the first empty slot on every entry, so a player
+ * returning to a saved setlist lands on the end of it and a player with a fresh
+ * draft lands on slot 1.
+ */
+export function openSetlist(flow: AppFlowState): boolean {
+  if (!isCustomSetlistUnlocked(flow)) return false;
+  flow.activeSlot = firstEmptySlot(flow.draftSetlist);
+  flow.screen = 'SETLIST';
+  return true;
+}
+
+/** Tapping a slot: it becomes the one the next chosen song lands in. */
+export function selectSlot(flow: AppFlowState, slot: number): void {
+  if (!Number.isFinite(slot)) return;
+  flow.activeSlot = Math.max(0, Math.min(SETLIST_SLOTS - 1, Math.floor(slot)));
+}
+
+/**
+ * Tapping a song: it fills the active slot, and the cursor moves on.
+ *
+ * The four-tap path the screen is named after. Tapping four songs in the list
+ * builds a whole setlist without touching a slot, because each assignment
+ * advances to the next empty one.
+ *
+ * **A song already in the draft is refused**, returning false. That is the
+ * no-duplicates rule (`isValidCustomSetlist`) enforced at the moment of the
+ * tap rather than only at START THE GIG, so the builder can never hold a state
+ * the validator would later reject — the used row is drawn deaf and this is
+ * what makes that drawing true. Re-tapping the song *already in the active
+ * slot* is likewise a no-op rather than a swap with itself.
+ *
+ * Replacing a slot works by making it active and choosing something else: the
+ * displaced song becomes available again the moment it leaves the draft, which
+ * is why the availability check reads the array rather than a second set.
+ */
+export function assignSlot(flow: AppFlowState, track: MusicTrackId): boolean {
+  const slot = Math.max(0, Math.min(SETLIST_SLOTS - 1, Math.floor(flow.activeSlot)));
+  const elsewhere = flow.draftSetlist.some((entry, index) => entry === track && index !== slot);
+  if (elsewhere) return false;
+
+  const next = [...flow.draftSetlist];
+  next[slot] = track;
+  flow.draftSetlist = Object.freeze(next);
+  flow.activeSlot = firstEmptySlot(flow.draftSetlist);
+  return true;
+}
+
+/**
+ * Puts a setlist that came off disk into the builder (M24C).
+ *
+ * Takes an already-parsed `Setlist`, never raw JSON: `parseSetlist` is the one
+ * place a saved setlist is validated, and a second entry point here would be a
+ * second answer to "is this thing a setlist".
+ *
+ * `null` restores the empty draft, so a save with no setlist and a save with a
+ * rejected one land in the same, correct, place.
+ */
+export function loadDraft(flow: AppFlowState, setlist: Setlist | null): void {
+  flow.draftSetlist = setlist === null ? emptyDraft() : Object.freeze([...setlist]);
+  flow.activeSlot = firstEmptySlot(flow.draftSetlist);
+}
+
+/**
+ * The draft as a playable setlist, or `null` while it is not one yet.
+ *
+ * The single definition of "ready", read by START THE GIG to decide whether it
+ * is deaf and by `startCustomGig` to decide whether it runs. One function, so
+ * a button that looks pressable and a gig that refuses to start cannot
+ * disagree.
+ *
+ * It re-runs the *whole* validator rather than merely counting filled slots.
+ * Every rule is already there — four slots, all selectable, no duplicates — and
+ * checking a cheaper proxy here is how a draft loaded from a save written by a
+ * build with a different library would slip through.
+ */
+export function completedDraft(
+  flow: AppFlowState,
+  selectable: readonly MusicTrackId[] = availableTracks(),
+): Setlist | null {
+  if (flow.draftSetlist.some((entry) => entry === null)) return null;
+  const setlist = flow.draftSetlist as readonly MusicTrackId[];
+  if (!isValidCustomSetlist(setlist, selectable)) return null;
+  return Object.freeze([...setlist]);
+}
+
+/**
+ * START THE GIG: the run becomes the player's, and Stage 1's briefing opens.
+ *
+ * Returns the setlist it started so the caller can preload exactly those tracks
+ * and persist them, or `null` when the draft is not playable — in which case
+ * **nothing moves**. A refused start leaves the player on the builder with
+ * their draft intact rather than dropping them into an authored show they did
+ * not ask for.
+ *
+ * Always Stage 1. A custom show is the show, from the top; there is no
+ * "custom stage 3", and starting at `FIRST_STAGE_INDEX` is what makes slot 1
+ * mean Stage 1 for every run.
+ */
+export function startCustomGig(
+  flow: AppFlowState,
+  selectable: readonly MusicTrackId[] = availableTracks(),
+): Setlist | null {
+  /*
+   * The unlock is checked here as well as in `openSetlist`, and the redundancy
+   * is deliberate. Today the only way to reach this is through a screen that
+   * gate already guards — but "no caller can get here" is an argument about
+   * the current call graph, and this is the function that decides what music a
+   * run plays. A save that holds a setlist without the progress that earns it
+   * is a real state (`tests/setlist.test.ts`), and it must not be one tap away
+   * from a gig whatever the screens happen to do.
+   */
+  if (!isCustomSetlistUnlocked(flow)) return null;
+  const setlist = completedDraft(flow, selectable);
+  if (setlist === null) return null;
+  startStageWithSetlist(flow, FIRST_STAGE_INDEX, setlist);
+  return setlist;
+}
+
+/**
+ * Is the run in progress one the player built?
+ *
+ * Reference identity against the authored show rather than a `mode` field on
+ * the flow, per §21 of the brief: the run's setlist already answers the
+ * question, and a second field could disagree with it. `OFFICIAL_SETLIST` is a
+ * frozen module constant that only `startStage` and `returnToTitle` ever
+ * assign, so anything else in that field arrived through `startCustomGig` or
+ * the development audition.
+ */
+export function isCustomRun(flow: AppFlowState): boolean {
+  return flow.setlist !== OFFICIAL_SETLIST;
+}
+
 /**
  * Starts a stage on a **given** setlist rather than the authored one (M24B).
  *
@@ -243,7 +466,16 @@ export function showBriefing(flow: AppFlowState): void {
   flow.screen = 'BRIEFING';
 }
 
-/** Back out of a briefing, or quit a round. Ends any custom run (M24A). */
+/**
+ * Back out of a briefing, the builder, or a round. Ends any custom run (M24A).
+ *
+ * The run's setlist goes back to the authored show; the **draft does not**
+ * (M24C §38). Those are different objects for exactly this reason: leaving a
+ * gig must never leave the player's music where a stage card could pick it up,
+ * and it must never cost them the setlist they spent four taps building. A
+ * failed custom run is a retry, and the setlist is still in the builder when
+ * they go back to it.
+ */
 export function returnToTitle(flow: AppFlowState): void {
   flow.screen = 'TITLE';
   flow.setlist = OFFICIAL_SETLIST;
@@ -254,10 +486,32 @@ export function returnToTitle(flow: AppFlowState): void {
  * goes on.
  *
  * Only `SHOW_COMPLETE` reaches here: a ruined show is a retry, not progress.
+ *
+ * ## `unlockedCustomSetlist`, and why it is a return value
+ *
+ * The reward moment in §37 of the M24C brief needs a *transition*, not a
+ * state: `CUSTOM SETLIST UNLOCKED` is right the first time the show is
+ * survived and wrong every time after. The transition is computed here, from
+ * the same `bestStageCleared` that defines the unlock, by asking the question
+ * on either side of the one line that can change the answer.
+ *
+ * Reporting it beats persisting an "unlock message seen" flag, which would be
+ * a second fact about progress that the save would then have to keep true. It
+ * is also why this is idempotent in the way that matters: the effect that
+ * calls it re-runs on re-render, and a second call raises no high-water mark
+ * and therefore reports `false` — the banner appears once per completion,
+ * never once per frame.
  */
-export function recordStageCleared(flow: AppFlowState): { hasNext: boolean } {
+export function recordStageCleared(flow: AppFlowState): {
+  hasNext: boolean;
+  unlockedCustomSetlist: boolean;
+} {
+  const wasUnlocked = isCustomSetlistUnlocked(flow);
   flow.bestStageCleared = Math.max(flow.bestStageCleared, flow.stageIndex);
-  return { hasNext: hasNextStage(flow.stageIndex) };
+  return {
+    hasNext: hasNextStage(flow.stageIndex),
+    unlockedCustomSetlist: !wasUnlocked && isCustomSetlistUnlocked(flow),
+  };
 }
 
 /**

@@ -1,21 +1,30 @@
 /**
- * The audition contract (M24B).
+ * The music library and the audition tooling (M24B, M24C).
  *
  * Source of truth: docs/specs/M24-custom-setlist.md
+ *                  docs/specs/M24C-custom-setlist.md
  *                  docs/assets/M24-MUSIC-ACQUISITION-SPEC.md
  *
- * M24B puts eleven external tracks in the tree and a way to listen to them.
- * Both halves are dangerous in a way the beds never were, and these tests are
- * about the two ways it could go wrong:
+ * M24B put eleven external tracks in the tree and a way to listen to them.
+ * M24C is the owner's answer — **11 KEEP, 0 MAYBE, 0 REJECT** — so all eleven
+ * are production music now, and half of what this file used to assert changed
+ * sides with them.
  *
- *   - **unaudited third-party music reaching a player.** Every candidate is
- *     `release: 'candidate'` and `ownerConfirmed: false`, and a release build
- *     must be unable to reach one by any route — the library, a saved setlist,
- *     or the audition row;
- *   - **the authored show quietly changing.** The audition path writes
- *     `flow.setlist`, which is the same field a real run reads. If starting a
- *     stage from the title could ever pick that up, the first run a player takes
- *     would be on a candidate nobody has heard.
+ * What did **not** change is what the file is for. Three things are still
+ * dangerous and are still checked here:
+ *
+ *   - **third-party audio must stay what it says it is.** Every track is CC0,
+ *     conditioned from a hashed source by a committed command, and exactly
+ *     sixteen bars of it. Those checks now run over the production library
+ *     rather than over a candidate pool, which is the *stronger* place for
+ *     them: these files ship;
+ *   - **the authored show must not quietly change.** The audition path writes
+ *     `flow.setlist`, the same field a real run reads. If a stage card could
+ *     pick that up, a first run would come up on music nobody chose;
+ *   - **the audition flag must stay a development door.** It opens tooling. It
+ *     has never been able to promote a track and it still cannot, which is why
+ *     the promotion at M24C is recorded in the catalogue and in a document
+ *     rather than implied by a build.
  *
  * Nothing here needs an audio device. The files are read as bytes and the
  * audition module is pure.
@@ -59,23 +68,30 @@ import { allCatalogues } from '../game/i18n/catalogue.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Every candidate, from the catalogue rather than from a list written here. */
-const candidates = trackIds().filter(
-  (id) => MUSIC_TRACKS[id].library?.release === 'candidate',
+/**
+ * Every conditioned library track, from the catalogue rather than from a list.
+ *
+ * Was "every candidate" until M24C. The filter is `library !== null` now
+ * because `release` no longer separates anything — all eleven are production —
+ * and the property these tests are about was never the release state anyway: it
+ * is *this file came from outside and has to keep proving it*.
+ */
+const library = trackIds().filter(
+  (id) => MUSIC_TRACKS[id].library !== null && MUSIC_TRACKS[id].evidence.kind === 'conditioned',
 );
 
 const manifest = JSON.parse(
-  readFileSync(join(repoRoot, 'assets/audio/music/candidates/SOURCES.json'), 'utf8'),
+  readFileSync(join(repoRoot, 'assets/audio/music/library/SOURCES.json'), 'utf8'),
 ) as ReadonlyArray<Record<string, string | number | boolean>>;
 
 // ---------------------------------------------------------------------------
-// The candidates in the tree
+// The library in the tree
 // ---------------------------------------------------------------------------
 
-test('M24B: every candidate is a real file of the length it claims', () => {
-  assert.ok(candidates.length >= 8, `only ${String(candidates.length)} candidates exist`);
+test('M24B: every library track is a real file of the length it claims', () => {
+  assert.ok(library.length >= 8, `only ${String(library.length)} library tracks exist`);
 
-  for (const id of candidates) {
+  for (const id of library) {
     const track = MUSIC_TRACKS[id];
     const absolute = join(repoRoot, track.file);
     const bytes = statSync(absolute).size;
@@ -110,7 +126,7 @@ test('M24B: every candidate is a real file of the length it claims', () => {
   }
 });
 
-test('M24B: no candidate is silent, and none is a wall of clipping', () => {
+test('M24B: no library track is silent, and none is a wall of clipping', () => {
   /*
    * Two failures a tempo measurement cannot see, because both can produce a
    * perfectly gridded file: a derivative cut from a gap in the arrangement, and
@@ -122,7 +138,7 @@ test('M24B: no candidate is silent, and none is a wall of clipping', () => {
    * `PEAK_TARGET`, so a file that is not near it did not come out of the
    * pipeline.
    */
-  for (const id of candidates) {
+  for (const id of library) {
     const bytes = readFileSync(join(repoRoot, MUSIC_TRACKS[id].file));
     const channels = bytes.readUInt16LE(22);
     let offset = 12;
@@ -164,7 +180,7 @@ test('M24B: the manifest and the catalogue describe the same eleven tracks', () 
    * 129 MB of sources, so it is load-bearing provenance rather than a note. Two
    * copies of a fact can disagree; this is what stops them.
    */
-  assert.equal(manifest.length, candidates.length, 'the manifest and the catalogue differ in size');
+  assert.equal(manifest.length, library.length, 'the manifest and the catalogue differ in size');
 
   for (const entry of manifest) {
     const id = entry.id as string;
@@ -189,7 +205,7 @@ test('M24B: the manifest and the catalogue describe the same eleven tracks', () 
   }
 });
 
-test('M24B: every candidate keeps its real authorship, whatever it is called in game', () => {
+test('M24B: every library track keeps its real authorship, whatever it is called in game', () => {
   /*
    * AGENTS.md rule 13, as a test. The fictional title is presentation; renaming
    * a third-party work away from its author is a provenance failure, and the
@@ -335,32 +351,63 @@ test('M24B: Stage 2 can be auditioned on a song without the official run changin
   }
 });
 
-test('M24B: a release build has nothing to audition and no way to audition it', () => {
+test('M24C: a release build reaches only music somebody has listened to', () => {
   /*
-   * The release-safety property, from the data side. The UI gate is asserted in
-   * `tests/localization.test.ts`; this is the half that would still hold if
-   * somebody rendered the row by mistake.
+   * M24B's version of this test asserted that a release build could select
+   * *nothing* — the only safe answer while eleven unaudited tracks sat in the
+   * tree. The owner has since listened to all eleven and kept all eleven, so
+   * the empty assertion would now be asserting that the milestone failed.
+   *
+   * The property underneath it is the one that mattered and it is unchanged:
+   * **no track reaches a player unheard.** That was true by the pool being
+   * empty; it is true now by every track in it carrying a record of having been
+   * played to a person. Stated over the release-build answer, so it holds for
+   * whatever the library becomes.
    */
-  assert.deepEqual([...availableTracks(false)], [], 'a release build can select a candidate');
+  const shipping = availableTracks(false);
+  assert.ok(shipping.length > 0, 'the promotion did not land — a release build has no music');
 
-  for (const id of candidates) {
+  for (const id of shipping) {
     const track = MUSIC_TRACKS[id];
-    assert.equal(track.library?.release, 'candidate');
+    assert.equal(track.library?.release, 'production', `${id} ships as a candidate`);
     assert.equal(
-      track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed,
-      false,
-      `${id} is marked as confirmed by the owner before any audition happened`,
+      isGrooveQualified(id),
+      true,
+      `${id} is selectable and is not on the beat clock`,
     );
+    if (track.evidence.kind === 'conditioned') {
+      assert.equal(
+        track.evidence.ownerConfirmed,
+        true,
+        `${id} is an external track a player can choose that nobody has heard`,
+      );
+    }
     assert.equal(
       OFFICIAL_SETLIST.includes(id),
       false,
-      `${id} reached the authored show without being promoted`,
+      `${id} is in the authored show as well as the library`,
+    );
+  }
+
+  /*
+   * And the other direction, which is the one that would go wrong quietly: a
+   * conditioned track that has *not* been confirmed must not be reachable. There
+   * are none today, so this asserts the rule rather than an instance of it —
+   * which is exactly what it is for, since the next acquisition arrives as one.
+   */
+  for (const id of trackIds()) {
+    const track = MUSIC_TRACKS[id];
+    if (track.evidence.kind !== 'conditioned' || track.evidence.ownerConfirmed) continue;
+    assert.equal(
+      shipping.includes(id),
+      false,
+      `${id} has not been listened to and a release build can select it`,
     );
   }
 });
 
-test('M24B: every candidate has a title in every language', () => {
-  for (const id of candidates) {
+test('M24B: every library track has a title in every language', () => {
+  for (const id of library) {
     const titleKey = MUSIC_TRACKS[id].library?.titleKey;
     assert.ok(titleKey, `${id} is selectable with no title key`);
     for (const [locale, catalogue] of allCatalogues()) {
@@ -374,21 +421,36 @@ test('M24B: every candidate has a title in every language', () => {
 test('M24B: the pool size is data, not a number written in the code', () => {
   /*
    * The owner's standing instruction: the library is 8-12 tracks, maybe more,
-   * and the number is a product decision made from auditions. Adding or removing
-   * a candidate must be a change to the catalogue and to nothing else.
+   * and the number is a product decision made from auditions. Adding or
+   * removing one must be a change to the catalogue and to nothing else.
+   *
+   * `Overlays.tsx` joined the list at M24C, because the builder is where a
+   * "there are eleven songs" would now be most tempting to write — the screen
+   * draws every one of them.
    */
   for (const file of [
     'game/audio/audition.ts',
     'game/audio/musicCatalogue.ts',
     'game/rendering/DevAudition.tsx',
+    'game/rendering/Overlays.tsx',
   ]) {
-    const body = readFileSync(join(repoRoot, file), 'utf8')
+    /*
+     * Comments go, and so does everything from `StyleSheet.create(` onwards —
+     * the same cut `tests/localization.test.ts` makes on the same files, for
+     * the same reason. A stylesheet is hundreds of dimensions and none of them
+     * is a count of anything: `fontSize: 11` in the builder's results line is
+     * not a claim about how many songs there are, and a test that reads it as
+     * one would push the next person to pick a font size to keep it quiet.
+     */
+    const source = readFileSync(join(repoRoot, file), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
+    const styles = source.indexOf('StyleSheet.create(');
+    const body = styles < 0 ? source : source.slice(0, styles);
     assert.equal(
-      new RegExp(`\\b${String(candidates.length)}\\b`).test(body),
+      new RegExp(`\\b${String(library.length)}\\b`).test(body),
       false,
-      `${file} hardcodes the number of candidates`,
+      `${file} hardcodes the number of songs in the library`,
     );
   }
 
@@ -485,33 +547,47 @@ test('M24B: no shipping build profile turns the audition flag on', () => {
 
 test('M24B: the flag opens a door, it cannot promote a track through it', () => {
   /*
-   * The separation that makes the flag safe to exist at all. It decides whether
-   * a *development surface is drawn*; it has no bearing on whether a track has
-   * been listened to, and the two questions are answered in different modules.
+   * The separation that makes the flag safe to exist at all, and the reason
+   * M24C's promotion is a recorded decision rather than a build configuration.
    *
-   * So even in an audition build every candidate is still a candidate, still
-   * unconfirmed, and still barred from shipping by the rule in
-   * `tests/audioContract.test.ts` — which does not read `buildFlags.ts` at all.
+   * The flag decides whether a *development surface is drawn*. It has no
+   * bearing on whether a track has been listened to, and the two questions are
+   * answered in different modules — `tests/audioContract.test.ts` enforces the
+   * listening rule and does not read `buildFlags.ts` at all.
+   *
+   * Demonstrated by taking a full census of the catalogue with the flag off,
+   * turning it on, and taking the census again. Nothing may move. That works
+   * whatever the library happens to contain, which is why it survived the
+   * candidate pool emptying.
    */
+  const census = () =>
+    trackIds().map((id) => {
+      const track = MUSIC_TRACKS[id];
+      const confirmed =
+        track.evidence.kind === 'conditioned' ? track.evidence.ownerConfirmed : null;
+      return `${id}:${String(track.library?.release ?? 'none')}:${String(confirmed)}`;
+    });
+
   const original = process.env[AUDITION_BUILD_FLAG];
   try {
+    delete process.env[AUDITION_BUILD_FLAG];
+    assert.equal(isAuditionBuild(), false, 'the flag is on before the test set it');
+    const closed = census();
+    const shippingWithFlagOff = [...availableTracks(false)];
+
     process.env[AUDITION_BUILD_FLAG] = '1';
     assert.equal(showsAuditionTools(), true, 'the audition build did not open the tooling');
 
-    // The pool opens...
-    assert.ok(availableTracks().length > 0, 'an audition build sees no candidates');
+    // The tooling opens...
+    assert.ok(availableTracks().length > 0, 'an audition build sees no music to audition');
     // ...and nothing about any track's standing moved.
-    for (const id of candidates) {
-      const track = MUSIC_TRACKS[id];
-      assert.equal(track.library?.release, 'candidate', `${id} was promoted by a build flag`);
-      assert.equal(
-        track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed,
-        false,
-        `${id} became owner-confirmed by a build flag`,
-      );
-    }
+    assert.deepEqual(census(), closed, 'a build flag changed a track’s standing');
     // And the explicit question a release build asks still answers the same way.
-    assert.deepEqual([...availableTracks(false)], [], 'the flag leaked into the shipping answer');
+    assert.deepEqual(
+      [...availableTracks(false)],
+      shippingWithFlagOff,
+      'the flag leaked into the shipping answer',
+    );
   } finally {
     if (original === undefined) delete process.env[AUDITION_BUILD_FLAG];
     else process.env[AUDITION_BUILD_FLAG] = original;

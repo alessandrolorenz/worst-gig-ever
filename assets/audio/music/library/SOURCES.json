@@ -21,7 +21,7 @@
     "startSample": 176656,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/noRefunds_90.wav",
+    "derivative": "assets/audio/music/library/noRefunds_90.wav",
     "derivativeSha256": "2f405eba2ca5c9580bb6eb70a0c6d6ee405d77b38ab6ef1d4454495021c307d1",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -48,7 +48,7 @@
     "startSample": 175928,
     "bars": 16,
     "mono": true,
-    "derivative": "assets/audio/music/candidates/brokenAmp_90.wav",
+    "derivative": "assets/audio/music/library/brokenAmp_90.wav",
     "derivativeSha256": "b63549abc3bccb5bc87de393ec9a719001a555f7f0dfb8b48d0f06e820468933",
     "derivativeBytes": 3763244,
     "derivativeChannels": 1
@@ -75,7 +75,7 @@
     "startSample": 6408216,
     "bars": 16,
     "mono": true,
-    "derivative": "assets/audio/music/candidates/lastCall_90.wav",
+    "derivative": "assets/audio/music/library/lastCall_90.wav",
     "derivativeSha256": "e6dd3a58c2a0767b272949b6e74a3d2daf0864b0b618bba17f980402d38d24c4",
     "derivativeBytes": 3763244,
     "derivativeChannels": 1
@@ -102,7 +102,7 @@
     "startSample": 588512,
     "bars": 16,
     "mono": true,
-    "derivative": "assets/audio/music/candidates/stageDive_90.wav",
+    "derivative": "assets/audio/music/library/stageDive_90.wav",
     "derivativeSha256": "54230a28c190c1d581d34319550d972b639929efd047ef5df4a8a53329b90017",
     "derivativeBytes": 3763244,
     "derivativeChannels": 1
@@ -129,7 +129,7 @@
     "startSample": 315888,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/cheapBeerRiot_90.wav",
+    "derivative": "assets/audio/music/library/cheapBeerRiot_90.wav",
     "derivativeSha256": "6b028f1e32ede381e988661d440e317094a3f438e9142fe96e27ce62f70951b4",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -156,7 +156,7 @@
     "startSample": 706112,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/wrongChord_90.wav",
+    "derivative": "assets/audio/music/library/wrongChord_90.wav",
     "derivativeSha256": "5572da8cd79af63f8a9523d2a447e38611cde4228330027fcdc81aef6905b7a1",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -183,7 +183,7 @@
     "startSample": 177040,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/badSoundcheck_90.wav",
+    "derivative": "assets/audio/music/library/badSoundcheck_90.wav",
     "derivativeSha256": "9f1fa51ff08c096dcac43f5cb67af79d74cbbb1db205d58c5c89da4d8079c39c",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -210,7 +210,7 @@
     "startSample": 441000,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/loadOut_90.wav",
+    "derivative": "assets/audio/music/library/loadOut_90.wav",
     "derivativeSha256": "f56aa38298cbcdd2046953c92b3ea821614c6160046b83f8bf173861fa11a4f3",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -237,7 +237,7 @@
     "startSample": 2321744,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/fireExit_90.wav",
+    "derivative": "assets/audio/music/library/fireExit_90.wav",
     "derivativeSha256": "b9042582bdb4f0023b55622fa59fa1c95828d5a05872ca341a67da8b48decd1d",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -264,7 +264,7 @@
     "startSample": 219496,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/noEncore_90.wav",
+    "derivative": "assets/audio/music/library/noEncore_90.wav",
     "derivativeSha256": "98dd0e1becf9e35589656630ac335a219fa16b3e4f01368dc207e01db5a471ab",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2
@@ -291,7 +291,7 @@
     "startSample": 1660224,
     "bars": 16,
     "mono": false,
-    "derivative": "assets/audio/music/candidates/wrongVenue_90.wav",
+    "derivative": "assets/audio/music/library/wrongVenue_90.wav",
     "derivativeSha256": "c522dfb98dadc48e37168b2510e167ad8dfbe09254179496b8c3fc35cdec348e",
     "derivativeBytes": 7526444,
     "derivativeChannels": 2

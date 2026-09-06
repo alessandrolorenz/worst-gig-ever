@@ -34,6 +34,10 @@ while every device build came off the branch; the trunk has caught up.
 | M20 | Translation-safe layout | **done**, on `main`. Emulator-validated 2026-09-05 |
 | M21 | pt-BR | **draft on `main`, not finished.** The copy needs the owner's read: lines marked `REVIEW:` in `game/i18n/catalogues/pt-BR.ts` are where the joke was re-invented rather than translated |
 | M22 | Local memory and sharing | **done**, on `main`. Emulator- and device-validated 2026-09-05 |
+| M24A | Setlist foundation and tempo evidence | **done**, on `m24/setlist-foundation` → `m24/music-library`. Not on `main` |
+| M24B | Music library and audition | **done and closed**, on `m24/music-library`. Owner kept 11/11 on 2026-09-06. Not on `main` |
+| M24C | Custom setlist unlock and builder | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/specs/M24C-owner-validation.md`. Not on `main` |
+| M24D | Physical replay validation | **not started.** Opens when the M24C checklist comes back |
 
 ### After the merge, from device play on 2026-09-05
 
@@ -63,6 +67,69 @@ been 5.00 s / 0.88 MB since M16, recorded as a derivative at the time; three
 documents carried the old figure. There is no audio weight problem: nine files,
 7.9 MB total.
 
+### M24C — custom setlist and the production music library (2026-09-06, `m24/custom-setlist`)
+
+**The owner kept all eleven, and the eleven became a feature.**
+
+```text
+11 / 11 KEEP     0 MAYBE     0 REJECT
+```
+
+> All of the songs worked well in the actual game. The more groove-oriented
+> tracks were especially enjoyable. None should be removed.
+
+After completing the whole show for the first time, the player unlocks **BUILD
+THE WORST SETLIST**: four slots, eleven songs, and a replay of the same four
+stages on the music they chose. Full report:
+`docs/specs/M24C-custom-setlist.md`. Owner device checklist:
+`docs/specs/M24C-owner-validation.md` — **every item pending**.
+
+| | |
+|---|---|
+| Branch | `m24/custom-setlist`, from the accepted M24B HEAD `2d7ded3` — **not** from `main`, which contains neither M24A nor M24B |
+| Promoted | all 11 to `release: 'production'`, `ownerConfirmed: true`; provenance, source hashes and bytes unchanged |
+| Moved | `assets/audio/music/candidates/` → `assets/audio/music/library/`; `build-candidates.mjs` → `build-library.mjs` |
+| New screen | `'SETLIST'` in `APP_SCREENS` — two columns, no modal, no new primitive |
+| New saved field | `SavedState.customSetlist`, additive and optional; **`SCHEMA_VERSION` stays 1** |
+| Dependencies added | **none** |
+| Gate | `npm run verify` green — **519 tests**, 0 failures (32 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_LIBRARY_SOURCES` |
+
+**The official show did not move.** Stage 1 `showTheme`, Stage 2 `grooveBed`,
+Stages 3 and 4 `showBed` — `OFFICIAL_SETLIST` is still derived from the stage
+table, still frozen, and still assigned by every entry point except START THE
+GIG. That is what makes the first run a new player takes the authored one
+whatever is saved.
+
+**No new state was invented for the unlock.** `bestStageCleared >= 3` already
+meant "finished the show", was already persisted, and already survived a cold
+start. What M24C added is that `recordStageCleared` now *reports the crossing* —
+so `CUSTOM SETLIST UNLOCKED` appears on the results screen that earned it and on
+no other, without persisting a second flag that could disagree with the first.
+
+**Two questions only the phone can answer**, and both are on the checklist:
+
+1. **Stage 2 now takes the player's song** on a custom replay, where the
+   official run keeps the teaching bed. Its exposed twelve-second intro is the
+   best showcase in the game for a chosen track and the one place a busy
+   arrangement could bury the beat being scored. Reverting is one line.
+2. **`SETLIST_CHROME_HEIGHT` is a derived estimate, not a measurement.** It is
+   135 dp of declared stylesheet sum times 1.2 — the ratio between the briefing
+   card's declared 118 and its measured 141 — so it errs toward rejecting a
+   layout rather than passing one that clips. A screenshot replaces it.
+
+**A stale-build trap, caught before it became a claim.** The first release APK
+came out at 255 MiB against M24B's 187 MB, and the delta was almost exactly one
+copy of the library: Gradle's merged assets still held the eleven WAVs at their
+old `candidates/` paths alongside the new `library/` ones — 31 bundled `.wav`
+files where the tree has 20. A directory rename is invisible to an incremental
+Android build. The reported size is from a clean rebuild.
+
+**Track preview was deferred, with a recommendation.** The player chooses from
+eleven names they have never heard. The cheapest good fix is a `▶` on the four
+**slot** rows rather than the eleven library rows: a filled slot is one
+unambiguous track, the library list stays single-purpose, and it reuses the same
+two `AudioService` calls the audition row already makes.
+
 ### M24B — music library and in-game audition (2026-09-05, `m24/music-library`)
 
 **Eleven CC0 candidates in the build, none approved.** The milestone's output is
@@ -73,10 +140,10 @@ the checklist, and the yellow DEV row on the title screen is how to answer it.
 |---|---|
 | Branch | `m24/music-library`, from the accepted M24A HEAD `ebe35dc` — **not** from `main`, which does not contain M24A |
 | Acquisition | Claude downloaded everything directly. 130 files, 1.24 GB, from OpenGameArt |
-| Retained | 11 tracks, 6 authors, all CC0, 68.19 MB of 16-bar derivatives |
+| Retained | 11 tracks, 6 authors, all CC0, 68.19 MB of 16-bar derivatives — **all eleven approved at M24C** |
 | New modules | `game/audio/audition.ts`, `game/rendering/DevAudition.tsx`, `game/config/buildFlags.ts` |
-| New scripts | `scripts/condition-track.mjs`, `scripts/build-candidates.mjs` |
-| New gate | `npm run build:candidates -- --verify`, in `npm run verify` |
+| New scripts | `scripts/condition-track.mjs`, `scripts/build-candidates.mjs` (renamed `build-library.mjs` at M24C) |
+| New gate | `npm run build:candidates -- --verify`, in `npm run verify` (now `build:library`) |
 | Dependencies added | **none** |
 | Gate | `npm run verify` green — **487 tests**, 0 failures (23 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_CANDIDATE_SOURCES` |
 
@@ -124,9 +191,10 @@ rejection… which calls for a listen"). It gates *shipping*, not *existing*.
 **Reproducible without 129 MB of blobs.** The eleven sources are not committed —
 most will be deleted after the audition, and putting them in git history
 permanently would serve a decision that lasts one milestone. What is committed
-is `assets/audio/music/candidates/SOURCES.json`: direct URL, SHA-256 as
+is `SOURCES.json` beside the derivatives — `assets/audio/music/candidates/` at
+the time, `assets/audio/music/library/` since M24C: direct URL, SHA-256 as
 published, and the **pinned** `ratio` and `startSample`, so
-`npm run build:candidates -- --fetch` re-downloads, hash-verifies and rebuilds
+`npm run build:library -- --fetch` re-downloads, hash-verifies and rebuilds
 every derivative **byte for byte**. Verified end to end on two tracks. Pinned
 rather than re-analysed on purpose: improving the window heuristic later must
 not silently change the audio a manifest describes.

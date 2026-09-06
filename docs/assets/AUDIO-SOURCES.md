@@ -438,13 +438,24 @@ SHA-256 above is a check rather than a record.
 
 ---
 
-## M24B — audition candidates (2026-09-05)
+## The production music library (acquired M24B, approved M24C)
 
-**Eleven external tracks, every one CC0, none of them approved.** They are
-`release: 'candidate'` in `game/audio/musicCatalogue.ts`, which means a
-development build can select them and a release build cannot. Every one carries
-`ownerConfirmed: false` and none may be promoted to `production` until the owner
-has actually listened — `tests/audioContract.test.ts` enforces that.
+**Eleven external tracks, every one CC0, all eleven approved by the owner.**
+
+They arrived at M24B as `release: 'candidate'` under
+`assets/audio/music/candidates/`, unreachable by a release build and carrying
+`ownerConfirmed: false`. The owner auditioned every one of them on a phone on
+2026-09-06 and kept every one of them — **11 KEEP, 0 MAYBE, 0 REJECT**
+(`docs/specs/M24B-owner-audition.md`). At M24C they became
+`release: 'production'` with `ownerConfirmed: true` and moved to
+`assets/audio/music/library/`, which is where the records below describe them.
+
+Nothing else about any of them changed in the promotion: the same source
+SHA-256, the same conditioning command, the same measured source tempo, the same
+bytes. `tests/audioContract.test.ts` still enforces that a conditioned track may
+not ship until somebody has listened to it; that rule is why `ownerConfirmed`
+exists and it is now satisfied by evidence rather than by there being nothing to
+ship.
 
 ### How these were made, and how to remake them
 
@@ -458,11 +469,11 @@ audio, most of which will be deleted once the owner names the keepers. What is
 committed is everything needed to get them back and rebuild byte-for-byte:
 
 ```bash
-npm run build:candidates -- --fetch    # download, verify every source hash, re-derive
-npm run build:candidates -- --verify   # check the committed WAVs against the manifest
+npm run build:library -- --fetch    # download, verify every source hash, re-derive
+npm run build:library -- --verify   # check the committed WAVs against the manifest
 ```
 
-`assets/audio/music/candidates/SOURCES.json` is the machine-readable copy of
+`assets/audio/music/library/SOURCES.json` is the machine-readable copy of
 everything below, including the pinned `ratio` and `startSample` that make the
 derivation deterministic. A source whose hash no longer matches is a hard stop,
 never a substitution (AGENTS.md rule 14).
@@ -489,14 +500,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.053
 - Conditioning: none — the source is already at 90 BPM
 - Loop seam after wrap: 0.77x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/01_-_rock_city_ransom.ogg --out assets/audio/music/candidates/noRefunds_90.wav --ratio 1.000000000 --start-sample 176656 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/01_-_rock_city_ransom.ogg --out assets/audio/music/library/noRefunds_90.wav --ratio 1.000000000 --start-sample 176656 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `2f405eba2ca5c9580bb6eb70a0c6d6ee405d77b38ab6ef1d4454495021c307d1`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): garage rock
 - Player-facing title: **NO REFUNDS** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `brokenAmp_90.wav`
 
@@ -514,14 +525,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.021
 - Conditioning: none — the source is already at 90 BPM
 - Loop seam after wrap: 0.45x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/loop_7.ogg --out assets/audio/music/candidates/brokenAmp_90.wav --ratio 1.000000000 --start-sample 175928 --bars 16 --mono`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/loop_7.ogg --out assets/audio/music/library/brokenAmp_90.wav --ratio 1.000000000 --start-sample 175928 --bars 16 --mono`
 - Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
 - SHA-256: `b63549abc3bccb5bc87de393ec9a719001a555f7f0dfb8b48d0f06e820468933`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): hard rock
 - Player-facing title: **BROKEN AMP** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `lastCall_90.wav`
 
@@ -539,14 +550,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.204
 - Conditioning: none — the source is already at 90 BPM
 - Loop seam after wrap: 0.57x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/g42_end.flac --out assets/audio/music/candidates/lastCall_90.wav --ratio 1.000000000 --start-sample 6408216 --bars 16 --mono`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/g42_end.flac --out assets/audio/music/library/lastCall_90.wav --ratio 1.000000000 --start-sample 6408216 --bars 16 --mono`
 - Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
 - SHA-256: `e6dd3a58c2a0767b272949b6e74a3d2daf0864b0b618bba17f980402d38d24c4`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): acoustic rock
 - Player-facing title: **LAST CALL** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `stageDive_90.wav`
 
@@ -564,14 +575,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.093
 - Conditioning: none — the source is already at 90 BPM
 - Loop seam after wrap: 0.99x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/09_-_chick_with_weapon.ogg --out assets/audio/music/candidates/stageDive_90.wav --ratio 1.000000000 --start-sample 588512 --bars 16 --mono`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/09_-_chick_with_weapon.ogg --out assets/audio/music/library/stageDive_90.wav --ratio 1.000000000 --start-sample 588512 --bars 16 --mono`
 - Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
 - SHA-256: `54230a28c190c1d581d34319550d972b639929efd047ef5df4a8a53329b90017`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): garage rock
 - Player-facing title: **STAGE DIVE DISASTER** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `cheapBeerRiot_90.wav`
 
@@ -589,14 +600,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.035
 - Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
 - Loop seam after wrap: 1.02x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/15_-_we_got_the_crud.ogg --out assets/audio/music/candidates/cheapBeerRiot_90.wav --ratio 0.947368421 --start-sample 315888 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/15_-_we_got_the_crud.ogg --out assets/audio/music/library/cheapBeerRiot_90.wav --ratio 0.947368421 --start-sample 315888 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `6b028f1e32ede381e988661d440e317094a3f438e9142fe96e27ce62f70951b4`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): punk
 - Player-facing title: **CHEAP BEER RIOT** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `wrongChord_90.wav`
 
@@ -614,14 +625,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.022
 - Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
 - Loop seam after wrap: 1.33x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/14_-_here_a_captive_heart_busted.ogg --out assets/audio/music/candidates/wrongChord_90.wav --ratio 0.947368421 --start-sample 706112 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/14_-_here_a_captive_heart_busted.ogg --out assets/audio/music/library/wrongChord_90.wav --ratio 0.947368421 --start-sample 706112 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `5572da8cd79af63f8a9523d2a447e38611cde4228330027fcdc81aef6905b7a1`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): alt rock
 - Player-facing title: **WRONG CHORD** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `badSoundcheck_90.wav`
 
@@ -639,14 +650,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.065
 - Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
 - Loop seam after wrap: 0.95x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/17_-_digestive_malady.ogg --out assets/audio/music/candidates/badSoundcheck_90.wav --ratio 0.947368421 --start-sample 177040 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/17_-_digestive_malady.ogg --out assets/audio/music/library/badSoundcheck_90.wav --ratio 0.947368421 --start-sample 177040 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `9f1fa51ff08c096dcac43f5cb67af79d74cbbb1db205d58c5c89da4d8079c39c`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): punk
 - Player-facing title: **BAD SOUNDCHECK** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `loadOut_90.wav`
 
@@ -664,14 +675,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **85 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.032
 - Conditioning: `atempo=1.058824` (+5.9%), 85 BPM to 90
 - Loop seam after wrap: 0.84x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg --out assets/audio/music/candidates/loadOut_90.wav --ratio 1.058823529 --start-sample 441000 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg --out assets/audio/music/library/loadOut_90.wav --ratio 1.058823529 --start-sample 441000 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `f56aa38298cbcdd2046953c92b3ea821614c6160046b83f8bf173861fa11a4f3`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): hard rock
 - Player-facing title: **LOAD-OUT** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `fireExit_90.wav`
 
@@ -689,14 +700,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.097
 - Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
 - Loop seam after wrap: 1.66x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/B.M.I. (tales of Christ).flac --out assets/audio/music/candidates/fireExit_90.wav --ratio 0.947368421 --start-sample 2321744 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/B.M.I. (tales of Christ).flac --out assets/audio/music/library/fireExit_90.wav --ratio 0.947368421 --start-sample 2321744 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `b9042582bdb4f0023b55622fa59fa1c95828d5a05872ca341a67da8b48decd1d`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): acid / blues rock
 - Player-facing title: **FIRE EXIT** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `noEncore_90.wav`
 
@@ -714,14 +725,14 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **185 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.103
 - Conditioning: `atempo=0.972973` (-2.7%), 185 BPM to 90
 - Loop seam after wrap: 0.26x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/heavy_battle_2_bpm185.ogg --out assets/audio/music/candidates/noEncore_90.wav --ratio 0.972972973 --start-sample 219496 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/heavy_battle_2_bpm185.ogg --out assets/audio/music/library/noEncore_90.wav --ratio 0.972972973 --start-sample 219496 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `98dd0e1becf9e35589656630ac335a219fa16b3e4f01368dc207e01db5a471ab`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): groove metal
 - Player-facing title: **NO ENCORE** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)
 
 ### `wrongVenue_90.wav`
 
@@ -739,11 +750,11 @@ author, licence and source page stay here and are never replaced by it.
 - Measured source tempo: **100 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.160
 - Conditioning: `atempo=0.900000` (-10.0%), 100 BPM to 90
 - Loop seam after wrap: 1.58x the local sample delta
-- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/super_wreck_roadway.wav --out assets/audio/music/candidates/wrongVenue_90.wav --ratio 0.900000000 --start-sample 1660224 --bars 16`
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/super_wreck_roadway.wav --out assets/audio/music/library/wrongVenue_90.wav --ratio 0.900000000 --start-sample 1660224 --bars 16`
 - Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
 - SHA-256: `c522dfb98dadc48e37168b2510e167ad8dfbe09254179496b8c3fc35cdec348e`
 - **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
   `tests/audioContract.test.ts` and `tests/audition.test.ts`
 - Style (provisional, from the source page's own tags): hard rock
 - Player-facing title: **WRONG VENUE** (fictional; presentation only)
-- Owner confirmed: **no**
+- Owner confirmed: **yes** — M24B audition, 2026-09-06 (11 KEEP / 0 MAYBE / 0 REJECT)

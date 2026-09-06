@@ -151,7 +151,7 @@ loops over full songs.
 
 ---
 
-## M24C — Custom setlist unlock and builder
+## M24C — Custom setlist unlock and builder — **DONE (2026-09-06)**
 
 **Goal:** the feature, player-visible.
 
@@ -170,18 +170,58 @@ Branch: `m24/custom-setlist`.
 | 7 | `game/i18n/catalogues/{en,pt-BR,pseudo}.ts` | Song titles, screen copy, genre labels. `pseudo` is generated. |
 | 8 | `tests/setlist.test.ts`, `tests/persistence.test.ts`, `tests/layoutBudget.test.ts`, `tests/localization.test.ts` | Extended per the test plan. |
 
-### Definition of done
+### What changed against this plan
 
-- `npm run verify` green.
-- A save with a custom setlist round-trips; a corrupt one falls back to official
-  and still starts.
-- Emulator: complete Stage 4, see the unlock, build a setlist, replay, cold
-  start, setlist still there.
+Branch `m24/custom-setlist`, from the accepted M24B HEAD `2d7ded3` — **not**
+from `main`, which contains neither M24A nor M24B. Full report:
+`docs/specs/M24C-custom-setlist.md`.
+
+Six departures, all of them decisions rather than slips:
+
+1. **The owner kept all eleven, not six.** Q4 planned for six production tracks
+   out of eight to ten auditioned. Attrition did not happen, so the library is
+   eleven and the plan's table row for step 8 — "delete the rest along with
+   their provenance entries and files" — had nothing to delete.
+2. **The files moved.** `assets/audio/music/candidates/` →
+   `assets/audio/music/library/`, with `build-candidates.mjs` →
+   `build-library.mjs` and `PASS_CANDIDATE_SOURCES` → `PASS_LIBRARY_SOURCES`.
+   Not in the plan, and worth the churn: `candidates/` is a directory somebody
+   eventually tidies up, and these eleven now ship.
+3. **`recordStageCleared` reports the unlock crossing** rather than the results
+   screen recomputing it. §37's "show it once" needs a transition, and the
+   alternative — a persisted "unlock message seen" flag — is the second copy of
+   a fact the save already holds that Q8 exists to refuse.
+4. **`startCustomGig` checks the unlock too**, not only `openSetlist`. Redundant
+   against today's call graph, and this is the function that decides what music
+   a run plays.
+5. **`TONIGHT'S SETLIST` is one line, not a four-row card.** The results screen
+   has 411 dp and the two score columns already claim most of it.
+6. **Track preview deferred**, with a design recommended in the report: a `▶` on
+   the four slot rows rather than the eleven library rows.
+
+The layout budget was indeed the fiddly part, as predicted — but it failed
+nothing. The tight number is the slot title at 1.4x pseudo expansion: 28
+characters against 30 that fit, which is why one line is asserted rather than
+preferred.
+
+### Definition of done — met
+
+- `npm run verify` green: **519 tests**, 0 failures (32 new), plus
+  `PASS_ART_READY`, `PASS_AMBIENT_LOOP_READY`, `PASS_PROVENANCE_CURRENT`,
+  `PASS_TEMPO_EVIDENCE`, `PASS_LIBRARY_SOURCES`.
+- A save with a custom setlist round-trips; nine kinds of corrupt one fall back
+  to an empty builder and still start the game.
+- Standalone release APK built locally and installable without Metro.
+- **Not met by Claude, and cannot be:** the emulator/device walkthrough.
+  `docs/specs/M24C-owner-validation.md` is the checklist and every item on it is
+  `PENDING OWNER`.
 
 ### Risk
 
-Low-to-medium. The layout budget in three locales is the most likely thing to
-need a second pass, which is exactly what M20's machinery is for.
+Low-to-medium, as expected, and the remaining risk is entirely in the two things
+only a person can judge: whether Stage 2 stays legible under a full arrangement
+(Q3's open question), and whether `SETLIST_CHROME_HEIGHT` — a derived estimate,
+not a measurement — is generous enough on a real screen.
 
 ---
 
@@ -194,7 +234,7 @@ debug-keystore signed; **not** `npx expo run:android --variant release`, which
 dies on `lintVitalAnalyze`). Bump the app version so it cannot be confused with
 1.0.7 or 1.2.0.
 
-Checklist — `docs/specs/M24-physical-retest-checklist.md`, written at M24C:
+Checklist — written at M24C as `docs/specs/M24C-owner-validation.md`:
 
 1. Fresh install: no `CUSTOM SETLIST` button on the title.
 2. Official run, Stages 1→4, complete. Music matches the pre-M24 build.

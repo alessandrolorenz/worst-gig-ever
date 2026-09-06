@@ -28,14 +28,20 @@ import { allCatalogues, type Catalogue } from '../game/i18n/catalogue.ts';
 import { PSEUDO_EXPANSION } from '../game/i18n/catalogues/pseudo.ts';
 import { format } from '../game/i18n/format.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import { SETLIST_SLOTS } from '../game/audio/setlist.ts';
 import {
   BRIEFING,
   BRIEFING_TEXT_WIDTH,
   BUTTON,
+  OVERLAY_PADDING,
+  SETLIST,
+  SETLIST_SLOT_TEXT_WIDTH,
+  SETLIST_TRACK_TEXT_WIDTH,
   STAGE_CARD_TEXT_WIDTH,
   SUMMARY,
   SUMMARY_LABEL_WIDTH,
   briefingCardHeight,
+  setlistColumnHeight,
 } from '../game/rendering/overlayLayout.ts';
 import { GROOVE_PANEL, HUD_TYPE } from '../game/rendering/hudLayout.ts';
 import {
@@ -307,7 +313,11 @@ test('M20: every button label fits its button', () => {
       ['title.story', strings.title.story],
       ['title.clickOn', strings.title.clickOn],
       ['title.clickOff', strings.title.clickOff],
+      /* The way into the builder, from the title and from the results (M24C). */
+      ['setlist.open', strings.setlist.open],
     ];
+
+    full.push(['setlist.start', strings.setlist.start]);
 
     for (const [name, label] of full) {
       const lines = wrappedLines(label, BUTTON.fontSize, inner);
@@ -317,6 +327,172 @@ test('M20: every button label fits its button', () => {
       const lines = wrappedLines(label, BUTTON.compactFontSize, compactInner);
       assert.ok(lines <= 2, `${locale}: compact button ${name} "${label}" takes ${lines} lines`);
     }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The setlist builder (M24C): one fixed column, one that scrolls
+// ---------------------------------------------------------------------------
+
+/** Every song title, which is the same list in every locale but pseudo. */
+function songTitles(strings: Catalogue): string[] {
+  return Object.values(strings.music);
+}
+
+test('M24C: a chosen song fits its slot on one line, in every locale', () => {
+  /*
+   * The slot column **does not scroll**, so this is the fixed-box rule: what is
+   * in it has to fit. One line rather than two, and that is not tidiness — four
+   * rows at two lines each is 72 dp the column does not have, which is checked
+   * in the height test below.
+   *
+   * Every song title is measured, plus the placeholder an empty slot shows,
+   * because the placeholder is the widest thing on a fresh screen and it is
+   * translated where the titles are not.
+   */
+  for (const [locale, strings] of locales) {
+    const candidates: Array<[string, string]> = [
+      ['setlist.empty', strings.setlist.empty],
+      ...songTitles(strings).map((title): [string, string] => [`music "${title}"`, title]),
+    ];
+    for (const [name, text] of candidates) {
+      const lines = wrappedLines(text, SETLIST.slot.title.fontSize, SETLIST_SLOT_TEXT_WIDTH);
+      assert.equal(
+        lines,
+        1,
+        `${locale}: setlist slot ${name} takes ${lines} lines in a row that cannot grow`,
+      );
+    }
+  }
+});
+
+test('M24C: a song fits its row in the library, in every locale', () => {
+  for (const [locale, strings] of locales) {
+    for (const title of songTitles(strings)) {
+      const lines = wrappedLines(title, SETLIST.track.title.fontSize, SETLIST_TRACK_TEXT_WIDTH);
+      assert.equal(lines, 1, `${locale}: library row "${title}" takes ${lines} lines`);
+    }
+  }
+});
+
+test('M24C: the four slots fit the screen without scrolling', () => {
+  /*
+   * The fixed-box budget, at the smallest viewport the overlays are designed
+   * against — 923 x 411 dp, a 1080p phone in landscape at 420 dpi.
+   *
+   * A slot row is its two lines of type at 1.2 em plus its padding and the gap
+   * to the next one. If this fails, either the type came up or the chrome did,
+   * and the answer is one of those rather than a scroll: a setlist you have to
+   * scroll to see is not a setlist you can read at a glance.
+   */
+  const row =
+    SETLIST.slot.number.fontSize * 1.2 +
+    SETLIST.slot.title.fontSize * 1.2 +
+    SETLIST.slot.paddingVertical * 2 +
+    SETLIST.slot.marginBottom;
+  const column = row * SETLIST_SLOTS;
+  const available = setlistColumnHeight(MIN_VIEWPORT.height);
+
+  assert.ok(
+    column <= available,
+    `the ${String(SETLIST_SLOTS)} slots need ${column.toFixed(0)} dp and the column has ` +
+      `${String(available)} dp`,
+  );
+});
+
+test('M24C: the library column scrolls, and says so when there is more', () => {
+  /*
+   * The scrollable rule, and the pair of facts that make it honest — the same
+   * pair the briefing card is held to.
+   *
+   * Eleven rows genuinely do not fit: at these sizes they need about 317 dp and
+   * the column has 248. So the surface must scroll **and** it must say it is
+   * scrolling, because Android's indicator is dark grey on a near-black scrim
+   * and a player will not see it. `persistentScrollbar` is necessary and is not
+   * sufficient; the measured `▾` is what makes the overflow visible.
+   */
+  assert.match(
+    overlaysSource,
+    /style=\{styles\.setlistLibraryScroll\}/,
+    'the library column is no longer a scrolling surface',
+  );
+  assert.match(
+    overlaysSource,
+    /setlistLibraryScroll[\s\S]{0,120}flexShrink: 1/,
+    'the library column no longer shrinks to the space it has',
+  );
+  for (const needle of ['persistentScrollbar', 'onContentSizeChange', 'setContentHeight']) {
+    assert.ok(
+      overlaysSource.includes(needle),
+      `the library column no longer ${needle === 'persistentScrollbar' ? 'keeps its scrollbar drawn' : 'measures its own content'}`,
+    );
+  }
+  assert.match(
+    overlaysSource,
+    /const hasMore = columnHeight > 0 && contentHeight > columnHeight \+ 1;/,
+    'the builder no longer works out whether there is more below',
+  );
+
+  // And the arithmetic that makes the cue load-bearing rather than decorative.
+  const row =
+    SETLIST.track.title.fontSize * 1.2 +
+    SETLIST.track.paddingVertical * 2 +
+    SETLIST.track.marginBottom;
+  const heading = SETLIST.libraryHeading.fontSize * 1.2 + SETLIST.libraryHeading.marginBottom;
+  const needed = heading + row * songTitles(locales[0][1]).length;
+  assert.ok(
+    needed > setlistColumnHeight(MIN_VIEWPORT.height),
+    'the library now fits without scrolling, so the overflow cue is untested by this budget',
+  );
+});
+
+test('M24C: the two columns fit side by side on the narrowest screen', () => {
+  const used =
+    SETLIST.slot.width + SETLIST.columnGap + SETLIST.track.width + OVERLAY_PADDING.horizontal * 2;
+  assert.ok(
+    used <= MIN_VIEWPORT.width,
+    `the builder needs ${String(used)} dp of width and the screen has ` +
+      `${String(MIN_VIEWPORT.width)} dp`,
+  );
+});
+
+test('M24C: the builder’s heading and tagline fit above the columns', () => {
+  /*
+   * Both are single-purpose lines above a two-column layout, so they may wrap
+   * once and no further — a third line comes straight out of the columns'
+   * height, which the fixed-box test above has already spent.
+   */
+  const width = MIN_VIEWPORT.width - OVERLAY_PADDING.horizontal * 2;
+  for (const [locale, strings] of locales) {
+    for (const [name, text, fontSize] of [
+      ['setlist.title', strings.setlist.title, SETLIST.title.fontSize],
+      ['setlist.tagline', strings.setlist.tagline, SETLIST.tagline.fontSize],
+      ['setlist.library', strings.setlist.library, SETLIST.libraryHeading.fontSize],
+      ['setlist.unlocked', strings.setlist.unlocked, 16],
+      ['setlist.tonight', strings.setlist.tonight, 11],
+    ] as const) {
+      const lines = wrappedLines(text, fontSize, width);
+      assert.ok(lines <= 1, `${locale}: ${name} "${text}" takes ${lines} lines`);
+    }
+  }
+});
+
+test('M24C: the run’s four songs fit one line under the results', () => {
+  /*
+   * `TONIGHT'S SETLIST` is one line on purpose (§22): the results screen has
+   * 411 dp and the two score columns already claim most of it. Four titles and
+   * three separators is the longest it can ever be, so that is what is
+   * measured — in every locale, pseudo included, where the titles are longest.
+   */
+  const separator = '  ·  ';
+  for (const [locale, strings] of locales) {
+    const longest = songTitles(strings)
+      .slice()
+      .sort((a, b) => b.length - a.length)
+      .slice(0, SETLIST_SLOTS)
+      .join(separator);
+    const lines = wrappedLines(longest, 12, 760);
+    assert.ok(lines <= 2, `${locale}: the run's setlist line takes ${lines} lines`);
   }
 });
 

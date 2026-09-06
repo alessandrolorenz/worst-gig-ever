@@ -1,23 +1,26 @@
 /**
- * Rebuilds every audition candidate from its recorded source.
+ * Rebuilds every production library track from its recorded source.
+ *
+ * Named `build-candidates.mjs` until M24C, when the owner kept all eleven and
+ * they stopped being candidates. The job did not change: it is the executable
+ * half of the provenance record, and it outlives the audition it was written
+ * for.
  *
  * ## Why the sources are not in the repository
  *
- * The eleven originals are 129 MB of third-party audio, and ten of them will be
- * deleted the moment the owner names the ones worth keeping. Committing them
- * would put a permanent 129 MB in git history to serve a decision that lasts
- * one milestone — against AGENTS.md rule 22 — so what is committed instead is
- * everything needed to *get them back*: the direct URL, the SHA-256 of the
- * bytes as published, and the exact conditioning arguments.
- * `assets/audio/music/candidates/SOURCES.json` holds all three per track.
+ * The eleven originals are 129 MB of third-party audio. Committing them would
+ * put a permanent 129 MB in git history — against AGENTS.md rule 22 — so what
+ * is committed instead is everything needed to *get them back*: the direct URL,
+ * the SHA-256 of the bytes as published, and the exact conditioning arguments.
+ * `assets/audio/music/library/SOURCES.json` holds all three per track.
  *
  * That is the arrangement `docs/assets/AUDIO-SOURCES.md` already describes for
  * `stick_whoosh.wav` and `crowd_applause.wav`, whose packs are likewise absent.
  * The difference is that this one is executable:
  *
- *     npm run build:candidates -- --fetch     # download, hash-verify
- *     npm run build:candidates                # re-derive from what is here
- *     npm run build:candidates -- --verify    # check the tree matches
+ *     npm run build:library -- --fetch     # download, hash-verify
+ *     npm run build:library                # re-derive from what is here
+ *     npm run build:library -- --verify    # check the tree matches
  *
  * ## What "reproducible" means here, exactly
  *
@@ -42,7 +45,7 @@ import { fileURLToPath } from 'node:url';
 import { condition } from './condition-track.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const MANIFEST = 'assets/audio/music/candidates/SOURCES.json';
+const MANIFEST = 'assets/audio/music/library/SOURCES.json';
 /** Where a fetched original lands. Git-ignored; see `.gitignore`. */
 const SOURCE_DIR = 'assets/audio/music/source';
 
@@ -140,7 +143,7 @@ for (const entry of entries) {
 
 for (const problem of problems) process.stdout.write(`PROBLEM ${problem}\n`);
 process.stdout.write(
-  `\nSUMMARY candidates=${String(entries.length)} rebuilt=${String(rebuilt)} verified=${String(verified)} problems=${String(problems.length)}\n`,
+  `\nSUMMARY tracks=${String(entries.length)} rebuilt=${String(rebuilt)} verified=${String(verified)} problems=${String(problems.length)}\n`,
 );
-process.stdout.write(problems.length === 0 ? 'PASS_CANDIDATE_SOURCES\n' : 'FAIL_CANDIDATE_SOURCES\n');
+process.stdout.write(problems.length === 0 ? 'PASS_LIBRARY_SOURCES\n' : 'FAIL_LIBRARY_SOURCES\n');
 if (problems.length > 0) process.exitCode = 1;

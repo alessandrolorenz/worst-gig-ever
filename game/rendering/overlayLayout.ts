@@ -120,6 +120,100 @@ export const STAGE_CARD = {
 /** Text column inside a stage card. */
 export const STAGE_CARD_TEXT_WIDTH = STAGE_CARD.minWidth - STAGE_CARD.paddingHorizontal * 2;
 
+/**
+ * The setlist builder (M24C): four slots on the left, the songs on the right.
+ *
+ * Two columns rather than one list, because the screen has to answer two
+ * questions at once — *what have I chosen* and *what is left* — and a phone in
+ * landscape has 867 dp of width and 411 dp of height. Width is the resource
+ * this screen has; height is the one it does not.
+ */
+export const SETLIST = {
+  title: { fontSize: 22, marginBottom: 4 },
+  tagline: { fontSize: 13, marginBottom: 8 },
+  columnGap: 20,
+  /**
+   * One row of the setlist under construction.
+   *
+   * **This column does not scroll**, which is the reason its budget is checked
+   * as a fixed box: four rows are the whole feature and a setlist you have to
+   * scroll to see is not a setlist you can read at a glance. That makes the
+   * one-line rule on `title` load-bearing rather than cosmetic — see
+   * `tests/layoutBudget.test.ts`.
+   */
+  slot: {
+    width: 310,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    marginBottom: 5,
+    number: { fontSize: 12 },
+    title: { fontSize: 15 },
+    /** Space the `01` and its gap take before the title starts. */
+    numberGutter: 34,
+  },
+  /** The heading over the right-hand column, so the two columns say what they are. */
+  libraryHeading: { fontSize: 12, marginBottom: 4 },
+  /**
+   * One song in the library.
+   *
+   * **This column scrolls.** Eleven rows do not fit in 411 dp and were never
+   * going to: at the sizes below they need about 317 dp against roughly 248 dp
+   * of column, so the surface is a `ScrollView` that measures itself and draws
+   * the same `▾` the briefing card uses when there is more below. That is M20's
+   * rule for a scrollable surface — it may overflow, and it must say so.
+   */
+  track: {
+    width: 380,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    marginBottom: 2,
+    title: { fontSize: 14 },
+    /** Space kept clear on the right for the ✓ on an already-chosen song. */
+    chosenGutter: 22,
+  },
+  /** The "there is more below" mark, and the row that always reserves it. */
+  moreCue: { fontSize: 14, height: 16 },
+} as const;
+
+/** Text column inside a setlist slot, once the `01` gutter is taken out. */
+export const SETLIST_SLOT_TEXT_WIDTH =
+  SETLIST.slot.width - SETLIST.slot.paddingHorizontal * 2 - SETLIST.slot.numberGutter;
+
+/** Text column inside a library row, once the ✓ gutter is taken out. */
+export const SETLIST_TRACK_TEXT_WIDTH =
+  SETLIST.track.width - SETLIST.track.paddingHorizontal * 2 - SETLIST.track.chosenGutter;
+
+/**
+ * Everything on the builder screen that is not the two columns.
+ *
+ * **Derived, and then corrected by the one measurement this project has of how
+ * wrong deriving is.** `BRIEFING_CHROME_HEIGHT` above is 141 where the declared
+ * stylesheet sum was 118 — line boxes at `fontWeight: '800'` with letter
+ * spacing, which no stylesheet states. That is a ratio of 1.195, and it was
+ * found by putting the briefing on a device after the arithmetic said it fit.
+ *
+ * The declared sum here is 135 dp: 20 of scrim padding, 30 of heading, 24 of
+ * tagline, 45 of button row and 16 of cue row. 135 x 1.2 = 162, rounded to 163.
+ *
+ * This is an estimate and it is labelled as one. It errs high, which is the
+ * direction that makes the columns *smaller* than they will really be — so the
+ * gate rejects a layout the device would have drawn rather than passing one it
+ * would have clipped. Confirm it against a screenshot at M24D and replace this
+ * with the measurement, exactly as the briefing's number was replaced.
+ */
+export const SETLIST_CHROME_HEIGHT = 163;
+
+/**
+ * Height each builder column has to work with on a viewport of `viewportHeight`.
+ *
+ * Stated as a function for the same reason `briefingCardHeight` is: the test
+ * asks the question at `MIN_VIEWPORT`, not at whatever the developer's emulator
+ * happens to be.
+ */
+export function setlistColumnHeight(viewportHeight: number): number {
+  return viewportHeight - SETLIST_CHROME_HEIGHT;
+}
+
 /** One column of the results summary. */
 export const SUMMARY = {
   columnMinWidth: 280,

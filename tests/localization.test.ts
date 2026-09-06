@@ -104,6 +104,15 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
    * rule has to show it is development-only, or the exemption becomes a hole
    * anyone can widen by adding a filename to a list.
    *
+   * ## One of these facts expired at M24C, and is replaced rather than dropped
+   *
+   * Until M24C the third fact was "the pool it displays is empty in a release
+   * build anyway" — true while every track was an unapproved candidate, and no
+   * longer true now that the owner has kept all eleven and they are production
+   * music. That was always the weakest of the three (it protected the row by
+   * starving it rather than by hiding it), and it has been replaced by a
+   * containment check that does not depend on what is in the catalogue.
+   *
    * Three independent facts, because one of them alone could be undone by a
    * refactor without anybody noticing:
    *
@@ -111,7 +120,8 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
    *      caller and builds its props inside `showsAuditionTools()`;
    *   2. it renders nothing at all without those props, so a null slips
    *      through as an absent row rather than an untranslated one;
-   *   3. the pool it displays is empty in a release build anyway.
+   *   3. nothing else in the app imports it, so there is no second, ungated
+   *      place those four English labels could appear.
    */
   for (const file of DEV_ONLY_COMPONENTS) {
     const source = readFileSync(join(repoRoot, file), 'utf8');
@@ -137,13 +147,81 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
     'the audition row is drawn without checking that this build has one',
   );
 
-  // The pool a release build offers, asked of the catalogue rather than of a
-  // component: with no candidates there is nothing for the row to name.
+  /*
+   * The containment fact. `DevAudition.tsx` may be imported by the screen that
+   * draws it behind the gate and by the component that builds the gated props,
+   * and by nothing else — so the exemption covers one row in one place rather
+   * than a component anybody can mount.
+   */
+  const importers: string[] = [];
+  for (const path of [...collect(join(repoRoot, 'game'), '.tsx'), ...collect(join(repoRoot, 'game'), '.ts')]) {
+    const shown = relative(repoRoot, path);
+    if (DEV_ONLY_COMPONENTS.includes(shown)) continue;
+    if (/from '[^']*DevAudition\.tsx'/.test(readFileSync(path, 'utf8'))) importers.push(shown);
+  }
+  assert.deepEqual(
+    importers.sort(),
+    ['game/rendering/Overlays.tsx', 'game/systems/GameEngine.tsx'],
+    'the development audition row is reachable from somewhere new',
+  );
+
+  /*
+   * And the separation M24C makes load-bearing: a release build has no audition
+   * candidate to reach, which is now true because there are none left rather
+   * than because the library is empty. The library itself is production music
+   * and is *supposed* to be reachable — see
+   * `tests/setlist.test.ts`, "the builder does not depend on the audition flag".
+   */
   assert.deepEqual(
     [...availableTracks(false)].filter((id) => MUSIC_TRACKS[id].library?.release === 'candidate'),
     [],
     'a release build can reach an audition candidate',
   );
+});
+
+test('M24C: the setlist builder is production UI and the audition row is not', () => {
+  /*
+   * §46 of the M24C brief, as one assertion about one file: two music screens
+   * exist, they are gated differently on purpose, and the difference must not
+   * blur.
+   *
+   *   CUSTOM SETLIST  -> a production feature. Drawn on its own screen with no
+   *                      build check anywhere near it, and every word of it in
+   *                      the catalogue.
+   *   DEV AUDITION    -> a development surface. Drawn only when `GameEngine`
+   *                      hands it controls, which it does only behind
+   *                      `showsAuditionTools()`.
+   */
+  const overlays = readFileSync(join(repoRoot, 'game/rendering/Overlays.tsx'), 'utf8');
+
+  assert.match(
+    overlays,
+    /if \(flow\.screen === 'SETLIST'\) \{[\s\S]{0,400}<SetlistBuilder/,
+    'the builder is no longer drawn from the setlist screen',
+  );
+  assert.equal(
+    /showsAuditionTools|isAuditionBuild|isDevelopmentBuild|EXPO_PUBLIC/.test(overlays),
+    false,
+    'the overlays now read a build flag, so a player-facing screen depends on one',
+  );
+  assert.ok(
+    overlays.includes('props.audition !== null && <DevAuditionRow'),
+    'the audition row is drawn without checking that this build has one',
+  );
+
+  /*
+   * The builder's own words, all of them, are catalogue strings. The generic
+   * scan above already forbids a literal; this asserts the positive — that the
+   * keys the screen reads are ones every locale has to supply, which is what
+   * `Catalogue = typeof en` turns into a compile error.
+   */
+  for (const [locale, catalogue] of allCatalogues()) {
+    const setlist = catalogue.setlist as Record<string, string>;
+    for (const key of ['open', 'title', 'tagline', 'unlocked', 'slot', 'empty', 'library', 'chosen', 'start', 'tonight']) {
+      assert.equal(typeof setlist[key], 'string', `${locale} has no setlist.${key}`);
+      assert.ok((setlist[key] ?? '').trim().length > 0, `${locale}: setlist.${key} is empty`);
+    }
+  }
 });
 
 const STRING_LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;

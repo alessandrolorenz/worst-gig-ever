@@ -19,7 +19,7 @@
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -36,20 +36,30 @@ import {
   availableTracks,
   isGrooveQualified,
   isMusicTrackId,
+  libraryTracks,
   trackIds,
   type MusicTrackId,
 } from '../game/audio/musicCatalogue.ts';
 import { STAGES } from '../game/levels/stages.ts';
 import {
   advanceToNextStage,
+  assignSlot,
   beginRound,
+  completedDraft,
   createAppFlow,
+  emptyDraft,
+  isCustomRun,
   isCustomSetlistUnlocked,
+  loadDraft,
+  openSetlist,
   recordStageCleared,
   returnToTitle,
+  selectSlot,
+  startCustomGig,
   startStage,
 } from '../game/state/appFlow.ts';
 import { createRound, tickRound } from '../game/state/roundState.ts';
+import { AUDITION_BUILD_FLAG } from '../game/config/buildFlags.ts';
 import { emptySave, parseSave, serializeSave } from '../game/state/persistence.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -143,30 +153,33 @@ test('M24A: a setlist may only hold tracks a player can actually choose', () => 
   );
 });
 
-test('M24B: candidates are selectable in development and nowhere else', () => {
+test('M24C: the whole library ships, and the beds stay unchoosable', () => {
   /*
-   * Replaces M24A's "nothing is selectable yet", which pinned an empty library
-   * so that filling it would be a decision rather than a drift. This is that
-   * decision: eleven audition candidates exist, and the property that matters
-   * moved from "the library is empty" to **"the library is empty in a release
-   * build"**.
+   * Replaces M24B's "candidates are selectable in development and nowhere
+   * else", and the property it asserts moved with the owner's decision.
    *
-   * Both halves are asserted, because the interesting failure is asymmetric. A
-   * development build with no candidates is a milestone that did not land; a
-   * release build *with* candidates is unaudited third-party music in a
-   * player's hands.
+   * M24B's interesting failure was asymmetric — a release build carrying
+   * unaudited music. That risk is gone the only way it can honestly go: the
+   * owner listened to all eleven on a phone and kept all eleven, so there are
+   * no candidates left to leak. What has to be true now is the opposite shape:
+   * **the eleven are really there in a build with the audition flag off**, and
+   * the beds are still not among them.
    */
-  const development = availableTracks(true);
   const shipping = availableTracks(false);
+  const development = availableTracks(true);
 
-  assert.ok(development.length > 0, 'M24B added no auditionable track');
-  assert.deepEqual([...shipping], [], 'a candidate is selectable in a release build');
+  assert.ok(shipping.length >= SETLIST_SLOTS, 'the shipping library is smaller than the show');
+  assert.deepEqual(
+    [...development],
+    [...shipping],
+    'a track is reachable in development that a player cannot have',
+  );
 
-  for (const id of development) {
+  for (const id of shipping) {
     assert.equal(
       MUSIC_TRACKS[id].library?.release,
-      'candidate',
-      `${id} is selectable and is not marked as a candidate`,
+      'production',
+      `${id} is selectable in a release build without being a production track`,
     );
   }
 
@@ -177,33 +190,56 @@ test('M24B: candidates are selectable in development and nowhere else', () => {
    * than a rule written down anywhere else.
    */
   for (const id of ['showTheme', 'grooveBed', 'showBed'] as const) {
-    assert.equal(development.includes(id), false, `${id} became player-selectable`);
+    assert.equal(shipping.includes(id), false, `${id} became player-selectable`);
   }
 });
 
-test('M24B: a custom setlist can be built in development, never in a release build', () => {
+test('M24C: the builder does not depend on the audition flag', () => {
   /*
-   * The parser's behaviour now that the library is not empty. Same save, two
-   * builds, opposite answers — and the release answer is the safe one.
+   * §6 of the M24C brief, and the distinction it exists to keep: **production
+   * music availability** and **audition UI visibility** are different
+   * questions, answered by different modules, and the custom setlist is a
+   * production feature.
+   *
+   * Asserted by asking the library what a build with the flag *off* offers,
+   * which is the one answer a player's phone will ever get.
    */
-  const development = availableTracks(true);
-  const four = development.slice(0, SETLIST_SLOTS) as MusicTrackId[];
-  assert.equal(four.length, SETLIST_SLOTS, 'fewer candidates than there are slots');
+  const original = process.env[AUDITION_BUILD_FLAG];
+  try {
+    delete process.env[AUDITION_BUILD_FLAG];
+    const withoutFlag = availableTracks(false);
+    assert.ok(withoutFlag.length >= SETLIST_SLOTS, 'a release build has no library to choose from');
 
-  assert.deepEqual(
-    parseSetlist([...four], development),
-    Object.freeze([...four]),
-    'a setlist of candidates does not parse in a development build',
-  );
-  assert.equal(
-    parseSetlist([...four], availableTracks(false)),
-    null,
-    'a release build parsed a setlist made of audition candidates',
-  );
+    const chosen = withoutFlag.slice(0, SETLIST_SLOTS) as MusicTrackId[];
+    assert.equal(
+      isValidCustomSetlist(chosen, withoutFlag),
+      true,
+      'a setlist of shipping tracks is invalid in a shipping build',
+    );
+    assert.deepEqual(
+      parseSetlist([...chosen], withoutFlag),
+      Object.freeze([...chosen]),
+      'a saved setlist of shipping tracks does not parse in a shipping build',
+    );
 
-  // The beds are still not choosable, which is what M24A's version proved.
+    // And turning the flag on changes nothing about what a player may choose.
+    process.env[AUDITION_BUILD_FLAG] = '1';
+    assert.deepEqual(
+      [...availableTracks(false)],
+      [...withoutFlag],
+      'the audition flag leaked into the shipping answer',
+    );
+  } finally {
+    if (original === undefined) delete process.env[AUDITION_BUILD_FLAG];
+    else process.env[AUDITION_BUILD_FLAG] = original;
+  }
+});
+
+test('M24C: a setlist of beds still does not parse', () => {
+  // What M24A's version proved, kept: the rule is about *selectability*, not
+  // about whether an id names a real track.
   assert.equal(
-    parseSetlist(['showBed', 'grooveBed', 'showTheme', 'showBed'], development),
+    parseSetlist(['showBed', 'grooveBed', 'showTheme', 'showBed'], availableTracks(false)),
     null,
     'a setlist of beds parsed',
   );
@@ -275,28 +311,44 @@ test('M24A: the setlist parser rejects rather than repairs', () => {
 test('M24A: a setlist saved by a build with more tracks degrades to the official one', () => {
   /*
    * The forward-compatibility case, and the reason `parseSetlist` returns null
-   * rather than filtering: a save written by M24C on a device that later
-   * installs an older build names songs this build has never heard of. The
-   * right outcome is the authored show, not three quarters of somebody's
-   * setlist.
+   * rather than filtering: a save written by a build with a larger library
+   * names songs this one has never heard of. The right outcome is the authored
+   * show, not three quarters of somebody's setlist.
+   *
+   * The ids below are deliberately not in this build's catalogue. Until M24C
+   * this test used the M24B candidates, which worked because nothing was
+   * production yet — and would now pass for the wrong reason, since all eleven
+   * ship.
    */
-  const fromTheFuture = ['noRefunds', 'lastCall', 'brokenAmp', 'cheapBeerRiot'];
-  assert.equal(parseSetlist(fromTheFuture, ['showBed', 'grooveBed']), null);
+  const fromTheFuture = ['expansionOne', 'expansionTwo', 'expansionThree', 'expansionFour'];
+  for (const id of fromTheFuture) {
+    assert.equal(isMusicTrackId(id), false, `${id} is a real track, so this proves nothing`);
+  }
+  assert.equal(parseSetlist(fromTheFuture, availableTracks(false)), null);
   assert.equal(parseSetlist(fromTheFuture) ?? OFFICIAL_SETLIST, OFFICIAL_SETLIST);
+
+  // And a setlist of songs that *are* real but that this build does not offer
+  // degrades the same way — "is this a track?" was never the question.
+  assert.equal(parseSetlist([...availableTracks(false)].slice(0, SETLIST_SLOTS), []), null);
 });
 
 test('M24A: no save, however broken, can stop a run starting', () => {
-  // The M22 rule, re-run against the field M24C will add.
+  /*
+   * The M22 rule, run against the field M24C added. `customSetlist` is a known
+   * field now, so this reads it off the parsed state rather than out of the
+   * unknown bag — which is also the assertion that `parseSave` never throws on
+   * it and never returns a shape a run cannot use.
+   */
   for (const raw of [
     '{"customSetlist":"nonsense"}',
     '{"customSetlist":[1,2,3,4]}',
     '{"customSetlist":null}',
     '{"customSetlist":{"0":"grooveBed"}}',
+    '{"customSetlist":["grooveBed","showBed","showTheme","grooveBed"]}',
     'not json at all',
   ]) {
     const parsed = parseSave(raw);
-    const setlist = parseSetlist((parsed.unknown as { customSetlist?: unknown }).customSetlist);
-    const resolved = setlist ?? OFFICIAL_SETLIST;
+    const resolved = parsed.state.customSetlist ?? OFFICIAL_SETLIST;
     assert.equal(resolved.length, SETLIST_SLOTS);
     assert.ok(isMusicTrackId(trackForStage(resolved, 0)));
   }
@@ -304,23 +356,29 @@ test('M24A: no save, however broken, can stop a run starting', () => {
 
 test('M24A: an unrecognised setlist field survives a round trip untouched', () => {
   /*
-   * M24C adds `customSetlist` to the schema. Until then a save written by a
-   * newer build must come back out of an older one intact — which the existing
-   * unknown-field passthrough already does, and this proves it does for the
-   * exact field M24C will use.
+   * `customSetlist` was the unknown field this test was written for, and at
+   * M24C it graduated into the schema — so the property it protects is now
+   * checked against the *next* such field instead. That is the correct
+   * migration: what matters is that a save written by a newer build comes back
+   * out of an older one intact, not which key happens to be doing it today.
+   *
+   * `setlistName` is the obvious next one (naming a setlist is the first thing
+   * anybody asks for after building one) and this build has no opinion about
+   * it, which is exactly what makes it the right sample.
    */
-  const written = '{"schemaVersion":1,"customSetlist":["grooveBed","showBed","showTheme","grooveBed"]}';
+  const written =
+    '{"schemaVersion":1,"setlistName":"THE BAD ONE","sharedRunId":42}';
   const parsed = parseSave(written);
-  assert.deepEqual(
-    (parsed.unknown as { customSetlist?: unknown }).customSetlist,
-    ['grooveBed', 'showBed', 'showTheme', 'grooveBed'],
-  );
+  assert.equal((parsed.unknown as { setlistName?: unknown }).setlistName, 'THE BAD ONE');
+  assert.equal((parsed.unknown as { sharedRunId?: unknown }).sharedRunId, 42);
+
   const round = parseSave(serializeSave(parsed.state, parsed.unknown));
-  assert.deepEqual(
-    (round.unknown as { customSetlist?: unknown }).customSetlist,
-    ['grooveBed', 'showBed', 'showTheme', 'grooveBed'],
-    'a newer build had its setlist deleted by this one',
+  assert.equal(
+    (round.unknown as { setlistName?: unknown }).setlistName,
+    'THE BAD ONE',
+    'a newer build had a field deleted by this one',
   );
+  assert.equal((round.unknown as { sharedRunId?: unknown }).sharedRunId, 42);
   assert.equal(emptySave().schemaVersion, 1, 'the schema was bumped without a reader needing it');
 });
 
@@ -492,7 +550,24 @@ test('M24A: no gameplay module can see the catalogue or the setlist', () => {
    * the one-way rule M15 established and this milestone leans on.
    */
   const forbidden = ['audio/musicCatalogue', 'audio/setlist'];
-  const allowed = new Set(['game/state/appFlow.ts']);
+  /*
+   * Two files, and the list is asserted below to be exactly these two, so a
+   * third is a deliberate edit here rather than a drive-by import.
+   *
+   *   - `appFlow.ts` owns the run's setlist and the draft. It is a *flow*
+   *     module: the round never reads it, which is the one-way rule M15
+   *     established and this milestone leans on.
+   *   - `persistence.ts` is the save format, and since M24C the save holds a
+   *     setlist. It reaches for `parseSetlist` rather than re-deciding what a
+   *     valid setlist is, which is the reason the import is worth having: a
+   *     second answer to that question living in the parser is how a build
+   *     would accept a setlist the builder could not have produced.
+   *
+   * Neither is gameplay. The modules this rule is really about — `roundState`,
+   * `rhythmState`, `roundSystem`, every level — are named explicitly below, so
+   * widening the allowlist can never quietly cover one of them.
+   */
+  const allowed = new Set(['game/state/appFlow.ts', 'game/state/persistence.ts']);
 
   const offenders: string[] = [];
   const walk = (directory: string) => {
@@ -519,6 +594,28 @@ test('M24A: no gameplay module can see the catalogue or the setlist', () => {
     [],
     'a gameplay module imported the music catalogue or the setlist',
   );
+
+  /*
+   * The named half. The allowlist above is a set of exemptions and a set of
+   * exemptions can grow; these four are the modules the rule exists for, and
+   * an exemption for any of them has to fail here rather than pass by being
+   * added to a list.
+   */
+  for (const file of [
+    'game/state/roundState.ts',
+    'game/state/rhythmState.ts',
+    'game/systems/roundSystem.ts',
+    'game/levels/level01.ts',
+  ]) {
+    const source = readFileSync(join(repoRoot, file), 'utf8');
+    for (const needle of forbidden) {
+      assert.equal(
+        new RegExp(`from '[^']*${needle}\\.ts'`).test(source),
+        false,
+        `${file} imported ${needle}, which decides what a round throws`,
+      );
+    }
+  }
 });
 
 test('M24A: stages.ts names a track type and nothing else about music', () => {
@@ -623,4 +720,552 @@ test('M24A: the catalogue does not encode how many tracks the library has', () =
     trackIds().length,
     'trackIds() does not enumerate the catalogue',
   );
+});
+
+// ---------------------------------------------------------------------------
+// The production library (M24C)
+// ---------------------------------------------------------------------------
+
+/**
+ * The eleven songs the owner approved, pinned.
+ *
+ * The one place in the repository where the library is written out, and it is
+ * deliberately a *product* assertion rather than a rule: these are the tracks
+ * the owner listened to on a phone and kept (11 KEEP, 0 MAYBE, 0 REJECT —
+ * `docs/specs/M24B-owner-audition.md`). Adding or removing one is a decision
+ * somebody makes here, on purpose, and not something a refactor can do.
+ *
+ * Nothing else counts them. `tests/audition.test.ts` proves no implementation
+ * file contains the number.
+ */
+const APPROVED_LIBRARY = [
+  'noRefunds',
+  'brokenAmp',
+  'lastCall',
+  'stageDive',
+  'cheapBeerRiot',
+  'wrongChord',
+  'badSoundcheck',
+  'loadOut',
+  'fireExit',
+  'noEncore',
+  'wrongVenue',
+] as const;
+
+test('M24C: exactly the approved songs are production-selectable', () => {
+  assert.deepEqual(
+    [...availableTracks(false)],
+    [...APPROVED_LIBRARY],
+    'the shipping library is not the eleven the owner approved, in catalogue order',
+  );
+  assert.deepEqual(
+    [...libraryTracks()],
+    [...APPROVED_LIBRARY],
+    'a track has a library entry without being selectable, or the other way round',
+  );
+});
+
+test('M24C: every production track carries the whole of what shipping requires', () => {
+  /*
+   * Five claims per track, each guarding a different failure, and all of them
+   * checked over `availableTracks(false)` rather than over the pinned list —
+   * so a twelfth track added tomorrow has to satisfy them too.
+   */
+  for (const id of availableTracks(false)) {
+    const track = MUSIC_TRACKS[id];
+    assert.equal(track.library?.release, 'production', `${id} ships as a candidate`);
+    assert.equal(isGrooveQualified(id), true, `${id} ships without being on the beat clock`);
+    assert.ok(track.provenanceId, `${id} ships with no provenance record`);
+    assert.ok(
+      typeof track.beats === 'number' && track.beats > 0 && track.beats % 4 === 0,
+      `${id} ships without a whole number of bars`,
+    );
+    assert.ok(
+      existsSync(join(repoRoot, track.file)),
+      `${id} is selectable and its runtime asset is not in the tree`,
+    );
+    if (track.evidence.kind === 'conditioned') {
+      assert.equal(
+        track.evidence.ownerConfirmed,
+        true,
+        `${id} is an external track that shipped without anybody listening to it`,
+      );
+    }
+  }
+});
+
+test('M24C: the library lives at a production path, not a candidate one', () => {
+  /*
+   * The asset-location decision (§36), as a check rather than a note. The
+   * tracks were promoted out of `candidates/` because a directory called
+   * "candidates" is a directory somebody eventually tidies up — and these
+   * eleven are shipped music now.
+   *
+   * It is worth a test because the failure is silent in both directions: a
+   * file left behind still plays, and `audit:provenance` would stop checking a
+   * record whose file it can no longer find.
+   */
+  for (const id of availableTracks(false)) {
+    const { file } = MUSIC_TRACKS[id];
+    assert.match(
+      file,
+      /^assets\/audio\/music\/library\//,
+      `${id} is bundled from ${file}, which is not the production library`,
+    );
+  }
+  assert.equal(
+    existsSync(join(repoRoot, 'assets/audio/music/candidates')),
+    false,
+    'the candidates directory is still in the tree, so two copies of the library exist',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The builder (M24C)
+// ---------------------------------------------------------------------------
+
+/** A flow that has survived the show, which is the only way into the builder. */
+function unlockedFlow(): ReturnType<typeof createAppFlow> {
+  const flow = createAppFlow();
+  flow.stageIndex = STAGES.length - 1;
+  recordStageCleared(flow);
+  returnToTitle(flow);
+  return flow;
+}
+
+test('M24C: the builder cannot be opened until the show has been survived', () => {
+  const fresh = createAppFlow();
+  assert.equal(openSetlist(fresh), false, 'a fresh player reached the builder');
+  assert.equal(fresh.screen, 'STORY', 'a refused open moved the player anyway');
+
+  // Partial progress is not progress enough.
+  for (let index = 0; index < STAGES.length - 1; index += 1) {
+    const flow = createAppFlow();
+    flow.stageIndex = index;
+    recordStageCleared(flow);
+    assert.equal(openSetlist(flow), false, `clearing stage ${String(index + 1)} opened the builder`);
+  }
+
+  // A ruined show never calls `recordStageCleared`, so it never unlocks.
+  const ruined = createAppFlow();
+  ruined.stageIndex = STAGES.length - 1;
+  assert.equal(openSetlist(ruined), false, 'reaching the last stage was enough');
+
+  const survived = unlockedFlow();
+  assert.equal(openSetlist(survived), true, 'surviving the show did not open the builder');
+  assert.equal(survived.screen, 'SETLIST');
+});
+
+test('M24C: a fresh draft is four empty slots, one per stage', () => {
+  const flow = createAppFlow();
+  assert.equal(flow.draftSetlist.length, SETLIST_SLOTS);
+  assert.equal(flow.draftSetlist.length, STAGES.length, 'a stage exists with no slot to fill it');
+  assert.deepEqual([...flow.draftSetlist], [...emptyDraft()]);
+  assert.equal(
+    completedDraft(flow),
+    null,
+    'an empty draft is playable, so START THE GIG would be live on a blank screen',
+  );
+});
+
+test('M24C: four taps in the library build a whole setlist', () => {
+  /*
+   * The interaction the screen is named after: choosing a song advances the
+   * cursor to the next empty slot, so the fastest path to a full setlist is
+   * four taps in the right-hand column and no taps on a slot at all.
+   */
+  const flow = unlockedFlow();
+  openSetlist(flow);
+  const songs = availableTracks(false).slice(0, SETLIST_SLOTS);
+
+  for (const [index, song] of songs.entries()) {
+    assert.equal(flow.activeSlot, index, `the cursor was not on slot ${String(index + 1)}`);
+    assert.equal(assignSlot(flow, song), true, `${song} was refused`);
+  }
+
+  assert.deepEqual([...flow.draftSetlist], [...songs]);
+  assert.deepEqual(completedDraft(flow), Object.freeze([...songs]));
+});
+
+test('M24C: the same song cannot be put in two slots', () => {
+  const flow = unlockedFlow();
+  openSetlist(flow);
+  const [first, second] = availableTracks(false);
+
+  assert.equal(assignSlot(flow, first), true);
+  // The cursor is on slot 2 now; the song already in slot 1 must be refused.
+  assert.equal(assignSlot(flow, first), false, 'a song was accepted into a second slot');
+  assert.equal(flow.draftSetlist[1], null, 'the refused song landed anyway');
+  assert.equal(flow.activeSlot, 1, 'a refused tap moved the cursor');
+
+  assert.equal(assignSlot(flow, second), true);
+  assert.deepEqual([...flow.draftSetlist].slice(0, 2), [first, second]);
+});
+
+test('M24C: replacing one slot leaves the rest of the setlist alone', () => {
+  const flow = unlockedFlow();
+  openSetlist(flow);
+  const library = availableTracks(false);
+  for (const song of library.slice(0, SETLIST_SLOTS)) assignSlot(flow, song);
+  const before = [...flow.draftSetlist];
+
+  // Aim at slot 3 and choose something else.
+  selectSlot(flow, 2);
+  assert.equal(flow.activeSlot, 2);
+  const replacement = library[SETLIST_SLOTS];
+  assert.equal(assignSlot(flow, replacement), true, 'an unused song was refused');
+
+  assert.deepEqual(
+    [...flow.draftSetlist],
+    [before[0], before[1], replacement, before[3]],
+    'replacing one slot disturbed another',
+  );
+  // The displaced song is available again the moment it leaves the draft.
+  selectSlot(flow, 3);
+  assert.equal(assignSlot(flow, before[2] as MusicTrackId), true, 'a displaced song stayed used');
+
+  // And re-choosing what is already in the active slot is a no-op, not a bug.
+  selectSlot(flow, 0);
+  assert.equal(assignSlot(flow, before[0] as MusicTrackId), true);
+  assert.equal(flow.draftSetlist[0], before[0]);
+});
+
+test('M24C: a saved setlist is loaded, and a rejected one leaves an empty builder', () => {
+  const flow = unlockedFlow();
+  const saved = availableTracks(false).slice(1, SETLIST_SLOTS + 1);
+
+  loadDraft(flow, parseSetlist([...saved], availableTracks(false)));
+  assert.deepEqual([...flow.draftSetlist], [...saved], 'the saved setlist did not come back');
+  openSetlist(flow);
+  assert.equal(flow.activeSlot, SETLIST_SLOTS - 1, 'a full draft armed a slot that does not exist');
+
+  // What `parseSetlist` rejects becomes an empty draft rather than a partial one.
+  loadDraft(flow, parseSetlist(['noRefunds', 'noRefunds', 'lastCall', 'brokenAmp']));
+  assert.deepEqual([...flow.draftSetlist], [...emptyDraft()], 'a rejected save half-loaded');
+  assert.equal(completedDraft(flow), null);
+});
+
+test('M24C: START THE GIG refuses a draft that is not a setlist', () => {
+  const flow = unlockedFlow();
+  openSetlist(flow);
+  assert.equal(startCustomGig(flow), null, 'an empty draft started a gig');
+  assert.equal(flow.screen, 'SETLIST', 'a refused start moved the player');
+  assert.equal(flow.setlist, OFFICIAL_SETLIST, 'a refused start touched the run');
+
+  for (const song of availableTracks(false).slice(0, SETLIST_SLOTS - 1)) assignSlot(flow, song);
+  assert.equal(startCustomGig(flow), null, 'three quarters of a setlist started a gig');
+  assert.equal(flow.screen, 'SETLIST');
+
+  /*
+   * A draft made of songs this build does not offer is refused too, which is
+   * the case a save from a bigger library produces. Nothing may reach a round
+   * that `isValidCustomSetlist` would reject.
+   */
+  flow.draftSetlist = Object.freeze(availableTracks(false).slice(0, SETLIST_SLOTS));
+  assert.equal(startCustomGig(flow, []), null, 'a setlist of unavailable songs started a gig');
+  assert.equal(flow.screen, 'SETLIST');
+});
+
+// ---------------------------------------------------------------------------
+// The custom run (M24C)
+// ---------------------------------------------------------------------------
+
+/** A flow with a complete four-song draft, ready to start. */
+function flowWithDraft(): {
+  flow: ReturnType<typeof createAppFlow>;
+  songs: readonly MusicTrackId[];
+} {
+  const flow = unlockedFlow();
+  openSetlist(flow);
+  const songs = availableTracks(false).slice(0, SETLIST_SLOTS);
+  for (const song of songs) assignSlot(flow, song);
+  return { flow, songs };
+}
+
+test('M24C: slot 1 plays Stage 1, and slot 4 plays Stage 4', () => {
+  /*
+   * The whole feature, in one assertion: the position a song sits at in the
+   * builder is the stage it plays under. Checked through `trackForStage`, which
+   * is the same function `GameEngine.resetScene` calls, rather than through a
+   * copy of the mapping.
+   */
+  const { flow, songs } = flowWithDraft();
+  const started = startCustomGig(flow);
+  assert.deepEqual(started, Object.freeze([...songs]), 'START THE GIG did not start the draft');
+  assert.equal(flow.stageIndex, 0, 'a custom show started somewhere other than the top');
+  assert.equal(flow.screen, 'BRIEFING');
+
+  for (const [index, stage] of STAGES.entries()) {
+    assert.equal(
+      trackForStage(flow.setlist, index),
+      songs[index],
+      `stage ${String(stage.number)} played the wrong slot`,
+    );
+    assert.notEqual(
+      trackForStage(flow.setlist, index),
+      stage.music,
+      `stage ${String(stage.number)} played its authored music during a custom run`,
+    );
+  }
+});
+
+test('M24C: Stage 2 takes the player’s song, and the official run still does not', () => {
+  /*
+   * The decision in §15, both halves, side by side — because they are the pair
+   * that is easy to get half right.
+   *
+   * The teaching rationale for `grooveBed` is spent by the time the builder is
+   * reachable: the player has already finished the show. What protects them is
+   * not that one file but that every production track is on the beat clock,
+   * which `tests/audioContract.test.ts` holds for the whole library.
+   */
+  const { flow, songs } = flowWithDraft();
+  startCustomGig(flow);
+  assert.equal(trackForStage(flow.setlist, 1), songs[1], 'Stage 2 ignored the chosen song');
+  assert.equal(
+    isGrooveQualified(songs[1] as MusicTrackId),
+    true,
+    'Stage 2 scores beats and its custom song is not on the clock',
+  );
+
+  const official = createAppFlow();
+  startStage(official, 1);
+  assert.equal(
+    trackForStage(official.setlist, 1),
+    'grooveBed',
+    'the authored Stage 2 stopped teaching over its bed',
+  );
+});
+
+test('M24C: a custom run survives every stage transition and every retry', () => {
+  const { flow, songs } = flowWithDraft();
+  startCustomGig(flow);
+  beginRound(flow);
+
+  for (let index = 0; index < STAGES.length - 1; index += 1) {
+    assert.equal(trackForStage(flow.setlist, flow.stageIndex), songs[index]);
+    recordStageCleared(flow);
+    assert.equal(advanceToNextStage(flow), true);
+    assert.deepEqual([...flow.setlist], [...songs], '"Next stage" reset the run to the official show');
+  }
+  assert.equal(trackForStage(flow.setlist, STAGES.length - 1), songs[STAGES.length - 1]);
+  assert.equal(isCustomRun(flow), true, 'a custom run stopped reading as one mid-show');
+
+  /*
+   * A ruined stage is a retry, and a retry keeps the music (§38). Nothing in
+   * the flow changes on `SHOW_RUINED` — `recordStageCleared` is not called —
+   * so this asserts what a retry actually does: replays the same stage on the
+   * same setlist.
+   */
+  assert.deepEqual([...flow.setlist], [...songs], 'failing a stage discarded the chosen setlist');
+});
+
+test('M24C: leaving a custom run restores the official show but keeps the setlist', () => {
+  /*
+   * The two halves of §38, which pull in opposite directions and are why the
+   * run's setlist and the draft are different fields.
+   */
+  const { flow, songs } = flowWithDraft();
+  startCustomGig(flow);
+  returnToTitle(flow);
+
+  assert.equal(flow.setlist, OFFICIAL_SETLIST, 'quitting left the player’s music on the run');
+  assert.equal(isCustomRun(flow), false);
+  assert.deepEqual([...flow.draftSetlist], [...songs], 'quitting cost the player their setlist');
+
+  // And a stage card from the title starts the authored show, as it always has.
+  startStage(flow, 1);
+  assert.equal(flow.setlist, OFFICIAL_SETLIST, 'a stage card started the custom setlist');
+  assert.equal(trackForStage(flow.setlist, 1), 'grooveBed');
+  assert.deepEqual([...flow.draftSetlist], [...songs], 'a stage card cleared the builder');
+});
+
+test('M24C: the custom setlist cannot leak into an official run by any path', () => {
+  /*
+   * §20 as a property rather than a promise. Every entry point that is not
+   * START THE GIG is walked with a full draft sitting in the builder, and none
+   * of them may put it on the run.
+   */
+  const { flow } = flowWithDraft();
+
+  for (const [name, enter] of [
+    ['a stage card', () => startStage(flow, 0)],
+    ['the last stage card', () => startStage(flow, STAGES.length - 1)],
+    ['back to the title', () => returnToTitle(flow)],
+    ['opening the builder', () => void openSetlist(flow)],
+  ] as const) {
+    enter();
+    assert.equal(flow.setlist, OFFICIAL_SETLIST, `${name} started the player’s setlist`);
+    assert.equal(isCustomRun(flow), false, `${name} reads as a custom run`);
+  }
+
+  // "Next stage" from an official run stays official for the whole show.
+  startStage(flow, 0);
+  for (let index = 0; index < STAGES.length - 1; index += 1) {
+    recordStageCleared(flow);
+    advanceToNextStage(flow);
+    assert.equal(flow.setlist, OFFICIAL_SETLIST, '"Next stage" picked up the draft');
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Reset (M24C §40)
+// ---------------------------------------------------------------------------
+
+test('M24C: clearing the save locks the feature and takes the setlist with it', () => {
+  /*
+   * **There is no reset-progress control in the game.** `clearSave()` exists in
+   * `game/state/storage.ts` for development and nothing calls it, so "reset"
+   * means the save file going away — a reinstall, cleared app data, or that
+   * function. Defining it is what §40 asks for; this is the definition.
+   *
+   * Both facts live in the same file, so they cannot come back separately: a
+   * save that is gone leaves `bestStageCleared: -1` *and* `customSetlist: null`,
+   * which relocks the feature and empties the builder in one step. A setlist
+   * that survived a reset would be reachable from a screen the same reset had
+   * just locked.
+   */
+  const fresh = parseSave(null).state;
+  assert.equal(fresh.bestStageCleared, -1, 'a cleared save remembered progress');
+  assert.equal(fresh.customSetlist, null, 'a cleared save kept the setlist');
+
+  const flow = createAppFlow();
+  flow.bestStageCleared = fresh.bestStageCleared;
+  loadDraft(flow, fresh.customSetlist);
+  assert.equal(isCustomSetlistUnlocked(flow), false, 'the feature survived a reset');
+  assert.equal(openSetlist(flow), false, 'the builder was reachable after a reset');
+  assert.deepEqual([...flow.draftSetlist], [...emptyDraft()]);
+
+  /*
+   * And the other direction, which is the one worth a test: a save that somehow
+   * holds a setlist without the progress that earns it cannot be played. The
+   * gate is the unlock, never the presence of a setlist.
+   */
+  const inconsistent = createAppFlow();
+  inconsistent.bestStageCleared = -1;
+  loadDraft(inconsistent, availableTracks(false).slice(0, SETLIST_SLOTS));
+  assert.notEqual(
+    completedDraft(inconsistent),
+    null,
+    'the sample draft is not playable, so this proves nothing about the gate',
+  );
+  assert.equal(
+    openSetlist(inconsistent),
+    false,
+    'a saved setlist made the builder reachable without the unlock',
+  );
+  assert.equal(
+    startCustomGig(inconsistent),
+    null,
+    'a playable draft started a gig for a player who has not earned the feature',
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Audio (M24C §28)
+// ---------------------------------------------------------------------------
+
+test('M24C: starting a custom gig preloads the setlist, never the library', () => {
+  /*
+   * The scaling property, asserted on the shape of the call rather than on a
+   * count — the same way M24A's version does, and for the same reason: this
+   * test cannot import `audioService.ts`, which reaches for files through
+   * Metro's `require`.
+   *
+   * What it forbids is the specific regression this milestone could cause. The
+   * builder draws every song in the library, so `availableTracks()` is right
+   * there in the same component tree as the preload call, and preloading it
+   * would hold eleven decoders open for a session that plays four.
+   */
+  const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+
+  const preloads = engine.match(/audio\.preloadSetlist\(([^)]*)\)/g) ?? [];
+  assert.ok(preloads.length > 0, 'nothing preloads anything any more');
+  for (const call of preloads) {
+    assert.equal(
+      /availableTracks|trackIds|libraryTracks|MUSIC_TRACKS|selectableTracks/.test(call),
+      false,
+      `${call} preloads the whole library rather than a setlist`,
+    );
+  }
+  assert.ok(
+    engine.includes('audio.preloadSetlist(setlist)'),
+    'a custom gig no longer preloads the setlist it is about to play',
+  );
+
+  // The ceiling itself: a setlist has one slot per stage and cannot exceed it.
+  const { flow, songs } = flowWithDraft();
+  const started = startCustomGig(flow);
+  assert.ok(started);
+  assert.equal(started.length, SETLIST_SLOTS);
+  assert.equal(new Set(songs).size, SETLIST_SLOTS, 'a setlist needs fewer players than it has slots');
+});
+
+test('M24C: no music is left sounding when the player leaves for the builder', () => {
+  /*
+   * The leak §45 names. Two screens can have music playing when the player
+   * walks away from them — a development audition preview on the title, and
+   * whatever a round left behind — and the builder has no transport control at
+   * all, so anything still sounding on it is something the player cannot stop.
+   *
+   * Asserted on the source because `audioService.ts` cannot be imported here:
+   * it reaches for files through Metro's `require`. What is checked is that
+   * both ways *into* a custom gig silence the music first.
+   */
+  const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+
+  for (const [handler, why] of [
+    ['handleOpenSetlist', 'opening the builder'],
+    ['handleStartCustomGig', 'starting a custom gig'],
+  ] as const) {
+    const at = engine.indexOf(`const ${handler} = useCallback(`);
+    assert.ok(at > 0, `${handler} is gone`);
+    const body = engine.slice(at, engine.indexOf('}, [', at));
+    assert.ok(
+      body.includes('audio.stopMusic()'),
+      `${why} no longer stops whatever was playing`,
+    );
+    assert.ok(
+      body.includes('setAuditionPlaying(false)'),
+      `${why} leaves the audition row claiming it is still playing`,
+    );
+  }
+});
+
+test('M24C: a custom setlist changes the music and nothing else', () => {
+  /*
+   * M24A proved this with a reversed *official* setlist, which was the only
+   * kind that existed. This is the real case: an actual four-song custom
+   * setlist, built the way a player builds one, replayed against the authored
+   * show stage by stage.
+   *
+   * Every spawn has to land at the same millisecond with the same id. If it
+   * does not, something in the round is reading the run's music — which
+   * `no gameplay module can see the catalogue or the setlist` forbids
+   * structurally and this measures.
+   */
+  const { flow, songs } = flowWithDraft();
+  startCustomGig(flow);
+
+  for (const [index, stage] of STAGES.entries()) {
+    const official = createAppFlow();
+    startStage(official, index);
+    const underOfficial = spawnTrace(stage.level);
+
+    flow.stageIndex = index;
+    const underCustom = spawnTrace(stage.level);
+
+    assert.notEqual(
+      trackForStage(flow.setlist, index),
+      trackForStage(official.setlist, index),
+      `stage ${String(stage.number)} played the same music both times, so this proves nothing`,
+    );
+    assert.equal(trackForStage(flow.setlist, index), songs[index]);
+    assert.deepEqual(
+      underCustom,
+      underOfficial,
+      `stage ${String(stage.number)} threw different objects under the player's music`,
+    );
+    assert.ok(underOfficial.length > 0, `stage ${String(stage.number)} threw nothing at all`);
+  }
 });

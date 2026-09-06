@@ -227,13 +227,57 @@ export const en = {
   } satisfies Record<StoryPanelId, string>,
 
   /**
+   * The custom setlist: its unlock, its builder, and the run it starts (M24C).
+   *
+   * Everything the player reads on the way from "you survived the show" to
+   * "you chose the songs". The song titles themselves are the block below and
+   * are deliberately not translated; every word *around* them is.
+   */
+  setlist: {
+    /**
+     * The title screen's way in, drawn only once the show has been survived.
+     *
+     * Sentence case rather than the screen's shouted heading, because it sits
+     * in the same compact row as "How to play" and "Story" and has to read as
+     * one of them.
+     */
+    open: 'Custom setlist',
+    /** The builder's heading, and the name of the whole feature. */
+    title: 'BUILD THE WORST SETLIST',
+    /** The line the feature is really about. */
+    tagline: 'You survived ours. Now make it worse.',
+    /** The banner on the results screen, the first time the show is finished. */
+    unlocked: 'CUSTOM SETLIST UNLOCKED',
+    /**
+     * A slot's number. `{number}` arrives pre-padded — `01`, not `1` — so a
+     * locale may put it anywhere in the label without doing arithmetic.
+     */
+    slot: '{number}',
+    /** An empty slot, and the whole of the instruction the screen needs. */
+    empty: '— Tap to choose —',
+    /** The heading over the songs, so the two columns say what they are. */
+    library: 'YOUR SONGS',
+    /** Reads out an already-chosen row, which is drawn with a ✓ and is deaf. */
+    chosen: 'Already in the setlist',
+    /** Starts the custom show. Deaf until all four slots are filled. */
+    start: 'START THE GIG',
+    /**
+     * The run's songs, on the results screen after a custom show (M24C §22).
+     *
+     * One line rather than a column: the results screen has 411 dp of height
+     * and the two score columns already claim most of it.
+     */
+    tonight: 'TONIGHT’S SETLIST',
+  },
+
+  /**
    * Player-facing song titles (M24B).
    *
    * **Fictional, and deliberately so.** These are the names of a bad band's
    * songs — the joke — and they are not the works' real titles. The real title,
    * author, licence and source page of every track live in
    * `docs/assets/AUDIO-SOURCES.md` and in
-   * `assets/audio/music/candidates/SOURCES.json`, where renaming a third-party
+   * `assets/audio/music/library/SOURCES.json`, where renaming a third-party
    * work would be a provenance failure (AGENTS.md rule 13). Here it is
    * presentation, and nothing else reads it.
    *
@@ -241,8 +285,8 @@ export const en = {
    * `MusicTitleKey` is `keyof Catalogue['music']` — so a track added without a
    * title, or a title left behind by a deleted track, is a `tsc` error.
    *
-   * These are audition candidates. The ones the owner rejects go, and their
-   * strings go with them.
+   * All eleven are production tracks since M24C: the owner auditioned every one
+   * and kept every one. These are the names on the setlist builder.
    */
   music: {
     noRefunds: 'NO REFUNDS',

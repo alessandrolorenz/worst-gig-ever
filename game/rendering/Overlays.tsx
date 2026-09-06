@@ -20,6 +20,7 @@ import {
   BRIEFING,
   BUTTON,
   OVERLAY_PADDING,
+  SETLIST,
   STAGE_CARD,
   SUMMARY,
 } from './overlayLayout.ts';
@@ -44,7 +45,17 @@ const BRIEFING_FIGURE_ART: Record<BriefingFigureId, number> = {
 import { StoryIntro } from './StoryIntro.tsx';
 import type { GameState } from '../state/gameState.ts';
 import type { AppFlowState } from '../state/appFlow.ts';
-import { isStageCleared } from '../state/appFlow.ts';
+import {
+  completedDraft,
+  isCustomRun,
+  isCustomSetlistUnlocked,
+  isStageCleared,
+} from '../state/appFlow.ts';
+import {
+  MUSIC_TRACKS,
+  type MusicTitleKey,
+  type MusicTrackId,
+} from '../audio/musicCatalogue.ts';
 import type { StoryState } from '../state/storyState.ts';
 import {
   STAGES,
@@ -86,6 +97,21 @@ interface OverlayProps {
   onQuit(): void;
   onToggleClick(): void;
   onCycleLocale(): void;
+  /** The songs this build lets a player choose between (M24C). */
+  selectableTracks: readonly MusicTrackId[];
+  onOpenSetlist(): void;
+  onSelectSlot(slot: number): void;
+  onChooseTrack(track: MusicTrackId): void;
+  onStartCustomGig(): void;
+  /**
+   * True only on the results screen that **just** crossed the unlock (M24C §37).
+   *
+   * A transition, not a state: `isCustomSetlistUnlocked(flow)` is true forever
+   * afterwards and would put a "CUSTOM SETLIST UNLOCKED" banner on every future
+   * completion. `recordStageCleared` reports the crossing and `GameEngine`
+   * holds it until the next round starts.
+   */
+  justUnlockedSetlist: boolean;
   /** Bests per stage, loaded from disk and updated as rounds finish (M22). */
   records: Records;
   /** True when the round just finished set a new best on either dimension. */
@@ -408,6 +434,165 @@ function BriefingCard({
   );
 }
 
+/**
+ * A slot number as the player reads it: `01`, not `1`.
+ *
+ * Padded here rather than in the catalogue because it is arithmetic, not
+ * language — every locale numbers a setlist the same way, and `{number}` in
+ * `strings.setlist.slot` is what lets one put the digits somewhere else.
+ */
+function slotLabel(index: number): string {
+  return String(index + 1).padStart(2, '0');
+}
+
+/**
+ * The setlist builder (M24C).
+ *
+ * Two columns: the four slots on the left, the songs on the right. The whole
+ * interaction is two taps repeated — a slot to aim at, a song to put in it —
+ * and the fastest path is four taps in the right-hand column, because choosing
+ * a song advances the cursor to the next empty slot.
+ *
+ * ## What decides what
+ *
+ * Nothing here. Every judgement — which slot is active, whether a song may be
+ * chosen, whether the setlist is playable — comes off `flow` through
+ * `game/state/appFlow.ts`, which is where it can be tested without a renderer.
+ * This component draws that state and reports taps. `completedDraft` is the
+ * single reason START THE GIG is deaf or not, so the button cannot look
+ * pressable while the gig would refuse to start.
+ *
+ * ## Why the right column scrolls and the left one does not
+ *
+ * Eleven rows do not fit in 411 dp of phone and four do. So the library is a
+ * `ScrollView` that measures itself and draws the `▾` the briefing card already
+ * uses when there is more below — M20's rule that a scrollable surface may
+ * overflow but must say so — and the slots are a fixed box whose budget
+ * `tests/layoutBudget.test.ts` checks in every locale.
+ */
+function SetlistBuilder({
+  flow,
+  tracks,
+  onSelectSlot,
+  onChooseTrack,
+  onStart,
+  onBack,
+}: {
+  flow: AppFlowState;
+  tracks: readonly MusicTrackId[];
+  onSelectSlot(slot: number): void;
+  onChooseTrack(track: MusicTrackId): void;
+  onStart(): void;
+  onBack(): void;
+}) {
+  const strings = useStrings();
+  const setlist = strings.setlist;
+
+  /*
+   * Measured rather than predicted, exactly as the briefing card is: a budget
+   * test can say whether eleven rows *should* fit at a modelled font metric;
+   * only the renderer knows whether they did, on this screen, in this language.
+   */
+  const [columnHeight, setColumnHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const hasMore = columnHeight > 0 && contentHeight > columnHeight + 1;
+
+  const chosen = new Set(flow.draftSetlist.filter((entry): entry is MusicTrackId => entry !== null));
+  const ready = completedDraft(flow, tracks) !== null;
+
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.setlistTitle}>{setlist.title}</Text>
+      <Text style={styles.setlistTagline}>{setlist.tagline}</Text>
+
+      <View style={styles.setlistColumns}>
+        <View style={styles.setlistSlots}>
+          {flow.draftSetlist.map((track, index) => (
+            <Pressable
+              key={slotLabel(index)}
+              onPress={() => onSelectSlot(index)}
+              accessibilityRole="button"
+              style={({ pressed }) => [
+                styles.setlistSlot,
+                index === flow.activeSlot && styles.setlistSlotActive,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <Text style={styles.setlistSlotNumber}>
+                {format(setlist.slot, { number: slotLabel(index) })}
+              </Text>
+              <Text
+                style={[
+                  styles.setlistSlotTitle,
+                  track === null && styles.setlistSlotEmpty,
+                ]}
+              >
+                {track === null ? setlist.empty : strings.music[trackTitleKey(track)]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.setlistLibrary}>
+          <Text style={styles.setlistLibraryHeading}>{setlist.library}</Text>
+          <ScrollView
+            style={styles.setlistLibraryScroll}
+            showsVerticalScrollIndicator
+            persistentScrollbar
+            onLayout={(event) => setColumnHeight(event.nativeEvent.layout.height)}
+            onContentSizeChange={(_width, height) => setContentHeight(height)}
+          >
+            {tracks.map((track) => {
+              const used = chosen.has(track);
+              return (
+                <Pressable
+                  key={track}
+                  onPress={used ? undefined : () => onChooseTrack(track)}
+                  disabled={used}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: used }}
+                  accessibilityHint={used ? setlist.chosen : undefined}
+                  style={({ pressed }) => [
+                    styles.setlistTrack,
+                    used && styles.setlistTrackUsed,
+                    pressed && !used && styles.buttonPressed,
+                  ]}
+                >
+                  <Text style={[styles.setlistTrackTitle, used && styles.setlistTrackTitleUsed]}>
+                    {strings.music[trackTitleKey(track)]}
+                  </Text>
+                  {/* A tick, not a colour: the used state has to survive being
+                      read by somebody who cannot tell the two greys apart. */}
+                  <Text style={styles.setlistTrackMark}>{used ? '✓' : ''}</Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </View>
+
+      {/* Always drawn, so the columns do not jump when the measurement lands. */}
+      <View style={styles.moreCueRow}>{hasMore && <Text style={styles.moreCue}>▾</Text>}</View>
+
+      <View style={styles.buttonRowLayout}>
+        <Button label={setlist.start} onPress={onStart} disabled={!ready} />
+        <Button label={strings.common.back} onPress={onBack} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * A track's title key, or its id if it somehow has no library entry.
+ *
+ * The fallback cannot happen — only library tracks are selectable — but the
+ * alternative to having one is a non-null assertion in a renderer, and a blank
+ * row on a phone is a worse way to find out than a track id is.
+ */
+function trackTitleKey(track: MusicTrackId): MusicTitleKey {
+  return MUSIC_TRACKS[track].library?.titleKey ?? (track as MusicTitleKey);
+}
+
 export function Overlays(props: OverlayProps) {
   const { flow, stage, state, round, rhythm, story, audioAvailable } = props;
   const strings = useStrings();
@@ -448,6 +633,24 @@ export function Overlays(props: OverlayProps) {
             tone="secondary"
             compact
           />
+          {/**
+            * The custom setlist, drawn only once the show has been survived
+            * (M24C §10).
+            *
+            * **Absent rather than disabled.** A locked control on a first-run
+            * title screen is a promise the player cannot act on and a row of
+            * buttons they have to read past; the stage cards are what a new
+            * player is meant to look at. `openSetlist` refuses independently,
+            * so this is presentation and not the gate.
+            */}
+          {isCustomSetlistUnlocked(flow) && (
+            <Button
+              label={strings.setlist.open}
+              onPress={props.onOpenSetlist}
+              tone="secondary"
+              compact
+            />
+          )}
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <LanguageToggle onPress={props.onCycleLocale} />
         </View>
@@ -456,6 +659,19 @@ export function Overlays(props: OverlayProps) {
         )}
         {props.audition !== null && <DevAuditionRow audition={props.audition} />}
       </View>
+    );
+  }
+
+  if (flow.screen === 'SETLIST') {
+    return (
+      <SetlistBuilder
+        flow={flow}
+        tracks={props.selectableTracks}
+        onSelectSlot={props.onSelectSlot}
+        onChooseTrack={props.onChooseTrack}
+        onStart={props.onStartCustomGig}
+        onBack={props.onBackToTitle}
+      />
     );
   }
 
@@ -541,6 +757,34 @@ export function Overlays(props: OverlayProps) {
       </Text>
       {/* Only when this round actually beat something (M22). */}
       {props.beatRecord && <Text style={styles.newBest}>{strings.results.newBest}</Text>}
+      {/**
+        * The reward for surviving the whole show, once (M24C §37).
+        *
+        * `justUnlockedSetlist` is the *crossing*, not the state, so this
+        * appears on the results screen that earned it and on no other. The
+        * tagline comes with it because the banner alone names a feature
+        * without saying what it is for.
+        */}
+      {props.justUnlockedSetlist && (
+        <>
+          <Text style={styles.unlockBanner}>{strings.setlist.unlocked}</Text>
+          <Text style={styles.body}>{strings.setlist.tagline}</Text>
+        </>
+      )}
+      {/**
+        * The songs this run played, after a custom show (M24C §22).
+        *
+        * One heading and one line rather than the four-row card the brief
+        * sketches: the results screen has 411 dp and the two score columns
+        * below already claim most of it. It answers the same question — which
+        * four, in what order — and it is the shape a share card would reuse.
+        */}
+      {complete && isCustomRun(flow) && (
+        <>
+          <Text style={styles.tonightHeading}>{strings.setlist.tonight}</Text>
+          <Text style={styles.tonightSongs}>{runSetlistLine(flow, strings)}</Text>
+        </>
+      )}
       <Summary
         round={round}
         rhythm={rhythm}
@@ -566,6 +810,23 @@ export function Overlays(props: OverlayProps) {
             disabled={!armed}
           />
         )}
+        {/**
+          * Straight back into the builder from the end of a show (M24C §37).
+          *
+          * Drawn whenever the feature is unlocked and the show is over, so the
+          * first completion offers it under the unlock banner and every later
+          * one offers it as an ordinary result action. Not drawn between
+          * stages: "Next stage" is the only thing to do there.
+          */}
+        {complete && !nextStageWaiting && isCustomSetlistUnlocked(flow) && (
+          <Button
+            label={strings.setlist.open}
+            onPress={props.onOpenSetlist}
+            tone="secondary"
+            compact
+            disabled={!armed}
+          />
+        )}
         <Button
           label={strings.results.share}
           onPress={props.onShare}
@@ -583,6 +844,19 @@ export function Overlays(props: OverlayProps) {
       </View>
     </View>
   );
+}
+
+/**
+ * The run's songs, in play order, as one line.
+ *
+ * Built here rather than in the catalogue because it is a *list*, and a
+ * catalogue string with four placeholders would be a sentence a translator
+ * could not reorder and could not shorten. The separator carries no language.
+ */
+function runSetlistLine(flow: AppFlowState, strings: Catalogue): string {
+  return flow.setlist
+    .map((track) => strings.music[trackTitleKey(track)])
+    .join('  ·  ');
 }
 
 /**
@@ -682,6 +956,150 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     maxWidth: 460,
+  },
+
+  /* ---- the setlist builder (M24C) ---- */
+
+  /**
+   * The builder's heading and its one line of copy.
+   *
+   * Smaller than the results title's 30, because this screen has two columns
+   * under it and 411 dp to put them in. The heading is the cheapest thing here
+   * to make smaller and the columns are the thing that must not be.
+   */
+  setlistTitle: {
+    color: THEME.hudText,
+    fontSize: SETLIST.title.fontSize,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: SETLIST.title.marginBottom,
+  },
+  setlistTagline: {
+    color: THEME.accent,
+    fontSize: SETLIST.tagline.fontSize,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: SETLIST.tagline.marginBottom,
+  },
+  setlistColumns: {
+    flexDirection: 'row',
+    flexShrink: 1,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  /** The four slots. A fixed box: it does not scroll and must not need to. */
+  setlistSlots: {
+    width: SETLIST.slot.width,
+    marginRight: SETLIST.columnGap,
+  },
+  setlistSlot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: SETLIST.slot.width,
+    paddingHorizontal: SETLIST.slot.paddingHorizontal,
+    paddingVertical: SETLIST.slot.paddingVertical,
+    marginBottom: SETLIST.slot.marginBottom,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: THEME.hudDim,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  /**
+   * The slot the next chosen song lands in.
+   *
+   * A border and a fill rather than only a colour: which slot is armed is the
+   * one thing on this screen a player has to be able to see at a glance, and
+   * two greys are not a signal on a phone in a dark room.
+   */
+  setlistSlotActive: {
+    borderColor: THEME.accent,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  setlistSlotNumber: {
+    color: THEME.hudDim,
+    fontSize: SETLIST.slot.number.fontSize,
+    fontWeight: '800',
+    letterSpacing: 1,
+    width: SETLIST.slot.numberGutter,
+  },
+  setlistSlotTitle: {
+    color: THEME.hudText,
+    fontSize: SETLIST.slot.title.fontSize,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  /** An empty slot says what to do, in the colour of something not yet done. */
+  setlistSlotEmpty: {
+    color: THEME.hudDim,
+    fontWeight: '400',
+  },
+  setlistLibrary: {
+    width: SETLIST.track.width,
+    flexShrink: 1,
+  },
+  setlistLibraryHeading: {
+    color: THEME.hudDim,
+    fontSize: SETLIST.libraryHeading.fontSize,
+    fontWeight: '800',
+    letterSpacing: 1,
+    marginBottom: SETLIST.libraryHeading.marginBottom,
+  },
+  setlistLibraryScroll: { flexShrink: 1, alignSelf: 'stretch' },
+  setlistTrack: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SETLIST.track.paddingHorizontal,
+    paddingVertical: SETLIST.track.paddingVertical,
+    marginBottom: SETLIST.track.marginBottom,
+    borderRadius: 8,
+  },
+  setlistTrackUsed: { opacity: 0.55 },
+  setlistTrackTitle: {
+    color: THEME.hudText,
+    fontSize: SETLIST.track.title.fontSize,
+    fontWeight: '700',
+    flexShrink: 1,
+  },
+  setlistTrackTitleUsed: { color: THEME.hudDim },
+  setlistTrackMark: {
+    color: THEME.integrityFull,
+    fontSize: SETLIST.track.title.fontSize,
+    width: SETLIST.track.chosenGutter,
+    textAlign: 'right',
+  },
+
+  /**
+   * The unlock banner, drawn once — on the results screen that crossed it.
+   *
+   * The colour the game already uses for something good happening, the same as
+   * the new-best line it sits beside.
+   */
+  unlockBanner: {
+    color: THEME.integrityFull,
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  /** The run's songs after a custom show. One line, because height is scarce. */
+  tonightHeading: {
+    color: THEME.hudDim,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  tonightSongs: {
+    color: THEME.hudText,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+    maxWidth: 760,
   },
 
   /** Title screen: the stages, side by side. */

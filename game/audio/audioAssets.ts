@@ -72,32 +72,30 @@ export const MUSIC_SOURCES: Record<MusicTrackId, number> = {
   grooveBed: require('../../assets/audio/music/runtime/groove_bed_90.wav'),
 
   /*
-   * M24B audition candidates.
+   * The production music library (M24C).
    *
-   * Bundled, and unreachable. Metro resolves `require` statically, so a track
-   * the game might play has to be named here at build time whatever gates sit
-   * in front of it — which means "development-only" cannot be a bundling
-   * property and is not implemented as one. It is enforced where selection
-   * happens: `availableTracks(false)` never returns a candidate,
-   * `parseSetlist` rejects a save that names one, and the audition screen is
-   * behind `isDevelopmentBuild()`. `tests/audioContract.test.ts` and
-   * `tests/setlist.test.ts` hold all three.
+   * These eleven arrived at M24B as `candidates/`, unreachable by a release
+   * build. The owner auditioned all eleven on a phone and kept all eleven, so
+   * they are `release: 'production'` and `ownerConfirmed: true`, they live
+   * under `library/`, and they are what the setlist builder offers. See
+   * `docs/specs/M24B-owner-audition.md` for the verdict and
+   * `game/audio/musicCatalogue.ts` for the evidence each one carries.
    *
    * Sixteen bars each at 90 BPM, conditioned from CC0 sources by
-   * `scripts/build-candidates.mjs`. Every one is provenanced in
-   * `docs/assets/AUDIO-SOURCES.md`; none may ship until the owner has heard it.
+   * `scripts/build-library.mjs`. Every one is provenanced in
+   * `docs/assets/AUDIO-SOURCES.md` and re-verified by `npm run verify`.
    */
-  noRefunds: require('../../assets/audio/music/candidates/noRefunds_90.wav'),
-  brokenAmp: require('../../assets/audio/music/candidates/brokenAmp_90.wav'),
-  lastCall: require('../../assets/audio/music/candidates/lastCall_90.wav'),
-  stageDive: require('../../assets/audio/music/candidates/stageDive_90.wav'),
-  cheapBeerRiot: require('../../assets/audio/music/candidates/cheapBeerRiot_90.wav'),
-  wrongChord: require('../../assets/audio/music/candidates/wrongChord_90.wav'),
-  badSoundcheck: require('../../assets/audio/music/candidates/badSoundcheck_90.wav'),
-  loadOut: require('../../assets/audio/music/candidates/loadOut_90.wav'),
-  fireExit: require('../../assets/audio/music/candidates/fireExit_90.wav'),
-  noEncore: require('../../assets/audio/music/candidates/noEncore_90.wav'),
-  wrongVenue: require('../../assets/audio/music/candidates/wrongVenue_90.wav'),
+  noRefunds: require('../../assets/audio/music/library/noRefunds_90.wav'),
+  brokenAmp: require('../../assets/audio/music/library/brokenAmp_90.wav'),
+  lastCall: require('../../assets/audio/music/library/lastCall_90.wav'),
+  stageDive: require('../../assets/audio/music/library/stageDive_90.wav'),
+  cheapBeerRiot: require('../../assets/audio/music/library/cheapBeerRiot_90.wav'),
+  wrongChord: require('../../assets/audio/music/library/wrongChord_90.wav'),
+  badSoundcheck: require('../../assets/audio/music/library/badSoundcheck_90.wav'),
+  loadOut: require('../../assets/audio/music/library/loadOut_90.wav'),
+  fireExit: require('../../assets/audio/music/library/fireExit_90.wav'),
+  noEncore: require('../../assets/audio/music/library/noEncore_90.wav'),
+  wrongVenue: require('../../assets/audio/music/library/wrongVenue_90.wav'),
 };
 
 export const SFX_SOURCES: Record<SfxKey, number> = {

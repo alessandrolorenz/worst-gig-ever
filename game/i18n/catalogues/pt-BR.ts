@@ -229,6 +229,32 @@ export const ptBR: Catalogue = {
   },
 
   /**
+   * O setlist personalizado (M24C).
+   *
+   * REVIEW: "setlist" fica em inglês, pela mesma razão que `Groove` e `pad`
+   * ficam — é a palavra que um músico brasileiro usa. "Repertório" é correto e
+   * é o que se diz de uma orquestra, não de uma banda de rock num porão.
+   */
+  setlist: {
+    open: 'Setlist próprio',
+    title: 'MONTE O PIOR SETLIST',
+    /*
+     * REVIEW: a frase inteira é a piada, e é a linha mais difícil daqui.
+     * "Você sobreviveu ao nosso. Agora faça pior." mantém as duas metades e o
+     * deboche; "Agora crie um pior" seria correto e sem graça.
+     */
+    tagline: 'Você sobreviveu ao nosso. Agora faça pior.',
+    unlocked: 'SETLIST PRÓPRIO LIBERADO',
+    slot: '{number}',
+    empty: '— Toque para escolher —',
+    library: 'SUAS MÚSICAS',
+    chosen: 'Já está no setlist',
+    /* O mesmo verbo do briefing ("Começar o show"), em caixa alta. */
+    start: 'COMEÇAR O SHOW',
+    tonight: 'O SETLIST DE HOJE',
+  },
+
+  /**
    * Títulos das músicas (M24B) — **deliberadamente não traduzidos.**
    *
    * São nomes próprios das músicas de uma banda fictícia, e a política é a

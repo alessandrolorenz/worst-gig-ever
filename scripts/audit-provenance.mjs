@@ -58,13 +58,15 @@ function markdownFiles(dir) {
 const SEARCH_ROOTS = [
   'assets/audio/music/runtime',
   /*
-   * The M24B audition candidates. Added the day they arrived, because a
+   * The production music library. Added the day the tracks arrived as M24B
+   * candidates and repointed at `library/` when M24C promoted them, because a
    * provenance block whose file this cannot find is not checked at all — it
    * silently reports zero claims rather than a failure, which is the worst of
    * the three possible outcomes for exactly the assets rules 13 and 14 exist
-   * for.
+   * for. A directory rename that this list does not follow is therefore how
+   * eleven shipped tracks would stop being audited without anything going red.
    */
-  'assets/audio/music/candidates',
+  'assets/audio/music/library',
   'assets/audio/sfx',
   'assets/art',
   'assets',

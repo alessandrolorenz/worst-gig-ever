@@ -351,7 +351,10 @@ test('clearing a stage records it and leads to the next one', () => {
   startStage(flow, 0);
   beginRound(flow);
 
-  assert.deepEqual(recordStageCleared(flow), { hasNext: true });
+  assert.deepEqual(recordStageCleared(flow), {
+    hasNext: true,
+    unlockedCustomSetlist: false,
+  });
   assert.equal(isStageCleared(flow, 0), true);
   assert.equal(isStageCleared(flow, 1), false);
 
@@ -365,7 +368,11 @@ test('clearing the last stage reports no next stage and cannot advance past it',
   startStage(flow, STAGES.length - 1);
   beginRound(flow);
 
-  assert.deepEqual(recordStageCleared(flow), { hasNext: false });
+  /* Clearing the last stage is also what unlocks the custom setlist (M24C). */
+  assert.deepEqual(recordStageCleared(flow), {
+    hasNext: false,
+    unlockedCustomSetlist: true,
+  });
   assert.equal(advanceToNextStage(flow), false);
   assert.equal(flow.stageIndex, STAGES.length - 1, 'the flow advanced off the end of the list');
   assert.equal(flow.screen, 'ROUND', 'a refused advance must not move the player');

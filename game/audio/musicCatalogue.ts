@@ -47,14 +47,15 @@ import { showsAuditionTools } from '../config/buildFlags.ts';
  * track added without a file is a type error rather than a silent gap
  * discovered when a stage comes up quiet.
  *
- * M24A shipped the three tracks the game already had. M24B adds eleven audition
- * candidates, and **nothing here caps how many** — see `libraryTracks()`. The
- * count is not a constant anywhere; `tests/audioContract.test.ts` holds it to
- * that so a twelfth is a data change and not a code change.
+ * M24A shipped the three tracks the game already had. M24B added eleven
+ * audition candidates and M24C promoted all eleven, and **nothing here caps how
+ * many** — see `libraryTracks()`. The count is not a constant anywhere;
+ * `tests/audioContract.test.ts` holds it to that so a twelfth is a data change
+ * and not a code change.
  *
- * The three beds are listed first and the candidates after, so every tool that
- * iterates the catalogue reports the game's own music before the pool that is
- * still being auditioned.
+ * The three beds are listed first and the library after, so every tool that
+ * iterates the catalogue reports the show's authored music before the songs a
+ * player chooses between.
  */
 export type MusicTrackId =
   | 'showTheme'
@@ -194,6 +195,13 @@ export interface MusicLibraryEntry {
    * is in `DEV_LOCALES` and for the same reason: a track a build cannot reach
    * is a track nobody checks, and a track a *player* can reach is a track that
    * has shipped. See `availableTracks`.
+   *
+   * **No track is a candidate today.** The owner auditioned all eleven at M24B
+   * and kept all eleven, so the whole library is `'production'`. The variant
+   * stays because the pipeline that produced it is still here: the next track
+   * this project acquires enters as a candidate, is heard, and is promoted —
+   * and the rule that a conditioned track may not ship unheard
+   * (`tests/audioContract.test.ts`) needs both states to have anything to say.
    */
   readonly release: 'production' | 'candidate';
 }
@@ -376,26 +384,28 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
   },
 
   /* ---------------------------------------------------------------- *
-   * M24B audition candidates.
+   * The production music library — the songs a player builds a setlist from.
    *
    * Eleven external tracks, every one CC0, every one conditioned onto the
-   * grid by `scripts/build-candidates.mjs` from a source whose SHA-256 is
-   * recorded above and in `assets/audio/music/candidates/SOURCES.json`.
+   * grid by `scripts/build-library.mjs` from a source whose SHA-256 is
+   * recorded above and in `assets/audio/music/library/SOURCES.json`.
    *
-   * All are `release: 'candidate'`, so `availableTracks(false)` cannot return
-   * one and a release build cannot reach one. All carry
-   * `ownerConfirmed: false`, which is what stops any of them being promoted to
-   * `production` by editing one field: `tests/audioContract.test.ts` requires a
-   * conditioned track to have been listened to before it may ship.
+   * **All eleven were auditioned on a phone and all eleven were kept**
+   * (M24B, 11 KEEP / 0 MAYBE / 0 REJECT — `docs/specs/M24B-owner-audition.md`).
+   * So each is `release: 'production'` and each carries `ownerConfirmed: true`,
+   * which is a record of a person having listened rather than a field somebody
+   * set to make a gate pass: `tests/audioContract.test.ts` requires a
+   * conditioned track to have been heard before it may ship, and that rule is
+   * why the flag exists at all.
    *
    * `measuredBpm` is the **source's** pulse, not this file's. A track recorded
    * here as 95 measures 90 on disk, by construction — that is the whole point
    * of conditioning, and it is why the check on that field is
    * `TEMPO_MAX_CONDITIONING` rather than a comparison with the file.
    *
-   * `genre` is provisional presentation metadata taken from each source page's
-   * own tags, refined by the measured subdivision — nothing in gameplay reads
-   * it, and the owner's audition is what settles it.
+   * `genre` is presentation metadata taken from each source page's own tags,
+   * refined by the measured subdivision. Nothing in gameplay reads it, and the
+   * production builder does not draw it — see `docs/specs/M24C-custom-setlist.md`.
    * ---------------------------------------------------------------- */
 
   /**
@@ -406,18 +416,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   noRefunds: {
     id: 'noRefunds',
-    file: 'assets/audio/music/candidates/noRefunds_90.wav',
+    file: 'assets/audio/music/library/noRefunds_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'd152ec4b79418b38e8c7ee25a9ff7455fe2334df0dfef35a407b276dc3920c43',
-      command: 'node scripts/build-candidates.mjs --only noRefunds',
+      command: 'node scripts/build-library.mjs --only noRefunds',
       measuredBpm: 90,
       measurementConfidence: 0.0534,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'noRefunds_90.wav',
-    library: { titleKey: 'noRefunds', genre: 'garageRock', release: 'candidate' },
+    library: { titleKey: 'noRefunds', genre: 'garageRock', release: 'production' },
   },
   /**
    * **BROKEN AMP** — johndekale, CC0, `loop_7.ogg`.
@@ -427,18 +437,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   brokenAmp: {
     id: 'brokenAmp',
-    file: 'assets/audio/music/candidates/brokenAmp_90.wav',
+    file: 'assets/audio/music/library/brokenAmp_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: '6a3efa756b4ab6d7864c2c6d35edb9ebeef4315d280d91fe7d9dd22e64a333a2',
-      command: 'node scripts/build-candidates.mjs --only brokenAmp',
+      command: 'node scripts/build-library.mjs --only brokenAmp',
       measuredBpm: 90,
       measurementConfidence: 0.0209,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'brokenAmp_90.wav',
-    library: { titleKey: 'brokenAmp', genre: 'hardRock', release: 'candidate' },
+    library: { titleKey: 'brokenAmp', genre: 'hardRock', release: 'production' },
   },
   /**
    * **LAST CALL** — kbar1982, CC0, `g42_end.flac`.
@@ -450,18 +460,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   lastCall: {
     id: 'lastCall',
-    file: 'assets/audio/music/candidates/lastCall_90.wav',
+    file: 'assets/audio/music/library/lastCall_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'cc72af06efa28797021bb69d39f314f566fe2bd91459982ead285cff76988c61',
-      command: 'node scripts/build-candidates.mjs --only lastCall',
+      command: 'node scripts/build-library.mjs --only lastCall',
       measuredBpm: 90,
       measurementConfidence: 0.2042,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'lastCall_90.wav',
-    library: { titleKey: 'lastCall', genre: 'altRock', release: 'candidate' },
+    library: { titleKey: 'lastCall', genre: 'altRock', release: 'production' },
   },
   /**
    * **STAGE DIVE DISASTER** — Ragnar Random, CC0, `09_-_chick_with_weapon.ogg`.
@@ -471,54 +481,54 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   stageDive: {
     id: 'stageDive',
-    file: 'assets/audio/music/candidates/stageDive_90.wav',
+    file: 'assets/audio/music/library/stageDive_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'add3bd23d7ed79510ed892d37da3fb0afa984025c4e4f867cd8566b69c9da435',
-      command: 'node scripts/build-candidates.mjs --only stageDive',
+      command: 'node scripts/build-library.mjs --only stageDive',
       measuredBpm: 90,
       measurementConfidence: 0.0926,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'stageDive_90.wav',
-    library: { titleKey: 'stageDive', genre: 'garageRock', release: 'candidate' },
+    library: { titleKey: 'stageDive', genre: 'garageRock', release: 'production' },
   },
   /**
    * **CHEAP BEER RIOT** — Ragnar Random, CC0, `15_-_we_got_the_crud.ogg`.
    */
   cheapBeerRiot: {
     id: 'cheapBeerRiot',
-    file: 'assets/audio/music/candidates/cheapBeerRiot_90.wav',
+    file: 'assets/audio/music/library/cheapBeerRiot_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'aed6b64875dc7a65447cdc081a7c1c124d4aa0f329947cfff9c037bf36c32845',
-      command: 'node scripts/build-candidates.mjs --only cheapBeerRiot',
+      command: 'node scripts/build-library.mjs --only cheapBeerRiot',
       measuredBpm: 95,
       measurementConfidence: 0.0349,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'cheapBeerRiot_90.wav',
-    library: { titleKey: 'cheapBeerRiot', genre: 'punk', release: 'candidate' },
+    library: { titleKey: 'cheapBeerRiot', genre: 'punk', release: 'production' },
   },
   /**
    * **WRONG CHORD** — Ragnar Random, CC0, `14_-_here_a_captive_heart_busted.ogg`.
    */
   wrongChord: {
     id: 'wrongChord',
-    file: 'assets/audio/music/candidates/wrongChord_90.wav',
+    file: 'assets/audio/music/library/wrongChord_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: '48b2396411db2567d1841fe30ec26a1c45067df8ecf469d9105bbdb59b9d9c1d',
-      command: 'node scripts/build-candidates.mjs --only wrongChord',
+      command: 'node scripts/build-library.mjs --only wrongChord',
       measuredBpm: 95,
       measurementConfidence: 0.0216,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'wrongChord_90.wav',
-    library: { titleKey: 'wrongChord', genre: 'altRock', release: 'candidate' },
+    library: { titleKey: 'wrongChord', genre: 'altRock', release: 'production' },
   },
   /**
    * **BAD SOUNDCHECK** — Ragnar Random, CC0, `17_-_digestive_malady.ogg`.
@@ -529,18 +539,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   badSoundcheck: {
     id: 'badSoundcheck',
-    file: 'assets/audio/music/candidates/badSoundcheck_90.wav',
+    file: 'assets/audio/music/library/badSoundcheck_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'fb1ee1453315e7663c1f3d317837c29790d07d3566de3f4588a798442893b365',
-      command: 'node scripts/build-candidates.mjs --only badSoundcheck',
+      command: 'node scripts/build-library.mjs --only badSoundcheck',
       measuredBpm: 95,
       measurementConfidence: 0.0653,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'badSoundcheck_90.wav',
-    library: { titleKey: 'badSoundcheck', genre: 'punk', release: 'candidate' },
+    library: { titleKey: 'badSoundcheck', genre: 'punk', release: 'production' },
   },
   /**
    * **LOAD-OUT** — Ragnar Random, CC0, `20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg`.
@@ -549,18 +559,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   loadOut: {
     id: 'loadOut',
-    file: 'assets/audio/music/candidates/loadOut_90.wav',
+    file: 'assets/audio/music/library/loadOut_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: '25ee782032e7561781727c6116699866fb1f3ff014c19356829ee94afb8b80fb',
-      command: 'node scripts/build-candidates.mjs --only loadOut',
+      command: 'node scripts/build-library.mjs --only loadOut',
       measuredBpm: 85,
       measurementConfidence: 0.0317,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'loadOut_90.wav',
-    library: { titleKey: 'loadOut', genre: 'hardRock', release: 'candidate' },
+    library: { titleKey: 'loadOut', genre: 'hardRock', release: 'production' },
   },
   /**
    * **FIRE EXIT** — obscure music, CC0, `B.M.I. (tales of Christ).flac`.
@@ -570,18 +580,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   fireExit: {
     id: 'fireExit',
-    file: 'assets/audio/music/candidates/fireExit_90.wav',
+    file: 'assets/audio/music/library/fireExit_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'c2b0b4bc7bdfd64997dfbd51dedeedd5bb0e4c570080c9c3809e7c69d0c298a1',
-      command: 'node scripts/build-candidates.mjs --only fireExit',
+      command: 'node scripts/build-library.mjs --only fireExit',
       measuredBpm: 95,
       measurementConfidence: 0.0971,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'fireExit_90.wav',
-    library: { titleKey: 'fireExit', genre: 'bluesRock', release: 'candidate' },
+    library: { titleKey: 'fireExit', genre: 'bluesRock', release: 'production' },
   },
   /**
    * **NO ENCORE** — MintoDog, CC0, `heavy_battle_2_bpm185.ogg`.
@@ -592,18 +602,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   noEncore: {
     id: 'noEncore',
-    file: 'assets/audio/music/candidates/noEncore_90.wav',
+    file: 'assets/audio/music/library/noEncore_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: '01d3d505139161a04b3f225ad9cdc0acb52a8e21c997e658c916173def647df8',
-      command: 'node scripts/build-candidates.mjs --only noEncore',
+      command: 'node scripts/build-library.mjs --only noEncore',
       measuredBpm: 185,
       measurementConfidence: 0.1028,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'noEncore_90.wav',
-    library: { titleKey: 'noEncore', genre: 'grooveMetal', release: 'candidate' },
+    library: { titleKey: 'noEncore', genre: 'grooveMetal', release: 'production' },
   },
   /**
    * **WRONG VENUE** — Umplix, CC0, `super_wreck_roadway.wav`.
@@ -613,18 +623,18 @@ export const MUSIC_TRACKS: Record<MusicTrackId, MusicTrack> = {
    */
   wrongVenue: {
     id: 'wrongVenue',
-    file: 'assets/audio/music/candidates/wrongVenue_90.wav',
+    file: 'assets/audio/music/library/wrongVenue_90.wav',
     beats: 64,
     evidence: {
       kind: 'conditioned',
       sourceSha256: 'c879ab828cff3ab60ebbd035f8654ea53e95a0c171c46a94d1a0ff1a6cb8f19d',
-      command: 'node scripts/build-candidates.mjs --only wrongVenue',
+      command: 'node scripts/build-library.mjs --only wrongVenue',
       measuredBpm: 100,
       measurementConfidence: 0.16,
-      ownerConfirmed: false,
+      ownerConfirmed: true,
     },
     provenanceId: 'wrongVenue_90.wav',
-    library: { titleKey: 'wrongVenue', genre: 'hardRock', release: 'candidate' },
+    library: { titleKey: 'wrongVenue', genre: 'hardRock', release: 'production' },
   },
 };
 
@@ -668,13 +678,20 @@ export function libraryTracks(): readonly MusicTrackId[] {
  *
  * The default is `showsAuditionTools()` rather than `isDevelopmentBuild()`
  * since M24B: a standalone audition build has no Metro and therefore no
- * `__DEV__`, and the owner still has to be able to hear these. See
- * `game/config/buildFlags.ts` for why that is not a way for a candidate to
- * reach a player.
+ * `__DEV__`, and the owner still has to be able to hear a candidate. See
+ * `game/config/buildFlags.ts` for why that is not a way for one to reach a
+ * player.
  *
- * Empty in M24A: no track has a `library` entry yet. That is the correct
- * answer, not a stub — the custom setlist is not player-visible until M24C, and
- * a catalogue that answered otherwise would be lying.
+ * ## What the default does and does not decide, since M24C
+ *
+ * It decides whether **candidates** are included. It does not decide whether
+ * the library exists, and that distinction is the whole of §6 of the M24C
+ * brief: all eleven tracks are `production`, so `availableTracks(false)` — the
+ * question a release build asks — returns the full library, and the setlist
+ * builder is a production feature that works with the audition flag off.
+ * `tests/setlist.test.ts` asserts both answers are the same set today.
+ *
+ * Empty in M24A, because no track had a `library` entry yet. Eleven now.
  */
 export function availableTracks(
   includeCandidates: boolean = showsAuditionTools(),

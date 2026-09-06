@@ -38,18 +38,25 @@ import {
   type AuditionMode,
 } from '../audio/audition.ts';
 import { showsAuditionTools } from '../config/buildFlags.ts';
+import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
 import {
   advanceToNextStage,
+  assignSlot,
   beginRound,
+  completedDraft,
   cycleLocale,
   setLocale,
   finishIntro,
+  loadDraft,
+  openSetlist,
   recordStageCleared,
   replayIntro,
   returnToTitle,
+  selectSlot,
   showBriefing,
+  startCustomGig,
   startStage,
   startStageWithSetlist,
   toggleClick,
@@ -158,6 +165,18 @@ export default function GameEngine() {
           bestStageCleared: flow.bestStageCleared,
           clickEnabled: flow.clickEnabled,
           locale: localeChosenRef.current ? flow.locale : null,
+          /*
+           * The draft, and only when it is a whole setlist (M24C §16).
+           *
+           * Written from the same place every other saved field is, so the
+           * setlist rides the writes the game already makes — a stage
+           * finished, a preference changed, START THE GIG — rather than
+           * needing a storage path of its own. A half-built draft is not
+           * saved: `completedDraft` is null until all four slots are filled,
+           * and a partial setlist is not something `parseSetlist` would read
+           * back anyway.
+           */
+          customSetlist: completedDraft(flow),
         },
         savedRef.current.unknown,
       );
@@ -207,6 +226,14 @@ export default function GameEngine() {
         setLocale(flow, loaded.state.locale);
         localeChosenRef.current = true;
       }
+      /*
+       * The saved setlist becomes the *draft*, never the run (M24C).
+       *
+       * A cold start opens on the story and then the title, and both play the
+       * authored show. Restoring into `flow.setlist` would put the player's
+       * music under a stage card the moment they pressed one.
+       */
+      loadDraft(flow, loaded.state.customSetlist);
       applyRecords(loaded.state.records);
       refreshFlow();
     });
@@ -279,6 +306,106 @@ export default function GameEngine() {
     [entities, refreshFlow, resetScene],
   );
 
+  /*
+   * The development audition's own cursor and mode (M24B).
+   *
+   * Declared here rather than beside their handlers because the custom-setlist
+   * handlers below silence the preview when the player leaves for the builder,
+   * and a preview that keeps sounding under a screen with no stop button is a
+   * leak. Cursor and mode live in React rather than on `AppFlowState` because
+   * they are the position of a debug control, not a fact about the game.
+   */
+  const [auditionCursor, setAuditionCursor] = useState(0);
+  const [auditionMode, setAuditionMode] = useState<AuditionMode>('solo');
+  const [auditionPlaying, setAuditionPlaying] = useState(false);
+
+  /* ---- the custom setlist (M24C) ---- */
+
+  /**
+   * The songs this build lets a player choose between.
+   *
+   * Read once, at the same boundary `detectLocale()` and `showsAuditionTools()`
+   * are read at: the catalogue cannot change at runtime. In a release build
+   * this is the eleven production tracks — **the builder does not depend on the
+   * audition flag**, which is §6 of the brief and is asserted in
+   * `tests/setlist.test.ts`. In a development or audition build it would also
+   * carry any candidate, which is what makes the builder the audition tool the
+   * architecture always intended.
+   */
+  const selectableTracks = availableTracks();
+
+  /**
+   * True on the results screen that **just** crossed the unlock.
+   *
+   * React state rather than a saved flag, because it is a fact about this
+   * screen rather than about the player: `recordStageCleared` reports the
+   * crossing, this holds it until the next round starts, and nothing has to
+   * remember it across a launch. See `appFlow.recordStageCleared`.
+   */
+  const [justUnlockedSetlist, setJustUnlockedSetlist] = useState(false);
+
+  const handleOpenSetlist = useCallback(() => {
+    const scene = entities.scene;
+    // Refused while the show has not been survived. The button is not drawn
+    // then either, but the gate is here rather than in the renderer.
+    if (!openSetlist(scene.flow)) return;
+    /*
+     * Nothing should be sounding on the builder. A development audition
+     * preview is the only thing that could be, and carrying it into a screen
+     * with no way to stop it would be a leak the player cannot fix.
+     */
+    audio.stopMusic();
+    setAuditionPlaying(false);
+    setJustUnlockedSetlist(false);
+    refreshFlow();
+  }, [audio, entities, refreshFlow]);
+
+  const handleSelectSlot = useCallback(
+    (slot: number) => {
+      selectSlot(entities.scene.flow, slot);
+      refreshFlow();
+    },
+    [entities, refreshFlow],
+  );
+
+  const handleChooseTrack = useCallback(
+    (track: MusicTrackId) => {
+      // Refused for a song already in the draft, which is the no-duplicates
+      // rule. The row is drawn deaf as well; this is what makes that true.
+      if (!assignSlot(entities.scene.flow, track)) return;
+      refreshFlow();
+    },
+    [entities, refreshFlow],
+  );
+
+  /**
+   * START THE GIG.
+   *
+   * The one path in the codebase besides the development audition that puts
+   * something other than `OFFICIAL_SETLIST` into `flow.setlist`, and it goes
+   * through `startCustomGig`, which validates first and moves nothing if the
+   * draft is not playable.
+   *
+   * The order matters: preload, then start. Creating a player is asynchronous
+   * on both platforms, so the four tracks are loaded here — at the builder,
+   * before the briefing — and the round finds them ready. Exactly four, never
+   * the library (M24C §28).
+   */
+  const handleStartCustomGig = useCallback(() => {
+    const scene = entities.scene;
+    audio.stopMusic();
+    setAuditionPlaying(false);
+    const setlist = startCustomGig(scene.flow, selectableTracks);
+    if (setlist === null) return;
+    audio.preloadSetlist(setlist);
+    // Persisted at the moment the player commits to it, which is the point at
+    // which the draft stops being a screen's state and becomes their setlist.
+    persist(recordsRef.current);
+    resetScene();
+    setUiState(scene.round.state);
+    refreshFlow();
+  }, [audio, entities, persist, refreshFlow, resetScene, selectableTracks]);
+
   /* ---- development music audition (M24B) ---- */
 
   /*
@@ -291,9 +418,6 @@ export default function GameEngine() {
    * release build gets an empty list from `availableTracks(false)` inside
    * `auditionTracks` regardless of what this component does with it.
    */
-  const [auditionCursor, setAuditionCursor] = useState(0);
-  const [auditionMode, setAuditionMode] = useState<AuditionMode>('solo');
-  const [auditionPlaying, setAuditionPlaying] = useState(false);
 
   const handleAuditionStep = useCallback((delta: number) => {
     setAuditionCursor((cursor) => stepCursor(auditionTracks(), cursor, delta));
@@ -415,6 +539,9 @@ export default function GameEngine() {
   const handleBeginRound = useCallback(() => {
     const scene = entities.scene;
     setBeatRecord(false);
+    // The unlock banner belongs to the results screen that earned it, not to
+    // the next round's.
+    setJustUnlockedSetlist(false);
     beginRound(scene.flow);
     startRound(scene.round);
     audio.playMusic(scene.music);
@@ -482,8 +609,19 @@ export default function GameEngine() {
     if (uiState !== 'SHOW_COMPLETE' && uiState !== 'SHOW_RUINED') return;
     const scene = entities.scene;
 
-    // Only a completed show is progress; a ruined one is a retry.
-    if (uiState === 'SHOW_COMPLETE') recordStageCleared(scene.flow);
+    /*
+     * Only a completed show is progress; a ruined one is a retry.
+     *
+     * `recordStageCleared` reports whether *this* completion crossed the
+     * custom-setlist unlock. It raises a high-water mark, so re-running it on
+     * a re-render records the same progress and reports `false` — the banner
+     * appears on the results screen that earned it and not on every frame of
+     * it. See `appFlow.recordStageCleared`.
+     */
+    if (uiState === 'SHOW_COMPLETE') {
+      const cleared = recordStageCleared(scene.flow);
+      if (cleared.unlockedCustomSetlist) setJustUnlockedSetlist(true);
+    }
 
     /*
      * A ruined show still scored, so it still counts for a record. Losing on
@@ -591,6 +729,12 @@ export default function GameEngine() {
             onQuit={handleQuit}
             onToggleClick={handleToggleClick}
             onCycleLocale={handleCycleLocale}
+            selectableTracks={selectableTracks}
+            onOpenSetlist={handleOpenSetlist}
+            onSelectSlot={handleSelectSlot}
+            onChooseTrack={handleChooseTrack}
+            onStartCustomGig={handleStartCustomGig}
+            justUnlockedSetlist={justUnlockedSetlist}
             records={records}
             beatRecord={beatRecord}
             onShare={handleShare}
