@@ -47,3 +47,7 @@ assets/audio/music/source/*.ogg
 assets/audio/music/source/*.mp3
 assets/audio/music/source/*.wav
 assets/audio/music/source/*.flac
+
+# Local build output (M24B audition APKs and anything else copied out of
+# android/app/build). Reproduce with `npm run build:audition`.
+build-out/

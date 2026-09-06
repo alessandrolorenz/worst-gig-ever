@@ -108,7 +108,7 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
    * refactor without anybody noticing:
    *
    *   1. nothing renders it except behind a gate — `GameEngine` is the only
-   *      caller and builds its props inside `isDevelopmentBuild()`;
+   *      caller and builds its props inside `showsAuditionTools()`;
    *   2. it renders nothing at all without those props, so a null slips
    *      through as an absent row rather than an untranslated one;
    *   3. the pool it displays is empty in a release build anyway.
@@ -123,8 +123,8 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
 
   const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
   assert.ok(
-    /isDevelopmentBuild\(\)\s*\?/.test(engine),
-    'the audition controls are no longer built behind isDevelopmentBuild()',
+    /showsAuditionTools\(\)\s*\?/.test(engine),
+    'the audition controls are no longer built behind showsAuditionTools()',
   );
   assert.ok(
     engine.includes(': null;'),

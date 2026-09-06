@@ -37,7 +37,7 @@ import {
   trackAtCursor,
   type AuditionMode,
 } from '../audio/audition.ts';
-import { isDevelopmentBuild } from '../i18n/locales.ts';
+import { showsAuditionTools } from '../config/buildFlags.ts';
 import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
 import {
@@ -341,11 +341,15 @@ export default function GameEngine() {
   /**
    * The audition controls, or `null` in a release build.
    *
-   * The single gate. `isDevelopmentBuild()` is read once, here, at the boundary
+   * The single gate. `showsAuditionTools()` is read once, here, at the boundary
    * that already owns the device — the same place `detectLocale()` is read — and
    * everything downstream is a pure function of this being `null` or not.
+   *
+   * True in a `__DEV__` build, and in a standalone build bundled with
+   * `EXPO_PUBLIC_AUDITION_BUILD=1` so the owner can audition without a cable.
+   * False in everything that ships. See `game/config/buildFlags.ts`.
    */
-  const audition: AuditionControls | null = isDevelopmentBuild()
+  const audition: AuditionControls | null = showsAuditionTools()
     ? {
         tracks: auditionTracks(),
         cursor: auditionCursor,

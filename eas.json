@@ -51,6 +51,17 @@
       "ios": {
         "resourceClass": "m-medium"
       }
+    },
+    "audition": {
+      "channel": "internal",
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_AUDITION_BUILD": "1"
+      },
+      "android": {
+        "buildType": "apk",
+        "image": "latest"
+      }
     }
   },
   "submit": {

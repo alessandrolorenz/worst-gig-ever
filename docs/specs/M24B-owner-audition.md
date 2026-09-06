@@ -12,8 +12,28 @@ could not.
 
 ## How to audition
 
+**The standalone build is the one you want.** It needs no cable, no Metro server
+and no Wi-Fi — install it and walk away with headphones on.
+
+```bash
+npm run build:audition                              # ~3 min, writes build-out/
+adb install -r build-out/worst-gig-ever-audition.apk
 ```
-npx expo run:android          # or: adb install android/app/build/outputs/apk/debug/app-debug.apk
+
+That is a release-type build with `EXPO_PUBLIC_AUDITION_BUILD=1`, which is the
+only thing that keeps the audition row in a bundle that has no `__DEV__`. See
+`game/config/buildFlags.ts` for why that is not a way for unapproved music to
+reach a player, and `npm run build:candidates -- --verify` for the audio itself.
+
+A plain `npm run build:preview` or any EAS `preview`/`production` build has the
+flag **off** and will show no audition row at all — that is deliberate, and it
+is verified at the bundle level rather than assumed.
+
+The tethered alternative, if you are already at the machine:
+
+```bash
+npx expo start --dev-client   # leave running
+adb reverse tcp:8081 tcp:8081 # after every replug
 ```
 
 Then, on the title screen, the yellow box at the bottom:

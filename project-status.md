@@ -74,11 +74,11 @@ the checklist, and the yellow DEV row on the title screen is how to answer it.
 | Branch | `m24/music-library`, from the accepted M24A HEAD `ebe35dc` — **not** from `main`, which does not contain M24A |
 | Acquisition | Claude downloaded everything directly. 130 files, 1.24 GB, from OpenGameArt |
 | Retained | 11 tracks, 6 authors, all CC0, 68.19 MB of 16-bar derivatives |
-| New modules | `game/audio/audition.ts`, `game/rendering/DevAudition.tsx` |
+| New modules | `game/audio/audition.ts`, `game/rendering/DevAudition.tsx`, `game/config/buildFlags.ts` |
 | New scripts | `scripts/condition-track.mjs`, `scripts/build-candidates.mjs` |
 | New gate | `npm run build:candidates -- --verify`, in `npm run verify` |
 | Dependencies added | **none** |
-| Gate | `npm run verify` green — **482 tests**, 0 failures (18 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_CANDIDATE_SOURCES` |
+| Gate | `npm run verify` green — **487 tests**, 0 failures (23 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_CANDIDATE_SOURCES` |
 
 **The funnel, because the shape of it is the finding.** 429 OpenGameArt music
 pages matched a rock-shaped search; 193 had plausible titles; 130 files were
@@ -145,9 +145,31 @@ implemented as one; it is enforced at selection, in three places, with tests on
 each. M24C's promotion step must actually delete the rejected files, or the
 rejects ship as dead weight.
 
+**The audition needed a build that is not tethered to Metro.** Gating on
+`__DEV__` alone was correct for safety and wrong for the purpose: a `__DEV__`
+build loads its JavaScript from a dev server, so judging music meant a phone
+cabled to a laptop. The gate is now `showsAuditionTools()` —
+`__DEV__ || EXPO_PUBLIC_AUDITION_BUILD`, in `game/config/buildFlags.ts` — and
+`npm run build:audition` produces a **standalone release-type APK that still
+shows the audition row**. Four independent things keep it from being a hole: it
+is off unless explicitly set to `1`/`true`, no shipping EAS profile sets it (a
+test reads `eas.json` and fails if one does), it cannot promote a track, and the
+build is debug-keystore signed so Play would refuse it.
+
+**Verified at the bundle, not asserted.** The first version read
+`process.env[AUDITION_BUILD_FLAG]`, which is invisible to Expo's Babel
+substitution — it compiled to a dynamic lookup and would have been **off in the
+one build it exists for**, while every test passed. Decompiling the bundle
+caught it. With the literal `process.env.EXPO_PUBLIC_AUDITION_BUILD` the flag
+folds to `return !0` with the variable set and `return !1` without it, both
+confirmed by reading `index.android.bundle`. `tests/audition.test.ts` now guards
+the access form by reading the source, because no runtime test can see this.
+
 **What is deliberately not here:** no custom-setlist unlock, no player-facing
 builder, no monetization, no streaming or on-demand delivery, and no promotion.
-`showTheme` is untouched and still opens Stage 1.
+`showTheme` is untouched and still opens Stage 1. **No EAS build was run** — an
+`audition` profile exists in `eas.json` for when a cloud build is wanted, but
+the local APK costs nothing and was what the owner needed.
 
 ### M24A — setlist foundation and tempo evidence (2026-09-05, `m24/setlist-foundation`)
 

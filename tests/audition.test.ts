@@ -50,6 +50,11 @@ import {
   startStage,
   startStageWithSetlist,
 } from '../game/state/appFlow.ts';
+import {
+  AUDITION_BUILD_FLAG,
+  isAuditionBuild,
+  showsAuditionTools,
+} from '../game/config/buildFlags.ts';
 import { allCatalogues } from '../game/i18n/catalogue.ts';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -401,4 +406,166 @@ test('M24B: there are exactly two audition modes and both are reachable', () => 
     mode = nextMode(mode);
   }
   assert.equal(seen.size, AUDITION_MODES.length, 'a mode cannot be reached by cycling');
+});
+
+// ---------------------------------------------------------------------------
+// The audition build flag
+// ---------------------------------------------------------------------------
+
+test('M24B: the audition flag is off unless something deliberately sets it', () => {
+  /*
+   * `EXPO_PUBLIC_AUDITION_BUILD` turns a standalone release-type build into one
+   * that can still show the audition row, so the owner can judge music on a
+   * phone that is not cabled to a laptop. The danger is obvious and it is why
+   * this reads an allow-list rather than a truthiness check: an empty string, a
+   * `0`, a `false` and a typo are all things a CI environment produces by
+   * accident, and every one of them has to mean no.
+   */
+  const original = process.env[AUDITION_BUILD_FLAG];
+  try {
+    for (const value of [undefined, '', '0', 'false', 'no', 'yes', 'TRUE', '2', 'on']) {
+      if (value === undefined) delete process.env[AUDITION_BUILD_FLAG];
+      else process.env[AUDITION_BUILD_FLAG] = value;
+      assert.equal(
+        isAuditionBuild(),
+        false,
+        `${JSON.stringify(value)} switched the audition build on`,
+      );
+    }
+    for (const value of ['1', 'true']) {
+      process.env[AUDITION_BUILD_FLAG] = value;
+      assert.equal(isAuditionBuild(), true, `${value} did not switch the audition build on`);
+      assert.equal(showsAuditionTools(), true, `${value} did not open the audition tooling`);
+    }
+  } finally {
+    if (original === undefined) delete process.env[AUDITION_BUILD_FLAG];
+    else process.env[AUDITION_BUILD_FLAG] = original;
+  }
+});
+
+test('M24B: no shipping build profile turns the audition flag on', () => {
+  /*
+   * The flag's real guard, and the reason it is not a hole. A build profile that
+   * sets it is a **failing test**, not a quiet change — so the way candidates
+   * reach a store is a deliberate edit somebody has to justify here.
+   *
+   * `production` and `preview` are the two that can reach a player: `production`
+   * goes to the Play track and `preview` is submitted as a draft
+   * (`eas.json`, submit.preview.android.releaseStatus). Internal-distribution
+   * profiles are excluded on purpose — those are for exactly this kind of
+   * testing and cannot be submitted.
+   */
+  const eas = JSON.parse(readFileSync(join(repoRoot, 'eas.json'), 'utf8')) as {
+    build: Record<string, { env?: Record<string, string>; distribution?: string }>;
+  };
+
+  for (const name of ['production', 'preview']) {
+    const profile = eas.build[name];
+    assert.ok(profile, `eas.json lost its ${name} profile`);
+    assert.equal(
+      profile.env?.[AUDITION_BUILD_FLAG],
+      undefined,
+      `the ${name} profile sets ${AUDITION_BUILD_FLAG}, so unaudited music could ship`,
+    );
+  }
+
+  /*
+   * And any profile that *does* set it must be internal-distribution only, so a
+   * future audition profile cannot be pointed at a store by accident.
+   */
+  for (const [name, profile] of Object.entries(eas.build)) {
+    if (profile.env?.[AUDITION_BUILD_FLAG] === undefined) continue;
+    assert.equal(
+      profile.distribution,
+      'internal',
+      `the ${name} profile enables the audition flag without being internal-distribution`,
+    );
+  }
+});
+
+test('M24B: the flag opens a door, it cannot promote a track through it', () => {
+  /*
+   * The separation that makes the flag safe to exist at all. It decides whether
+   * a *development surface is drawn*; it has no bearing on whether a track has
+   * been listened to, and the two questions are answered in different modules.
+   *
+   * So even in an audition build every candidate is still a candidate, still
+   * unconfirmed, and still barred from shipping by the rule in
+   * `tests/audioContract.test.ts` — which does not read `buildFlags.ts` at all.
+   */
+  const original = process.env[AUDITION_BUILD_FLAG];
+  try {
+    process.env[AUDITION_BUILD_FLAG] = '1';
+    assert.equal(showsAuditionTools(), true, 'the audition build did not open the tooling');
+
+    // The pool opens...
+    assert.ok(availableTracks().length > 0, 'an audition build sees no candidates');
+    // ...and nothing about any track's standing moved.
+    for (const id of candidates) {
+      const track = MUSIC_TRACKS[id];
+      assert.equal(track.library?.release, 'candidate', `${id} was promoted by a build flag`);
+      assert.equal(
+        track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed,
+        false,
+        `${id} became owner-confirmed by a build flag`,
+      );
+    }
+    // And the explicit question a release build asks still answers the same way.
+    assert.deepEqual([...availableTracks(false)], [], 'the flag leaked into the shipping answer');
+  } finally {
+    if (original === undefined) delete process.env[AUDITION_BUILD_FLAG];
+    else process.env[AUDITION_BUILD_FLAG] = original;
+  }
+});
+
+test('M24B: an audition build still plays the authored show by default', () => {
+  /*
+   * The flag adds a row and a pool. It must not touch a single note of the game
+   * as authored — otherwise the thing being auditioned is not the thing that
+   * ships.
+   */
+  const original = process.env[AUDITION_BUILD_FLAG];
+  try {
+    process.env[AUDITION_BUILD_FLAG] = '1';
+    const flow = createAppFlow();
+    assert.deepEqual([...flow.setlist], [...OFFICIAL_SETLIST], 'a fresh run left the authored show');
+    startStage(flow, 1);
+    assert.deepEqual([...flow.setlist], [...OFFICIAL_SETLIST], 'a stage button started something else');
+    assert.equal(trackForStage(flow.setlist, 1), 'grooveBed', 'Stage 2 stopped teaching over its bed');
+  } finally {
+    if (original === undefined) delete process.env[AUDITION_BUILD_FLAG];
+    else process.env[AUDITION_BUILD_FLAG] = original;
+  }
+});
+
+test('M24B: the build flag is read in the form Expo can actually inline', () => {
+  /*
+   * The one thing about this flag that **no runtime test can check**, and the
+   * reason it is checked by reading the source instead.
+   *
+   * Expo's Babel transform replaces the literal member expression
+   * `process.env.EXPO_PUBLIC_AUDITION_BUILD` with its value at bundle time. It
+   * is a substitution over syntax, so the equally correct-looking
+   * `process.env[AUDITION_BUILD_FLAG]` is invisible to it: the lookup survives
+   * into the bundle and a release build, which has no populated `process.env`,
+   * answers `false`. The flag would be off in precisely the build it exists for.
+   *
+   * Every other test here passes either way, because `node --test` has a real
+   * `process.env` and both forms work in it. This one fails, which is the point.
+   * It was written after the dynamic form reached a bundle and had to be found
+   * by decompiling it.
+   */
+  const source = readFileSync(join(repoRoot, 'game/config/buildFlags.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  assert.ok(
+    source.includes(`process.env.${AUDITION_BUILD_FLAG}`),
+    `buildFlags.ts must read process.env.${AUDITION_BUILD_FLAG} literally, or Expo cannot inline it`,
+  );
+  assert.equal(
+    /process\.env\s*\[/.test(source),
+    false,
+    'buildFlags.ts reads process.env through a computed key, which a release bundle cannot resolve',
+  );
 });

@@ -37,7 +37,7 @@
  * agree.
  */
 import type { Catalogue } from '../i18n/catalogue.ts';
-import { isDevelopmentBuild } from '../i18n/locales.ts';
+import { showsAuditionTools } from '../config/buildFlags.ts';
 
 /**
  * Every track, as a literal union.
@@ -662,16 +662,22 @@ export function libraryTracks(): readonly MusicTrackId[] {
  * The tracks a player can actually choose from, here, now.
  *
  * Deliberately the same shape as `availableLocales(includeDev)` in
- * `game/i18n/locales.ts`, down to the `__DEV__` default being a *parameter*
+ * `game/i18n/locales.ts`, down to the build check being a *parameter* default
  * rather than a read inside the function — so a test can ask both questions,
  * what ships and what a developer sees, without pretending to be a bundler.
+ *
+ * The default is `showsAuditionTools()` rather than `isDevelopmentBuild()`
+ * since M24B: a standalone audition build has no Metro and therefore no
+ * `__DEV__`, and the owner still has to be able to hear these. See
+ * `game/config/buildFlags.ts` for why that is not a way for a candidate to
+ * reach a player.
  *
  * Empty in M24A: no track has a `library` entry yet. That is the correct
  * answer, not a stub — the custom setlist is not player-visible until M24C, and
  * a catalogue that answered otherwise would be lying.
  */
 export function availableTracks(
-  includeCandidates: boolean = isDevelopmentBuild(),
+  includeCandidates: boolean = showsAuditionTools(),
 ): readonly MusicTrackId[] {
   return libraryTracks().filter((id) => {
     const library = MUSIC_TRACKS[id].library;
