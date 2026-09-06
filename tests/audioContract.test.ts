@@ -23,8 +23,10 @@ import { MIX, SFX_POOL_SIZE } from '../game/audio/audioMix.ts';
 import {
   MUSIC_TRACKS,
   TEMPO_GRID_FLOOR,
+  TEMPO_MAX_CONDITIONING,
   TEMPO_MIN_MARGIN,
   availableTracks,
+  conformingRatio,
   isGrooveQualified,
   libraryTracks,
   trackIds,
@@ -472,11 +474,98 @@ test('every track in the tree measures what the catalogue says it does', () => {
     }
 
     assert.equal(grade.ok, true, `${id} claims ${track.evidence.kind}: ${grade.problems.join('; ')}`);
-    assert.ok(
-      measured.gridMargin >= TEMPO_MIN_MARGIN,
-      `${id} leads its best incompatible rival by only ${measured.gridMargin.toFixed(3)}`,
+
+    /*
+     * The margin gates **shipping**, not existing — corrected at M24B, when the
+     * first external tracks arrived and showed the difference matters.
+     *
+     * M24A asserted this of every non-`unverified` track, which was right while
+     * the only two were generated beds leading by ~0.20. Real music does not
+     * behave like a bed: 7 of M24B's 11 candidates lead their best incompatible
+     * rival by less than 0.05, because a rock arrangement puts real energy on
+     * the half-bar and the bar, so 120 and 60 score close behind 90. Those
+     * tracks are not wrong — `gridScore` and `gridRank` say emphatically that
+     * they are on the grid — the *tool* simply cannot separate the readings.
+     *
+     * That is exactly what `TEMPO_MIN_MARGIN`'s own comment says it means: "a
+     * flag, not a rejection… which calls for a listen rather than a rounder
+     * number", and what `gradeAgainstGrid` already does by returning it as an
+     * advisory. The threshold is unchanged; what changed is that the assertion
+     * now matches the model, by demanding a human ear exactly where the model
+     * says one is needed.
+     *
+     * So: a thin margin is fine for a candidate, and disqualifying for anything
+     * a player can select unless a person has confirmed it locks.
+     */
+    if (measured.gridMargin >= TEMPO_MIN_MARGIN) continue;
+
+    const library = track.library;
+    if (library === null || library.release !== 'production') continue;
+    assert.equal(
+      track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed,
+      true,
+      `${id} ships, leads its best incompatible rival by only ${measured.gridMargin.toFixed(3)}, ` +
+        'and nobody has confirmed by ear that it locks to the click',
     );
   }
+});
+
+test('M24B: an ambiguous pulse is a reason to listen, not a reason to ship', () => {
+  /*
+   * The rule above, asserted as a property rather than as a walk over today's
+   * catalogue — so it holds for the tracks the owner promotes at M24C, which do
+   * not exist yet and are the ones it is actually for.
+   *
+   * Stated: for every track a *player* can select, either the measurement
+   * separates the game's grid from every incompatible rival, or a person has
+   * listened. There is no third way to become selectable.
+   */
+  for (const id of availableTracks(true)) {
+    const track = MUSIC_TRACKS[id];
+    if (track.library?.release !== 'production') continue;
+
+    const measured = measureFile(join(ROOT, track.file));
+    const separated = measured.gridMargin >= TEMPO_MIN_MARGIN;
+    const heard = track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed;
+    assert.ok(
+      separated || heard,
+      `${id} is selectable with a ${measured.gridMargin.toFixed(3)} margin and no owner confirmation`,
+    );
+  }
+});
+
+test('M24B: no track was conditioned further than the corpus justifies', () => {
+  /*
+   * `measuredBpm` records the **source's** pulse, so the obvious check — does
+   * this file measure what the evidence says — is the one check that must never
+   * pass: a track conditioned from 95 BPM measures 90 on disk by construction.
+   * M24A's tooling did exactly that comparison and would have called all eleven
+   * of M24B's candidates drift.
+   *
+   * What is checkable is the claim the field really makes: that the recorded
+   * source pulse is one a conditioning command could plausibly have brought to
+   * the grid. See `TEMPO_MAX_CONDITIONING`, which is set from the corpus.
+   *
+   * Half and double are free — a 185 BPM source is a 2.7% change, not a 51% one.
+   */
+  let checked = 0;
+  for (const id of trackIds()) {
+    const { evidence } = MUSIC_TRACKS[id];
+    if (evidence.kind !== 'conditioned') continue;
+    const ratio = conformingRatio(evidence.measuredBpm, RHYTHM.bpm);
+    assert.ok(
+      Math.abs(ratio - 1) <= TEMPO_MAX_CONDITIONING,
+      `${id} claims a ${evidence.measuredBpm.toFixed(1)} BPM source, which needs x${ratio.toFixed(3)} to reach ${String(RHYTHM.bpm)}`,
+    );
+    assert.ok(evidence.command.length > 0, `${id} has no conditioning command`);
+    assert.match(evidence.sourceSha256, /^[0-9a-f]{64}$/, `${id} has no usable source hash`);
+    assert.ok(
+      evidence.measurementConfidence > 0,
+      `${id} records a confidence of ${String(evidence.measurementConfidence)}`,
+    );
+    checked += 1;
+  }
+  assert.ok(checked > 0, 'no conditioned track exists to check');
 });
 
 test('the official setlist is exactly what the stage table authored', () => {

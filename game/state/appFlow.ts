@@ -205,6 +205,34 @@ export function startStage(flow: AppFlowState, index: number): void {
   flow.screen = 'BRIEFING';
 }
 
+/**
+ * Starts a stage on a **given** setlist rather than the authored one (M24B).
+ *
+ * The development audition path, and the only way in the codebase that
+ * `flow.setlist` becomes anything other than `OFFICIAL_SETLIST`. M24C's builder
+ * will be the second, and will call this same function — which is why it takes
+ * a setlist rather than reaching into the audition module for one.
+ *
+ * Deliberately a sibling of `startStage` and not a flag on it. A boolean
+ * parameter would put "is this the real show or not?" inside the function every
+ * production path calls, one negation away from a player's first run coming up
+ * on an unaudited candidate. Two functions cannot make that mistake: the stage
+ * buttons call `startStage`, which sets the authored show and cannot be told
+ * otherwise.
+ *
+ * Nothing persists `flow.setlist`, and `returnToTitle` restores the official
+ * one, so an audition cannot outlive the run it was started for.
+ */
+export function startStageWithSetlist(
+  flow: AppFlowState,
+  index: number,
+  setlist: Setlist,
+): void {
+  flow.stageIndex = clampStageIndex(index);
+  flow.setlist = setlist;
+  flow.screen = 'BRIEFING';
+}
+
 /** The briefing's Start button. */
 export function beginRound(flow: AppFlowState): void {
   flow.screen = 'ROUND';

@@ -227,4 +227,30 @@ export const ptBR: Catalogue = {
     /* "Achou" keeps the beer as the one doing the finding, which is the joke. */
     soundDesk: 'Aí uma cerveja achou a mesa de som.',
   },
+
+  /**
+   * Títulos das músicas (M24B) — **deliberadamente não traduzidos.**
+   *
+   * São nomes próprios das músicas de uma banda fictícia, e a política é a
+   * mesma que já vale para `Worst Gig Ever`: nome de banda e nome de música não
+   * se traduzem. "CHEAP BEER RIOT" numa setlist brasileira lê-se como o nome de
+   * uma música, que é exatamente o efeito pretendido; traduzido, vira uma
+   * descrição e perde a piada.
+   *
+   * Ficam idênticos ao inglês de propósito. O `tsc` continua exigindo que a
+   * chave exista — o que se garante aqui é a completude, não a tradução.
+   */
+  music: {
+    noRefunds: 'NO REFUNDS',
+    brokenAmp: 'BROKEN AMP',
+    lastCall: 'LAST CALL',
+    stageDive: 'STAGE DIVE DISASTER',
+    cheapBeerRiot: 'CHEAP BEER RIOT',
+    wrongChord: 'WRONG CHORD',
+    badSoundcheck: 'BAD SOUNDCHECK',
+    loadOut: 'LOAD-OUT',
+    fireExit: 'FIRE EXIT',
+    noEncore: 'NO ENCORE',
+    wrongVenue: 'WRONG VENUE',
+  },
 };

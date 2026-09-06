@@ -37,6 +37,7 @@ import {
   isGrooveQualified,
   isMusicTrackId,
   trackIds,
+  type MusicTrackId,
 } from '../game/audio/musicCatalogue.ts';
 import { STAGES } from '../game/levels/stages.ts';
 import {
@@ -142,18 +143,69 @@ test('M24A: a setlist may only hold tracks a player can actually choose', () => 
   );
 });
 
-test('M24A: nothing is selectable yet, so no custom setlist can exist', () => {
+test('M24B: candidates are selectable in development and nowhere else', () => {
   /*
-   * The honest state of M24A, pinned so it is a decision rather than an
-   * oversight: the catalogue holds three beds and no library entries, the
-   * feature is not player-visible, and every attempt to load a custom setlist
-   * therefore falls back to the authored show.
+   * Replaces M24A's "nothing is selectable yet", which pinned an empty library
+   * so that filling it would be a decision rather than a drift. This is that
+   * decision: eleven audition candidates exist, and the property that matters
+   * moved from "the library is empty" to **"the library is empty in a release
+   * build"**.
+   *
+   * Both halves are asserted, because the interesting failure is asymmetric. A
+   * development build with no candidates is a milestone that did not land; a
+   * release build *with* candidates is unaudited third-party music in a
+   * player's hands.
    */
-  assert.deepEqual([...availableTracks(true)], [], 'a track became selectable before M24B');
+  const development = availableTracks(true);
+  const shipping = availableTracks(false);
+
+  assert.ok(development.length > 0, 'M24B added no auditionable track');
+  assert.deepEqual([...shipping], [], 'a candidate is selectable in a release build');
+
+  for (const id of development) {
+    assert.equal(
+      MUSIC_TRACKS[id].library?.release,
+      'candidate',
+      `${id} is selectable and is not marked as a candidate`,
+    );
+  }
+
+  /*
+   * The beds stay unselectable whatever else changed. `grooveBed` is a teaching
+   * floor and `showTheme` is a 120 BPM loop; neither is something a player may
+   * put in a setlist, and that is a `library: null` in the catalogue rather
+   * than a rule written down anywhere else.
+   */
+  for (const id of ['showTheme', 'grooveBed', 'showBed'] as const) {
+    assert.equal(development.includes(id), false, `${id} became player-selectable`);
+  }
+});
+
+test('M24B: a custom setlist can be built in development, never in a release build', () => {
+  /*
+   * The parser's behaviour now that the library is not empty. Same save, two
+   * builds, opposite answers — and the release answer is the safe one.
+   */
+  const development = availableTracks(true);
+  const four = development.slice(0, SETLIST_SLOTS) as MusicTrackId[];
+  assert.equal(four.length, SETLIST_SLOTS, 'fewer candidates than there are slots');
+
+  assert.deepEqual(
+    parseSetlist([...four], development),
+    Object.freeze([...four]),
+    'a setlist of candidates does not parse in a development build',
+  );
   assert.equal(
-    parseSetlist(['showBed', 'grooveBed', 'showTheme', 'showBed']),
+    parseSetlist([...four], availableTracks(false)),
     null,
-    'a custom setlist parsed while the library is empty',
+    'a release build parsed a setlist made of audition candidates',
+  );
+
+  // The beds are still not choosable, which is what M24A's version proved.
+  assert.equal(
+    parseSetlist(['showBed', 'grooveBed', 'showTheme', 'showBed'], development),
+    null,
+    'a setlist of beds parsed',
   );
 });
 
@@ -491,8 +543,31 @@ test('M24A: stages.ts names a track type and nothing else about music', () => {
 
 test('M24A: exactly one place turns a stage into a sound', () => {
   const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
-  const calls = engine.match(/audio\.playMusic\(/g) ?? [];
-  assert.equal(calls.length, 1, `playMusic is called from ${String(calls.length)} places`);
+  /*
+   * Widened at M24B, and narrowed in what it means.
+   *
+   * The rule was "`playMusic` is called once", which was a proxy for the thing
+   * actually worth protecting: **a round's music comes from the setlist slot
+   * and from nowhere else.** M24B adds a second caller that is not a round —
+   * the audition row's preview button, which plays a track the owner picked
+   * with ◀ ▶ and never touches a stage.
+   *
+   * So the count is now over the calls that start a *round's* music, and the
+   * preview is excluded by name rather than by loosening the number. A third
+   * caller, or a round starting its music from anything but `scene.music`,
+   * still fails.
+   */
+  const calls = engine.match(/audio\.playMusic\(([^)]*)\)/g) ?? [];
+  const roundCalls = calls.filter((call) => !call.includes('track'));
+  assert.equal(
+    roundCalls.length,
+    1,
+    `a round's music is started from ${String(roundCalls.length)} places: ${calls.join(', ')}`,
+  );
+  assert.ok(
+    calls.every((call) => call === 'audio.playMusic(scene.music)' || call === 'audio.playMusic(track)'),
+    `playMusic is called with something other than the setlist slot or an audition track: ${calls.join(', ')}`,
+  );
   assert.ok(
     engine.includes('audio.playMusic(scene.music)'),
     'the music no longer comes from the resolved setlist slot',

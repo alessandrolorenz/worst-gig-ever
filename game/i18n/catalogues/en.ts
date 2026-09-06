@@ -225,4 +225,36 @@ export const en = {
     performance: 'For about four songs, it worked.',
     soundDesk: 'Then a beer found the mixing desk.',
   } satisfies Record<StoryPanelId, string>,
+
+  /**
+   * Player-facing song titles (M24B).
+   *
+   * **Fictional, and deliberately so.** These are the names of a bad band's
+   * songs — the joke — and they are not the works' real titles. The real title,
+   * author, licence and source page of every track live in
+   * `docs/assets/AUDIO-SOURCES.md` and in
+   * `assets/audio/music/candidates/SOURCES.json`, where renaming a third-party
+   * work would be a provenance failure (AGENTS.md rule 13). Here it is
+   * presentation, and nothing else reads it.
+   *
+   * Every key is a `MusicTrackId` whose track has a `library` entry, and
+   * `MusicTitleKey` is `keyof Catalogue['music']` — so a track added without a
+   * title, or a title left behind by a deleted track, is a `tsc` error.
+   *
+   * These are audition candidates. The ones the owner rejects go, and their
+   * strings go with them.
+   */
+  music: {
+    noRefunds: 'NO REFUNDS',
+    brokenAmp: 'BROKEN AMP',
+    lastCall: 'LAST CALL',
+    stageDive: 'STAGE DIVE DISASTER',
+    cheapBeerRiot: 'CHEAP BEER RIOT',
+    wrongChord: 'WRONG CHORD',
+    badSoundcheck: 'BAD SOUNDCHECK',
+    loadOut: 'LOAD-OUT',
+    fireExit: 'FIRE EXIT',
+    noEncore: 'NO ENCORE',
+    wrongVenue: 'WRONG VENUE',
+  },
 };

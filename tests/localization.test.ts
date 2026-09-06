@@ -23,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { en } from '../game/i18n/catalogues/en.ts';
 import { ptBR } from '../game/i18n/catalogues/pt-BR.ts';
 import { allCatalogues, stringsFor } from '../game/i18n/catalogue.ts';
+import { MUSIC_TRACKS, availableTracks } from '../game/audio/musicCatalogue.ts';
 import { format, placeholdersIn } from '../game/i18n/format.ts';
 import {
   DEFAULT_LOCALE,
@@ -76,10 +77,74 @@ function renderableSource(path: string): string {
   return styles < 0 ? source : source.slice(0, styles);
 }
 
+/**
+ * The one component whose words are deliberately not in the catalogue (M24B).
+ *
+ * `DevAudition.tsx` is the development music audition row. Its four labels —
+ * `PLAY`, `STOP`, `ALL 4 SLOTS`, `DEV MUSIC AUDITION` — are debug controls, and
+ * putting them through `game/i18n/catalogues/` would mean handing a translator
+ * strings that can never appear in a shipped build and carrying them in
+ * `pt-BR.ts` forever.
+ *
+ * The exception is *earned*, not asserted: the test below proves the file
+ * cannot reach a player before the guard agrees to skip it. A second file added
+ * to this list without that proof fails.
+ */
+const DEV_ONLY_COMPONENTS = ['game/rendering/DevAudition.tsx'];
+
 /** Every component in the app, including the root. */
 function componentFiles(): string[] {
-  return [...collect(join(repoRoot, 'game'), '.tsx'), join(repoRoot, 'App.tsx')];
+  const all = [...collect(join(repoRoot, 'game'), '.tsx'), join(repoRoot, 'App.tsx')];
+  return all.filter((path) => !DEV_ONLY_COMPONENTS.includes(relative(repoRoot, path)));
 }
+
+test('M24B: the untranslated component is one the player cannot reach', () => {
+  /*
+   * The price of the exemption above. A component excused from the catalogue
+   * rule has to show it is development-only, or the exemption becomes a hole
+   * anyone can widen by adding a filename to a list.
+   *
+   * Three independent facts, because one of them alone could be undone by a
+   * refactor without anybody noticing:
+   *
+   *   1. nothing renders it except behind a gate — `GameEngine` is the only
+   *      caller and builds its props inside `isDevelopmentBuild()`;
+   *   2. it renders nothing at all without those props, so a null slips
+   *      through as an absent row rather than an untranslated one;
+   *   3. the pool it displays is empty in a release build anyway.
+   */
+  for (const file of DEV_ONLY_COMPONENTS) {
+    const source = readFileSync(join(repoRoot, file), 'utf8');
+    assert.ok(
+      /return null/.test(source),
+      `${file} is exempt from translation but has no empty state`,
+    );
+  }
+
+  const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+  assert.ok(
+    /isDevelopmentBuild\(\)\s*\?/.test(engine),
+    'the audition controls are no longer built behind isDevelopmentBuild()',
+  );
+  assert.ok(
+    engine.includes(': null;'),
+    'a release build no longer gets null audition controls',
+  );
+
+  const overlays = readFileSync(join(repoRoot, 'game/rendering/Overlays.tsx'), 'utf8');
+  assert.ok(
+    overlays.includes('props.audition !== null && <DevAuditionRow'),
+    'the audition row is drawn without checking that this build has one',
+  );
+
+  // The pool a release build offers, asked of the catalogue rather than of a
+  // component: with no candidates there is nothing for the row to name.
+  assert.deepEqual(
+    [...availableTracks(false)].filter((id) => MUSIC_TRACKS[id].library?.release === 'candidate'),
+    [],
+    'a release build can reach an audition candidate',
+  );
+});
 
 const STRING_LITERAL = /'(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*"|`(?:[^`\\]|\\.)*`/g;
 
@@ -596,10 +661,42 @@ test('M21: the translation is not the English strings with accents on', () => {
     const words = source.replace(/\{\w+\}/g, ' ');
     if (!/\p{L}/u.test(words)) continue;
     if (!/\s/.test(source.trim())) continue;
+    /*
+     * Song titles are exempt, and the next test is why (M24B). They are the
+     * names of a fictional band's songs — proper nouns — and the project
+     * already has this rule for `Worst Gig Ever`, which
+     * `docs/release/product-identity.md` forbids translating. `CHEAP BEER RIOT`
+     * on a Brazilian setlist reads as the name of a song, which is the joke;
+     * translated it reads as a description of one, which is not.
+     */
+    if (path.startsWith('music.')) continue;
     if (source === value) untranslated.push(path);
   }
 
   assert.deepEqual(untranslated, [], 'these sentences are still in English');
+});
+
+test('M24B: song titles are the same in every language, on purpose', () => {
+  /*
+   * The other half of the exemption above, and the reason it is not a hole: the
+   * policy is *pinned*, not merely skipped. Song titles must be **identical**
+   * across locales, so a translated one fails here rather than passing quietly
+   * — which makes changing the policy a deliberate edit to this test instead of
+   * a drive-by edit to a catalogue.
+   *
+   * Completeness is not this test's job. `Catalogue` is typed off the English
+   * catalogue, so a locale missing a title does not compile.
+   */
+  for (const [locale, catalogue] of allCatalogues()) {
+    if (locale === 'pseudo') continue; // generated, and accented by design
+    for (const [key, title] of Object.entries(en.music)) {
+      assert.equal(
+        (catalogue.music as Record<string, string>)[key],
+        title,
+        `${locale} translated the song title ${key}; fictional song names stay as they are`,
+      );
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------

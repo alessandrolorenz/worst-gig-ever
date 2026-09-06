@@ -55,7 +55,20 @@ function markdownFiles(dir) {
 }
 
 /** Where a bare filename in a heading might live. */
-const SEARCH_ROOTS = ['assets/audio/music/runtime', 'assets/audio/sfx', 'assets/art', 'assets'];
+const SEARCH_ROOTS = [
+  'assets/audio/music/runtime',
+  /*
+   * The M24B audition candidates. Added the day they arrived, because a
+   * provenance block whose file this cannot find is not checked at all — it
+   * silently reports zero claims rather than a failure, which is the worst of
+   * the three possible outcomes for exactly the assets rules 13 and 14 exist
+   * for.
+   */
+  'assets/audio/music/candidates',
+  'assets/audio/sfx',
+  'assets/art',
+  'assets',
+];
 
 function locate(name) {
   if (name.includes('/')) return existsSync(join(repoRoot, name)) ? name : null;

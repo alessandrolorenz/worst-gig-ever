@@ -1,7 +1,9 @@
 # M24 — Music acquisition specification
 
-**Status:** specification only, 2026-09-05. **No music downloaded.**
-**Executed by:** M24B (`docs/specs/M24-implementation-plan.md`).
+**Status:** **executed by M24B on 2026-09-05.** Eleven CC0 candidates were
+acquired, conditioned and registered; see `docs/specs/M24B-owner-audition.md`
+for the pool and the decision it is waiting on, and the *M24B outcome* section
+at the foot of this file for where the plan below met reality.
 **Provenance lands in:** `docs/assets/AUDIO-SOURCES.md` — the authoritative
 file, per AGENTS.md rule 13. This document says *how*; that one is the record.
 
@@ -267,3 +269,49 @@ readable as a title for a **bad** band's song, which is the joke.
 
 The last item is not a formality. Everything before it is preparation for a
 decision Claude is not qualified to make.
+
+---
+
+## M24B outcome (2026-09-05)
+
+What this plan got right, and the two places reality did not match it. Recorded
+here rather than by editing the plan above, so the difference stays visible.
+
+**The funnel was far narrower than "8-10 candidates" implies.** 130 files were
+downloaded and measured to retain 11. Four were already at 90 BPM. The
+prediction that a CC0 loop or stem pack would be "often better than songs, often
+tempo-labelled" held for exactly two sources — `guitars4two`, whose author wrote
+"the song keeps a steady 90 bmp" and was telling the truth, and MintoDog's
+battle themes, which state their tempo in the filename. Everything else had to
+be measured.
+
+**Style targets were not met as written.** The plan asked for one track each of
+garage rock, punk, dirty blues rock, surf/trashy, groove metal and hard rock.
+The pool has garage rock, punk, hard rock, alt rock, acid/blues rock and groove
+metal — **no surf**. `Surf Riot` and `Blue Wave Theory` both exist on
+OpenGameArt and both are CC-BY, which this plan rejects. The gap is real and the
+alternative was an attribution obligation the app cannot honestly satisfy.
+
+**One author dominates.** Six of eleven are Ragnar Random's *Rock Music Pack*,
+which the plan's "do not depend on one author" rule warns against. It was
+accepted because the pack is 32 real band-rock songs under a single CC0
+dedication and because the alternative was a smaller pool, but it is a
+concentration the owner should know about: rejecting Ragnar Random wholesale
+would leave five tracks.
+
+**Mono was not assumed.** The plan specified "16-bit mono 44.1 kHz WAV" as the
+shipped derivative. M24B measured side-channel energy per track instead: three
+were effectively mono and were downmixed, eight carry real stereo width and
+kept it. The runtime format contract already permits either. Final encoding is
+an owner decision after selection.
+
+**Conditioning was needed, and the plan anticipated it.** Seven of eleven were
+conformed by `atempo` between 2.7% and 5.3%, one by 5.9% and one by 10%. The
+ceiling is now enforced rather than advisory — see `TEMPO_MAX_CONDITIONING`.
+
+**The commands are not raw `ffmpeg`.** The plan sketched a two-step `ffmpeg`
+line. The derivatives need a sampler-style loop crossfade, which `ffmpeg` cannot
+express cleanly, so the reproducible artifact is
+`scripts/condition-track.mjs` — committed, deterministic, and pinned per track
+by `assets/audio/music/candidates/SOURCES.json`. That is the same standing the
+generated beds already have, whose "conditioning command" is likewise a script.

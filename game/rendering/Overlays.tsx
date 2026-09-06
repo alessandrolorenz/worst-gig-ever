@@ -26,6 +26,7 @@ import {
 import type { Catalogue } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
 import { hasLocaleChoice, LOCALE_ENDONYMS } from '../i18n/locales.ts';
+import { DevAuditionRow, type AuditionControls } from './DevAudition.tsx';
 import { useLocale, useStrings } from '../i18n/LocaleContext.tsx';
 import { MUG_DRINK_ART, TARGET_ART } from './artAssets.ts';
 
@@ -61,6 +62,8 @@ import { recordFor, type Records } from '../state/records.ts';
 
 interface OverlayProps {
   flow: AppFlowState;
+  /** Development-only music audition tooling; `null` in a release build. */
+  audition: AuditionControls | null;
   /** The stage the mounted round belongs to. */
   stage: StageDefinition;
   /** The round's own state, which decides the in-round overlays. */
@@ -451,6 +454,7 @@ export function Overlays(props: OverlayProps) {
         {!audioAvailable && (
           <Text style={styles.warning}>{strings.title.audioUnavailable}</Text>
         )}
+        {props.audition !== null && <DevAuditionRow audition={props.audition} />}
       </View>
     );
   }

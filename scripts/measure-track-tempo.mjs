@@ -81,8 +81,10 @@ import { RHYTHM } from '../game/config/rhythm.ts';
 import {
   MUSIC_TRACKS,
   TEMPO_GRID_FLOOR,
+  TEMPO_MAX_CONDITIONING,
   TEMPO_MIN_MARGIN,
   TEMPO_TOLERANCE_BPM,
+  conformingRatio,
   isGrooveQualified,
   trackIds,
 } from '../game/audio/musicCatalogue.ts';
@@ -545,10 +547,32 @@ function main() {
     }
 
     if (track.evidence.kind === 'conditioned' && measurement.bpm !== null) {
+      /*
+       * Corrected at M24B, on the first real conditioned tracks.
+       *
+       * This used to compare `measuredBpm` against *this file's* measurement
+       * and flag a difference over `TEMPO_TOLERANCE_BPM`. That check could
+       * only ever fail. `measuredBpm` is the **source's** pulse — 95 BPM for a
+       * track conditioned to 90 — and the derivative measures 90 by
+       * construction, because conditioning it to 90 is what conditioning is.
+       * Run against M24B's eleven candidates the old check reported all eleven
+       * as drift, which is the tool disagreeing with its own documented model
+       * rather than the catalogue disagreeing with the tree.
+       *
+       * What is worth checking, and is checked here, is the claim the field
+       * actually makes: that the recorded source pulse is one a conditioning
+       * command could plausibly have brought to the grid. A catalogue entry
+       * saying a 140 BPM source became this 90 BPM file is either a typo or a
+       * transformation nobody should ship, and both are worth failing on.
+       *
+       * The derivative's own standing is not weakened by this: it still has to
+       * pass `gradeAgainstGrid` above, exactly as before.
+       */
       const recorded = track.evidence.measuredBpm;
-      if (Math.abs(recorded - measurement.bpm) > TEMPO_TOLERANCE_BPM) {
+      const ratio = conformingRatio(recorded, RHYTHM.bpm);
+      if (Math.abs(ratio - 1) > TEMPO_MAX_CONDITIONING) {
         findings.push(
-          `${target.id} records a measured ${recorded.toFixed(1)} BPM, remeasures at ${measurement.bpm.toFixed(1)} BPM`,
+          `${target.id} records a source at ${recorded.toFixed(1)} BPM, which needs a x${ratio.toFixed(3)} change to reach ${String(RHYTHM.bpm)} — beyond the ${String(TEMPO_MAX_CONDITIONING * 100)}% conditioning ceiling`,
         );
       }
     }

@@ -29,6 +29,16 @@ import { SCHEMA_VERSION, type UnknownFields } from '../state/persistence.ts';
 import { loadSave, writeSave } from '../state/storage.ts';
 import { stageAt } from '../levels/stages.ts';
 import { trackForStage } from '../audio/setlist.ts';
+import {
+  auditionSetlist,
+  auditionTracks,
+  nextMode,
+  stepCursor,
+  trackAtCursor,
+  type AuditionMode,
+} from '../audio/audition.ts';
+import { isDevelopmentBuild } from '../i18n/locales.ts';
+import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
 import {
   advanceToNextStage,
@@ -41,6 +51,7 @@ import {
   returnToTitle,
   showBriefing,
   startStage,
+  startStageWithSetlist,
   toggleClick,
 } from '../state/appFlow.ts';
 import { advanceStory, clearStory, skipStory } from '../state/storyState.ts';
@@ -268,6 +279,86 @@ export default function GameEngine() {
     [entities, refreshFlow, resetScene],
   );
 
+  /* ---- development music audition (M24B) ---- */
+
+  /*
+   * Cursor and mode live here rather than on `AppFlowState`, because they are
+   * not facts about the game — they are the position of a debug control. Putting
+   * them on the flow would mean the production domain, its tests and its save
+   * format all carried a field that exists to serve a milestone's tooling.
+   *
+   * `AUDITION_POOL` is read once: the catalogue cannot change at runtime, and a
+   * release build gets an empty list from `availableTracks(false)` inside
+   * `auditionTracks` regardless of what this component does with it.
+   */
+  const [auditionCursor, setAuditionCursor] = useState(0);
+  const [auditionMode, setAuditionMode] = useState<AuditionMode>('solo');
+  const [auditionPlaying, setAuditionPlaying] = useState(false);
+
+  const handleAuditionStep = useCallback((delta: number) => {
+    setAuditionCursor((cursor) => stepCursor(auditionTracks(), cursor, delta));
+    // Switching tracks stops whatever is sounding: two candidates at once is
+    // not an audition of either (M24B, §24).
+    audio.stopMusic();
+    setAuditionPlaying(false);
+  }, [audio]);
+
+  const handleAuditionPlay = useCallback(() => {
+    const track = trackAtCursor(auditionTracks(), auditionCursor);
+    if (track === null) return;
+    // The real service, not a second player: what the owner hears here is what
+    // a round plays, at `MIX.music`, through the same decoder.
+    audio.preloadSetlist([track]);
+    audio.playMusic(track);
+    setAuditionPlaying(true);
+  }, [audio, auditionCursor]);
+
+  const handleAuditionStop = useCallback(() => {
+    audio.stopMusic();
+    setAuditionPlaying(false);
+  }, [audio]);
+
+  const handleAuditionStartGig = useCallback(
+    (index: number) => {
+      const setlist = auditionSetlist(auditionTracks(), auditionCursor, auditionMode);
+      if (setlist === null) return;
+      audio.stopMusic();
+      setAuditionPlaying(false);
+      /*
+       * Preloaded before the briefing, for the reason `preloadSetlist` exists:
+       * creating a player is asynchronous, and a candidate loaded at Start would
+       * still be decoding when the first bar was due.
+       */
+      audio.preloadSetlist(setlist);
+      startStageWithSetlist(entities.scene.flow, index, setlist);
+      resetScene();
+      setUiState(entities.scene.round.state);
+      refreshFlow();
+    },
+    [audio, auditionCursor, auditionMode, entities, refreshFlow, resetScene],
+  );
+
+  /**
+   * The audition controls, or `null` in a release build.
+   *
+   * The single gate. `isDevelopmentBuild()` is read once, here, at the boundary
+   * that already owns the device — the same place `detectLocale()` is read — and
+   * everything downstream is a pure function of this being `null` or not.
+   */
+  const audition: AuditionControls | null = isDevelopmentBuild()
+    ? {
+        tracks: auditionTracks(),
+        cursor: auditionCursor,
+        playing: auditionPlaying,
+        mode: auditionMode,
+        onStep: handleAuditionStep,
+        onPlay: handleAuditionPlay,
+        onStop: handleAuditionStop,
+        onToggleMode: () => setAuditionMode(nextMode),
+        onStartGig: handleAuditionStartGig,
+      }
+    : null;
+
   const handleShowBriefing = useCallback(() => {
     showBriefing(entities.scene.flow);
     refreshFlow();
@@ -483,6 +574,7 @@ export default function GameEngine() {
             audioAvailable={audio.available}
             onStoryAdvance={handleStoryAdvance}
             onStorySkip={handleStorySkip}
+            audition={audition}
             onSelectStage={handleSelectStage}
             onReplayStory={handleReplayStory}
             onShowBriefing={handleShowBriefing}

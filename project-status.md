@@ -63,6 +63,92 @@ been 5.00 s / 0.88 MB since M16, recorded as a derivative at the time; three
 documents carried the old figure. There is no audio weight problem: nine files,
 7.9 MB total.
 
+### M24B — music library and in-game audition (2026-09-05, `m24/music-library`)
+
+**Eleven CC0 candidates in the build, none approved.** The milestone's output is
+a decision the owner has not made yet: `docs/specs/M24B-owner-audition.md` is
+the checklist, and the yellow DEV row on the title screen is how to answer it.
+
+| | |
+|---|---|
+| Branch | `m24/music-library`, from the accepted M24A HEAD `ebe35dc` — **not** from `main`, which does not contain M24A |
+| Acquisition | Claude downloaded everything directly. 130 files, 1.24 GB, from OpenGameArt |
+| Retained | 11 tracks, 6 authors, all CC0, 68.19 MB of 16-bar derivatives |
+| New modules | `game/audio/audition.ts`, `game/rendering/DevAudition.tsx` |
+| New scripts | `scripts/condition-track.mjs`, `scripts/build-candidates.mjs` |
+| New gate | `npm run build:candidates -- --verify`, in `npm run verify` |
+| Dependencies added | **none** |
+| Gate | `npm run verify` green — **482 tests**, 0 failures (18 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_CANDIDATE_SOURCES` |
+
+**The funnel, because the shape of it is the finding.** 429 OpenGameArt music
+pages matched a rock-shaped search; 193 had plausible titles; 130 files were
+downloaded and measured; **4 were already at 90 BPM.** That is a 3% hit rate,
+and it is the honest answer to "just find CC0 rock at 90 BPM": the corpus barely
+contains any. The library exists because seven more tracks were within 6% and
+could be conditioned onto the grid by a recorded command — a technique M24A had
+already sanctioned and nothing had yet exercised.
+
+**M24A's thresholds held, and were not touched.** `TEMPO_GRID_FLOOR` at 0.30 was
+set from three files; against 130 external ones it lands in an enormous gap. The
+passing tracks score 0.305 to 0.770 and the best failure scores 0.121 — there is
+nothing between 0.121 and 0.305 to be careful about. Two conditioned derivatives
+were **rejected by the gate** at 0.285 and 0.253 rather than admitted by moving
+it (§32 of the brief; they were `heavy_battle_1` and `this_mad_gnosis`).
+
+**Two corrections to M24A's own tooling, found by using it.**
+
+1. `measure:tempo` compared a conditioned track's recorded `measuredBpm` against
+   *the derivative's* measurement. That check can only ever fail:
+   `measuredBpm` is the **source's** pulse — 95 BPM for a track conditioned to
+   90 — and the derivative measures 90 by construction. Run against these eleven
+   it reported all eleven as drift. It now checks what the field actually
+   claims, that the source pulse is one a conditioning command could plausibly
+   have brought to the grid, gated by the new `TEMPO_MAX_CONDITIONING` (15%, set
+   from the corpus: the retained span is x0.900 to x1.059).
+2. `audit:provenance` could not find files under
+   `assets/audio/music/candidates/`, so eleven provenance blocks would have gone
+   **unchecked while reporting success** — the worst of the three outcomes for
+   exactly the assets rules 13 and 14 exist for. The search root was added.
+
+**A third correction, to a test rather than a threshold.** M24A asserted that
+every non-`unverified` track leads its best incompatible rival by
+`TEMPO_MIN_MARGIN`. That was right while the only two were generated beds
+leading by ~0.20; real rock does not behave that way, because an arrangement
+puts genuine energy on the bar and the half-bar, so 120 and 60 score close
+behind 90. **Seven of the eleven lead by less than 0.05.** The threshold is
+unchanged — what changed is that the assertion now matches the model it came
+from: a thin margin demands `ownerConfirmed`, which is what
+`TEMPO_MIN_MARGIN`'s own comment always said it meant ("a flag, not a
+rejection… which calls for a listen"). It gates *shipping*, not *existing*.
+
+**Reproducible without 129 MB of blobs.** The eleven sources are not committed —
+most will be deleted after the audition, and putting them in git history
+permanently would serve a decision that lasts one milestone. What is committed
+is `assets/audio/music/candidates/SOURCES.json`: direct URL, SHA-256 as
+published, and the **pinned** `ratio` and `startSample`, so
+`npm run build:candidates -- --fetch` re-downloads, hash-verifies and rebuilds
+every derivative **byte for byte**. Verified end to end on two tracks. Pinned
+rather than re-analysed on purpose: improving the window heuristic later must
+not silently change the audio a manifest describes.
+
+**Mono was decided by measurement, not by assumption** (§18 of the brief). Each
+derivative's side-channel energy was compared against its mid: three sat 26-35 dB
+down — effectively mono — and were downmixed, saving 11 MB for nothing audible.
+The other eight carry real width (5-14 dB) and stay stereo.
+
+**Size, measured rather than estimated.** The local universal release APK is
+**186.9 MB**, against 115 MB recorded at M14.1 — the candidates are +71.9 MB, and
+WAV does not compress. Note what that means: **all eleven are bundled into a
+release build even though none can be selected.** Metro resolves `require`
+statically, so "development-only" cannot be a bundling property and is not
+implemented as one; it is enforced at selection, in three places, with tests on
+each. M24C's promotion step must actually delete the rejected files, or the
+rejects ship as dead weight.
+
+**What is deliberately not here:** no custom-setlist unlock, no player-facing
+builder, no monetization, no streaming or on-demand delivery, and no promotion.
+`showTheme` is untouched and still opens Stage 1.
+
 ### M24A — setlist foundation and tempo evidence (2026-09-05, `m24/setlist-foundation`)
 
 Architecture only. **No player-visible change**: Stage 1 still plays

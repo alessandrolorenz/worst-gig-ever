@@ -1,0 +1,404 @@
+/**
+ * The audition contract (M24B).
+ *
+ * Source of truth: docs/specs/M24-custom-setlist.md
+ *                  docs/assets/M24-MUSIC-ACQUISITION-SPEC.md
+ *
+ * M24B puts eleven external tracks in the tree and a way to listen to them.
+ * Both halves are dangerous in a way the beds never were, and these tests are
+ * about the two ways it could go wrong:
+ *
+ *   - **unaudited third-party music reaching a player.** Every candidate is
+ *     `release: 'candidate'` and `ownerConfirmed: false`, and a release build
+ *     must be unable to reach one by any route — the library, a saved setlist,
+ *     or the audition row;
+ *   - **the authored show quietly changing.** The audition path writes
+ *     `flow.setlist`, which is the same field a real run reads. If starting a
+ *     stage from the title could ever pick that up, the first run a player takes
+ *     would be on a candidate nobody has heard.
+ *
+ * Nothing here needs an audio device. The files are read as bytes and the
+ * audition module is pure.
+ */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync, statSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  AUDITION_MODES,
+  auditionSetlist,
+  auditionTracks,
+  nextMode,
+  stepCursor,
+  trackAtCursor,
+  type AuditionMode,
+} from '../game/audio/audition.ts';
+import {
+  MUSIC_TRACKS,
+  availableTracks,
+  isGrooveQualified,
+  trackIds,
+} from '../game/audio/musicCatalogue.ts';
+import { OFFICIAL_SETLIST, SETLIST_SLOTS, trackForStage } from '../game/audio/setlist.ts';
+import { RHYTHM, beatIntervalMs } from '../game/config/rhythm.ts';
+import { STAGES } from '../game/levels/stages.ts';
+import {
+  createAppFlow,
+  returnToTitle,
+  startStage,
+  startStageWithSetlist,
+} from '../game/state/appFlow.ts';
+import { allCatalogues } from '../game/i18n/catalogue.ts';
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Every candidate, from the catalogue rather than from a list written here. */
+const candidates = trackIds().filter(
+  (id) => MUSIC_TRACKS[id].library?.release === 'candidate',
+);
+
+const manifest = JSON.parse(
+  readFileSync(join(repoRoot, 'assets/audio/music/candidates/SOURCES.json'), 'utf8'),
+) as ReadonlyArray<Record<string, string | number | boolean>>;
+
+// ---------------------------------------------------------------------------
+// The candidates in the tree
+// ---------------------------------------------------------------------------
+
+test('M24B: every candidate is a real file of the length it claims', () => {
+  assert.ok(candidates.length >= 8, `only ${String(candidates.length)} candidates exist`);
+
+  for (const id of candidates) {
+    const track = MUSIC_TRACKS[id];
+    const absolute = join(repoRoot, track.file);
+    const bytes = statSync(absolute).size;
+    assert.ok(bytes > 0, `${id} is an empty file`);
+
+    /*
+     * The whole-bar contract, read off the header rather than off the manifest,
+     * so a file replaced by hand fails here even if the manifest still agrees
+     * with itself.
+     */
+    const header = readFileSync(absolute);
+    const channels = header.readUInt16LE(22);
+    const sampleRate = header.readUInt32LE(24);
+    const bits = header.readUInt16LE(34);
+    let offset = 12;
+    let dataLength = 0;
+    while (offset < header.length - 8) {
+      const chunk = header.toString('ascii', offset, offset + 4);
+      const size = header.readUInt32LE(offset + 4);
+      if (chunk === 'data') {
+        dataLength = size;
+        break;
+      }
+      offset += 8 + size + (size % 2);
+    }
+    const seconds = dataLength / (sampleRate * channels * (bits / 8));
+    const beats = (seconds * 1000) / beatIntervalMs();
+
+    assert.equal(Math.round(beats), track.beats, `${id} is not the length the catalogue records`);
+    assert.equal(Math.round(beats) % 4, 0, `${id} does not end on a bar line`);
+    assert.ok(Math.abs(beats - Math.round(beats)) < 1e-6, `${id} drifts by a fraction of a beat`);
+  }
+});
+
+test('M24B: no candidate is silent, and none is a wall of clipping', () => {
+  /*
+   * Two failures a tempo measurement cannot see, because both can produce a
+   * perfectly gridded file: a derivative cut from a gap in the arrangement, and
+   * one whose gain was computed against a stray sample so the music sits far
+   * under everything else in the mix.
+   *
+   * Peak is asserted against the project's own conditioning target rather than
+   * against a general idea of loudness — every candidate is normalised to
+   * `PEAK_TARGET`, so a file that is not near it did not come out of the
+   * pipeline.
+   */
+  for (const id of candidates) {
+    const bytes = readFileSync(join(repoRoot, MUSIC_TRACKS[id].file));
+    const channels = bytes.readUInt16LE(22);
+    let offset = 12;
+    let dataStart = -1;
+    let dataLength = 0;
+    while (offset < bytes.length - 8) {
+      const chunk = bytes.toString('ascii', offset, offset + 4);
+      const size = bytes.readUInt32LE(offset + 4);
+      if (chunk === 'data') {
+        dataStart = offset + 8;
+        dataLength = Math.min(size, bytes.length - dataStart);
+        break;
+      }
+      offset += 8 + size + (size % 2);
+    }
+    assert.ok(dataStart > 0, `${id} has no data chunk`);
+
+    let peak = 0;
+    let sum = 0;
+    let count = 0;
+    // Every 16th frame: enough for a peak and an RMS, and keeps the suite fast.
+    for (let at = dataStart; at + 1 < dataStart + dataLength; at += 2 * channels * 16) {
+      const value = bytes.readInt16LE(at) / 32768;
+      peak = Math.max(peak, Math.abs(value));
+      sum += value * value;
+      count += 1;
+    }
+    const rms = Math.sqrt(sum / Math.max(1, count));
+
+    assert.ok(peak > 0.5, `${id} peaks at ${peak.toFixed(3)} — it is far quieter than the beds`);
+    assert.ok(peak <= 1, `${id} peaks above full scale`);
+    assert.ok(rms > 0.02, `${id} has an RMS of ${rms.toFixed(4)} — it is close to silent`);
+  }
+});
+
+test('M24B: the manifest and the catalogue describe the same eleven tracks', () => {
+  /*
+   * The manifest is what makes the derivatives reproducible without committing
+   * 129 MB of sources, so it is load-bearing provenance rather than a note. Two
+   * copies of a fact can disagree; this is what stops them.
+   */
+  assert.equal(manifest.length, candidates.length, 'the manifest and the catalogue differ in size');
+
+  for (const entry of manifest) {
+    const id = entry.id as string;
+    const track = MUSIC_TRACKS[id as keyof typeof MUSIC_TRACKS];
+    assert.ok(track, `the manifest names ${id}, which is not in the catalogue`);
+    assert.equal(track.file, entry.derivative, `${id} is bundled from a different path than it is built to`);
+    assert.equal(track.beats, Number(entry.bars) * 4, `${id} disagrees on its length`);
+
+    assert.equal(track.evidence.kind, 'conditioned');
+    if (track.evidence.kind !== 'conditioned') continue;
+    assert.equal(track.evidence.sourceSha256, entry.sourceSha256, `${id} was built from other bytes`);
+    assert.equal(track.evidence.measuredBpm, entry.measuredBpm, `${id} disagrees on its source tempo`);
+
+    // The licence is the reason this may be in the tree at all.
+    assert.equal(entry.licence, 'CC0', `${id} is not CC0`);
+    assert.match(String(entry.sourcePage), /^https:\/\//, `${id} has no source page`);
+    assert.match(String(entry.sourceSha256), /^[0-9a-f]{64}$/, `${id} has no source hash`);
+    assert.ok(String(entry.author).length > 0, `${id} names no author`);
+
+    const bytes = statSync(join(repoRoot, String(entry.derivative))).size;
+    assert.equal(bytes, entry.derivativeBytes, `${id} is not the size the manifest records`);
+  }
+});
+
+test('M24B: every candidate keeps its real authorship, whatever it is called in game', () => {
+  /*
+   * AGENTS.md rule 13, as a test. The fictional title is presentation; renaming
+   * a third-party work away from its author is a provenance failure, and the
+   * failure mode is silent — the game looks fine either way.
+   */
+  const provenance = readFileSync(join(repoRoot, 'docs/assets/AUDIO-SOURCES.md'), 'utf8');
+
+  for (const entry of manifest) {
+    const id = entry.id as string;
+    assert.ok(
+      provenance.includes(String(entry.originalFilename)),
+      `${id} does not record the original filename it was built from`,
+    );
+    assert.ok(provenance.includes(String(entry.author)), `${id} does not record its author`);
+    assert.ok(provenance.includes(String(entry.sourcePage)), `${id} does not record its source page`);
+    assert.ok(
+      provenance.includes(String(entry.sourceSha256)),
+      `${id} does not record the hash of the bytes it was built from`,
+    );
+  }
+});
+
+// ---------------------------------------------------------------------------
+// The audition module
+// ---------------------------------------------------------------------------
+
+test('M24B: the cursor wraps in both directions and never leaves the pool', () => {
+  const tracks = auditionTracks();
+  assert.ok(tracks.length > 0);
+
+  assert.equal(stepCursor(tracks, 0, -1), tracks.length - 1, 'stepping back from the first wrapped wrong');
+  assert.equal(stepCursor(tracks, tracks.length - 1, 1), 0, 'stepping past the last wrapped wrong');
+  assert.equal(stepCursor(tracks, 0, tracks.length), 0, 'a full lap did not return to the start');
+
+  // Nothing a control can do produces an index that cannot be read.
+  for (let delta = -40; delta <= 40; delta += 1) {
+    const cursor = stepCursor(tracks, 3, delta);
+    assert.ok(cursor >= 0 && cursor < tracks.length, `cursor left the pool at delta ${String(delta)}`);
+    assert.ok(trackAtCursor(tracks, cursor) !== null);
+  }
+
+  // An empty pool — a release build, or M24C after the owner's cull.
+  assert.equal(stepCursor([], 0, 1), 0);
+  assert.equal(trackAtCursor([], 0), null);
+});
+
+test('M24B: an audition setlist always fills every slot', () => {
+  const tracks = auditionTracks();
+
+  for (const mode of AUDITION_MODES) {
+    for (let cursor = 0; cursor < tracks.length; cursor += 1) {
+      const setlist = auditionSetlist(tracks, cursor, mode);
+      assert.ok(setlist, `${mode} produced no setlist at cursor ${String(cursor)}`);
+      assert.equal(setlist.length, SETLIST_SLOTS, `${mode} left a slot empty`);
+      for (const id of setlist) {
+        assert.ok(tracks.includes(id), `${mode} put ${id} in a setlist, which is not auditionable`);
+      }
+    }
+  }
+
+  assert.equal(auditionSetlist([], 0, 'solo'), null, 'an empty pool produced a setlist');
+});
+
+test('M24B: solo auditions one track everywhere, rotate auditions four', () => {
+  const tracks = auditionTracks();
+
+  const solo = auditionSetlist(tracks, 2, 'solo');
+  assert.ok(solo);
+  assert.equal(new Set(solo).size, 1, 'solo mode played more than one track');
+  assert.equal(solo[0], tracks[2], 'solo mode played a track other than the selected one');
+
+  /*
+   * The point of solo mode: whichever stage the owner starts, they hear the
+   * track the cursor is on. Without that the answer to "is this fun during
+   * defense?" would depend on which slot they happened to start.
+   */
+  for (let stage = 0; stage < STAGES.length; stage += 1) {
+    assert.equal(trackForStage(solo, stage), tracks[2], `stage ${String(stage)} played something else`);
+  }
+
+  const rotate = auditionSetlist(tracks, 2, 'rotate');
+  assert.ok(rotate);
+  assert.equal(new Set(rotate).size, SETLIST_SLOTS, 'rotate mode repeated a track');
+  assert.equal(rotate[0], tracks[2], 'rotate mode did not start on the selected track');
+  assert.equal(rotate[1], tracks[3], 'rotate mode did not continue through the pool');
+
+  assert.equal(nextMode('solo'), 'rotate');
+  assert.equal(nextMode('rotate'), 'solo');
+});
+
+// ---------------------------------------------------------------------------
+// The official show is untouched
+// ---------------------------------------------------------------------------
+
+test('M24B: picking a stage still starts the show the owner approved', () => {
+  /*
+   * The property the whole milestone rests on. `startStageWithSetlist` exists
+   * and writes `flow.setlist`; every *production* path must be unable to reach
+   * it. Asserted after an audition has run, because the interesting failure is
+   * a leftover — not "does a fresh flow work" but "does the audition wash out".
+   */
+  const tracks = auditionTracks();
+  const flow = createAppFlow();
+  const audition = auditionSetlist(tracks, 0, 'solo');
+  assert.ok(audition);
+
+  startStageWithSetlist(flow, 1, audition);
+  assert.deepEqual([...flow.setlist], [...audition], 'the audition run did not take its setlist');
+  assert.equal(trackForStage(flow.setlist, 1), tracks[0], 'Stage 2 did not play the audition track');
+
+  // The owner backs out, and the show is the authored one again.
+  returnToTitle(flow);
+  assert.deepEqual([...flow.setlist], [...OFFICIAL_SETLIST], 'an audition outlived the run it started');
+
+  // And a stage picked from the title is authored, whatever came before it.
+  startStage(flow, 1);
+  assert.deepEqual([...flow.setlist], [...OFFICIAL_SETLIST], 'a stage button started a custom setlist');
+  assert.equal(trackForStage(flow.setlist, 1), 'grooveBed', 'Stage 2 stopped teaching the beat over its bed');
+});
+
+test('M24B: Stage 2 can be auditioned on a song without the official run changing', () => {
+  /*
+   * The owner's specific question — can a real song replace the teaching bed on
+   * a replay? — made testable before it is answerable. Both facts at once: the
+   * audition path can put a candidate under Stage 2, and the authored show
+   * still teaches the beat over `grooveBed`.
+   */
+  const tracks = auditionTracks();
+  const stageTwo = 1;
+  assert.equal(STAGES[stageTwo].groove, true, 'Stage 2 stopped scoring the beat');
+  assert.equal(OFFICIAL_SETLIST[stageTwo], 'grooveBed', 'the official Stage 2 bed changed');
+
+  for (const id of tracks) {
+    const setlist = auditionSetlist(tracks, tracks.indexOf(id), 'solo');
+    assert.ok(setlist);
+    assert.equal(trackForStage(setlist, stageTwo), id);
+    /*
+     * And it is safe to do so. Stage 2 scores beats, so anything under it has to
+     * be on the grid — which is true of every candidate by construction, and is
+     * the reason an audition cannot teach the player a wrong beat.
+     */
+    assert.equal(isGrooveQualified(id), true, `${id} could back Stage 2 without being on the grid`);
+  }
+});
+
+test('M24B: a release build has nothing to audition and no way to audition it', () => {
+  /*
+   * The release-safety property, from the data side. The UI gate is asserted in
+   * `tests/localization.test.ts`; this is the half that would still hold if
+   * somebody rendered the row by mistake.
+   */
+  assert.deepEqual([...availableTracks(false)], [], 'a release build can select a candidate');
+
+  for (const id of candidates) {
+    const track = MUSIC_TRACKS[id];
+    assert.equal(track.library?.release, 'candidate');
+    assert.equal(
+      track.evidence.kind === 'conditioned' && track.evidence.ownerConfirmed,
+      false,
+      `${id} is marked as confirmed by the owner before any audition happened`,
+    );
+    assert.equal(
+      OFFICIAL_SETLIST.includes(id),
+      false,
+      `${id} reached the authored show without being promoted`,
+    );
+  }
+});
+
+test('M24B: every candidate has a title in every language', () => {
+  for (const id of candidates) {
+    const titleKey = MUSIC_TRACKS[id].library?.titleKey;
+    assert.ok(titleKey, `${id} is selectable with no title key`);
+    for (const [locale, catalogue] of allCatalogues()) {
+      const title: string | undefined = (catalogue.music as Record<string, string>)[titleKey];
+      assert.equal(typeof title, 'string', `${id} has no title in ${locale}`);
+      assert.ok((title ?? '').trim().length > 0, `${id} has an empty title in ${locale}`);
+    }
+  }
+});
+
+test('M24B: the pool size is data, not a number written in the code', () => {
+  /*
+   * The owner's standing instruction: the library is 8-12 tracks, maybe more,
+   * and the number is a product decision made from auditions. Adding or removing
+   * a candidate must be a change to the catalogue and to nothing else.
+   */
+  for (const file of [
+    'game/audio/audition.ts',
+    'game/audio/musicCatalogue.ts',
+    'game/rendering/DevAudition.tsx',
+  ]) {
+    const body = readFileSync(join(repoRoot, file), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/\/\/.*$/gm, '');
+    assert.equal(
+      new RegExp(`\\b${String(candidates.length)}\\b`).test(body),
+      false,
+      `${file} hardcodes the number of candidates`,
+    );
+  }
+
+  // And the grid the audition runs on is still the game's own.
+  assert.equal(RHYTHM.bpm, 90);
+});
+
+/** Exercised so the mode type cannot silently gain a member nothing handles. */
+test('M24B: there are exactly two audition modes and both are reachable', () => {
+  assert.deepEqual([...AUDITION_MODES], ['solo', 'rotate']);
+  let mode: AuditionMode = 'solo';
+  const seen = new Set<AuditionMode>();
+  for (let i = 0; i < AUDITION_MODES.length * 2; i += 1) {
+    seen.add(mode);
+    mode = nextMode(mode);
+  }
+  assert.equal(seen.size, AUDITION_MODES.length, 'a mode cannot be reached by cycling');
+});

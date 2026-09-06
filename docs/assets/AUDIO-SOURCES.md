@@ -435,3 +435,315 @@ an owner judgement on the device.
 
 Regenerate with `npm run make:gulp`; the output is deterministic, so the
 SHA-256 above is a check rather than a record.
+
+---
+
+## M24B — audition candidates (2026-09-05)
+
+**Eleven external tracks, every one CC0, none of them approved.** They are
+`release: 'candidate'` in `game/audio/musicCatalogue.ts`, which means a
+development build can select them and a release build cannot. Every one carries
+`ownerConfirmed: false` and none may be promoted to `production` until the owner
+has actually listened — `tests/audioContract.test.ts` enforces that.
+
+### How these were made, and how to remake them
+
+Each derivative is **16 bars = 64 beats at 90 BPM = 42.666667 s**, cut on a bar
+line from a source whose SHA-256 is recorded below, with a 34 ms sampler-style
+loop crossfade at the wrap and peak-normalised to 0.72 — the level both
+generated beds already sit at.
+
+The sources themselves are **not in this repository**: 129 MB of third-party
+audio, most of which will be deleted once the owner names the keepers. What is
+committed is everything needed to get them back and rebuild byte-for-byte:
+
+```bash
+npm run build:candidates -- --fetch    # download, verify every source hash, re-derive
+npm run build:candidates -- --verify   # check the committed WAVs against the manifest
+```
+
+`assets/audio/music/candidates/SOURCES.json` is the machine-readable copy of
+everything below, including the pinned `ratio` and `startSample` that make the
+derivation deterministic. A source whose hash no longer matches is a hard stop,
+never a substitution (AGENTS.md rule 14).
+
+### The fictional titles are not provenance
+
+Every track below has a player-facing name like **NO REFUNDS**. That is
+presentation — the joke is that they are a bad band's songs. The real title,
+author, licence and source page stay here and are never replaced by it.
+
+### `noRefunds_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 01 - rock city ransom
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/01_-_rock_city_ransom.ogg
+- Original filename: `01_-_rock_city_ransom.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `d152ec4b79418b38e8c7ee25a9ff7455fe2334df0dfef35a407b276dc3920c43`
+- Source format: vorbis, 44100 Hz, stereo, 64.0 s, 3,002,412 bytes
+- Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.053
+- Conditioning: none — the source is already at 90 BPM
+- Loop seam after wrap: 0.77x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/01_-_rock_city_ransom.ogg --out assets/audio/music/candidates/noRefunds_90.wav --ratio 1.000000000 --start-sample 176656 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `2f405eba2ca5c9580bb6eb70a0c6d6ee405d77b38ab6ef1d4454495021c307d1`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): garage rock
+- Player-facing title: **NO REFUNDS** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `brokenAmp_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: loop 7
+- Author: johndekale
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rocky-musicloop
+- Direct source: https://opengameart.org/sites/default/files/loop_7.ogg
+- Original filename: `loop_7.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `6a3efa756b4ab6d7864c2c6d35edb9ebeef4315d280d91fe7d9dd22e64a333a2`
+- Source format: vorbis, 16000 Hz, mono, 51.1 s, 322,451 bytes
+- Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.021
+- Conditioning: none — the source is already at 90 BPM
+- Loop seam after wrap: 0.45x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/loop_7.ogg --out assets/audio/music/candidates/brokenAmp_90.wav --ratio 1.000000000 --start-sample 175928 --bars 16 --mono`
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
+- SHA-256: `b63549abc3bccb5bc87de393ec9a719001a555f7f0dfb8b48d0f06e820468933`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): hard rock
+- Player-facing title: **BROKEN AMP** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `lastCall_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: g42 end
+- Author: kbar1982
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/guitars4two
+- Direct source: https://opengameart.org/sites/default/files/g42_end.flac
+- Original filename: `g42_end.flac`
+- Retrieved: 2026-09-05
+- Source SHA-256: `cc72af06efa28797021bb69d39f314f566fe2bd91459982ead285cff76988c61`
+- Source format: flac, 48000 Hz, stereo, 256.0 s, 14,825,236 bytes
+- Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.204
+- Conditioning: none — the source is already at 90 BPM
+- Loop seam after wrap: 0.57x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/g42_end.flac --out assets/audio/music/candidates/lastCall_90.wav --ratio 1.000000000 --start-sample 6408216 --bars 16 --mono`
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
+- SHA-256: `e6dd3a58c2a0767b272949b6e74a3d2daf0864b0b618bba17f980402d38d24c4`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): acoustic rock
+- Player-facing title: **LAST CALL** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `stageDive_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 09 - chick with weapon
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/09_-_chick_with_weapon.ogg
+- Original filename: `09_-_chick_with_weapon.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `add3bd23d7ed79510ed892d37da3fb0afa984025c4e4f867cd8566b69c9da435`
+- Source format: vorbis, 44100 Hz, stereo, 69.3 s, 3,712,406 bytes
+- Measured source tempo: **90 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.093
+- Conditioning: none — the source is already at 90 BPM
+- Loop seam after wrap: 0.99x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/09_-_chick_with_weapon.ogg --out assets/audio/music/candidates/stageDive_90.wav --ratio 1.000000000 --start-sample 588512 --bars 16 --mono`
+- Format: 16-bit linear PCM, 44.1 kHz, **mono**, 42.666667 s, 3,763,244 bytes
+- SHA-256: `54230a28c190c1d581d34319550d972b639929efd047ef5df4a8a53329b90017`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): garage rock
+- Player-facing title: **STAGE DIVE DISASTER** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `cheapBeerRiot_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 15 - we got the crud
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/15_-_we_got_the_crud.ogg
+- Original filename: `15_-_we_got_the_crud.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `aed6b64875dc7a65447cdc081a7c1c124d4aa0f329947cfff9c037bf36c32845`
+- Source format: vorbis, 44100 Hz, stereo, 70.8 s, 4,164,008 bytes
+- Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.035
+- Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
+- Loop seam after wrap: 1.02x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/15_-_we_got_the_crud.ogg --out assets/audio/music/candidates/cheapBeerRiot_90.wav --ratio 0.947368421 --start-sample 315888 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `6b028f1e32ede381e988661d440e317094a3f438e9142fe96e27ce62f70951b4`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): punk
+- Player-facing title: **CHEAP BEER RIOT** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `wrongChord_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 14 - here a captive heart busted
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/14_-_here_a_captive_heart_busted.ogg
+- Original filename: `14_-_here_a_captive_heart_busted.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `48b2396411db2567d1841fe30ec26a1c45067df8ecf469d9105bbdb59b9d9c1d`
+- Source format: vorbis, 44100 Hz, stereo, 60.6 s, 3,487,688 bytes
+- Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.022
+- Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
+- Loop seam after wrap: 1.33x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/14_-_here_a_captive_heart_busted.ogg --out assets/audio/music/candidates/wrongChord_90.wav --ratio 0.947368421 --start-sample 706112 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `5572da8cd79af63f8a9523d2a447e38611cde4228330027fcdc81aef6905b7a1`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): alt rock
+- Player-facing title: **WRONG CHORD** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `badSoundcheck_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 17 - digestive malady
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/17_-_digestive_malady.ogg
+- Original filename: `17_-_digestive_malady.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `fb1ee1453315e7663c1f3d317837c29790d07d3566de3f4588a798442893b365`
+- Source format: vorbis, 44100 Hz, stereo, 50.5 s, 2,772,358 bytes
+- Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.065
+- Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
+- Loop seam after wrap: 0.95x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/17_-_digestive_malady.ogg --out assets/audio/music/candidates/badSoundcheck_90.wav --ratio 0.947368421 --start-sample 177040 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `9f1fa51ff08c096dcac43f5cb67af79d74cbbb1db205d58c5c89da4d8079c39c`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): punk
+- Player-facing title: **BAD SOUNDCHECK** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `loadOut_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: 20 - it is dangerous to be lonely without a sword
+- Author: Ragnar Random
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/rock-music-pack
+- Direct source: https://opengameart.org/sites/default/files/20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg
+- Original filename: `20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `25ee782032e7561781727c6116699866fb1f3ff014c19356829ee94afb8b80fb`
+- Source format: vorbis, 44100 Hz, stereo, 79.1 s, 4,122,038 bytes
+- Measured source tempo: **85 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.032
+- Conditioning: `atempo=1.058824` (+5.9%), 85 BPM to 90
+- Loop seam after wrap: 0.84x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/20_-_it_is_dangerous_to_be_lonely_without_a_sword.ogg --out assets/audio/music/candidates/loadOut_90.wav --ratio 1.058823529 --start-sample 441000 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `f56aa38298cbcdd2046953c92b3ea821614c6160046b83f8bf173861fa11a4f3`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): hard rock
+- Player-facing title: **LOAD-OUT** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `fireExit_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: B.M.I. (tales of Christ)
+- Author: obscure music
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/christian-acid-rock
+- Direct source: https://opengameart.org/sites/default/files/B.M.I.%20%28tales%20of%20Christ%29.flac
+- Original filename: `B.M.I. (tales of Christ).flac`
+- Retrieved: 2026-09-05
+- Source SHA-256: `c2b0b4bc7bdfd64997dfbd51dedeedd5bb0e4c570080c9c3809e7c69d0c298a1`
+- Source format: flac, 44100 Hz, stereo, 250.6 s, 31,136,513 bytes
+- Measured source tempo: **95 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.097
+- Conditioning: `atempo=0.947368` (-5.3%), 95 BPM to 90
+- Loop seam after wrap: 1.66x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/B.M.I. (tales of Christ).flac --out assets/audio/music/candidates/fireExit_90.wav --ratio 0.947368421 --start-sample 2321744 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `b9042582bdb4f0023b55622fa59fa1c95828d5a05872ca341a67da8b48decd1d`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): acid / blues rock
+- Player-facing title: **FIRE EXIT** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `noEncore_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: heavy battle 2 bpm185
+- Author: MintoDog
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/heavy-battle-2
+- Direct source: https://opengameart.org/sites/default/files/heavy_battle_2_bpm185.ogg
+- Original filename: `heavy_battle_2_bpm185.ogg`
+- Retrieved: 2026-09-05
+- Source SHA-256: `01d3d505139161a04b3f225ad9cdc0acb52a8e21c997e658c916173def647df8`
+- Source format: vorbis, 44100 Hz, stereo, 83.0 s, 2,706,480 bytes
+- Measured source tempo: **185 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.103
+- Conditioning: `atempo=0.972973` (-2.7%), 185 BPM to 90
+- Loop seam after wrap: 0.26x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/heavy_battle_2_bpm185.ogg --out assets/audio/music/candidates/noEncore_90.wav --ratio 0.972972973 --start-sample 219496 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `98dd0e1becf9e35589656630ac335a219fa16b3e4f01368dc207e01db5a471ab`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): groove metal
+- Player-facing title: **NO ENCORE** (fictional; presentation only)
+- Owner confirmed: **no**
+
+### `wrongVenue_90.wav`
+
+- Origin: **third-party, conditioned**
+- Real source title: super wreck roadway
+- Author: Umplix
+- Licence: CC0 (public domain dedication), as stated on the source page
+- Attribution required: No
+- Source page: https://opengameart.org/content/super-wreck-roadway
+- Direct source: https://opengameart.org/sites/default/files/super_wreck_roadway.wav
+- Original filename: `super_wreck_roadway.wav`
+- Retrieved: 2026-09-05
+- Source SHA-256: `c879ab828cff3ab60ebbd035f8654ea53e95a0c171c46a94d1a0ff1a6cb8f19d`
+- Source format: pcm_f32le, 48000 Hz, stereo, 153.6 s, 59,042,756 bytes
+- Measured source tempo: **100 BPM** (`npm run measure:tempo`), separation from its best incompatible rival 0.160
+- Conditioning: `atempo=0.900000` (-10.0%), 100 BPM to 90
+- Loop seam after wrap: 1.58x the local sample delta
+- Conditioning command: `node scripts/condition-track.mjs assets/audio/music/source/super_wreck_roadway.wav --out assets/audio/music/candidates/wrongVenue_90.wav --ratio 0.900000000 --start-sample 1660224 --bars 16`
+- Format: 16-bit linear PCM, 44.1 kHz, **stereo**, 42.666667 s, 7,526,444 bytes
+- SHA-256: `c522dfb98dadc48e37168b2510e167ad8dfbe09254179496b8c3fc35cdec348e`
+- **Exactly 64 beats at 90 BPM** — sixteen bars of four, verified on disk by
+  `tests/audioContract.test.ts` and `tests/audition.test.ts`
+- Style (provisional, from the source page's own tags): hard rock
+- Player-facing title: **WRONG VENUE** (fictional; presentation only)
+- Owner confirmed: **no**

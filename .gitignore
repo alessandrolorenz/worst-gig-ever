@@ -32,3 +32,18 @@ yarn.lock
 # resolution non-reproducible across machines — the direct cause of the
 # autolinking failure in ADR 0006. This project uses npm; the lockfile is the
 # only record of what actually resolved.
+
+# M24B candidate sources: 129 MB of third-party originals, deliberately absent.
+#
+# Everything needed to get them back is committed — direct URL, SHA-256 of the
+# bytes as published, and the pinned conditioning arguments — in
+# assets/audio/music/candidates/SOURCES.json. `npm run build:candidates --
+# --fetch` re-downloads, hash-verifies and re-derives every candidate
+# byte-for-byte. The derivatives the game actually plays ARE committed.
+#
+# rock_theme_song.mid stays tracked: it is 2 KB and it is the only proof of
+# showTheme's notated 120 BPM (ADR 0013).
+assets/audio/music/source/*.ogg
+assets/audio/music/source/*.mp3
+assets/audio/music/source/*.wav
+assets/audio/music/source/*.flac
