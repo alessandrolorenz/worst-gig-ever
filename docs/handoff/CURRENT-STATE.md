@@ -1,5 +1,10 @@
 # Current Continuation State
 
+> **Stale as of 2026-09-06 — do not read this as current.** It was last
+> reconciled during M15 and describes that milestone. The current state of the
+> project is `project-status.md`; the current device-validation authority is
+> `docs/verification/M25-final-device-validation.md`.
+
 - Last reconciled: 2026-09-03
 - Branch: `feat/m15-story-and-stages`, **not yet merged to `main`**
 - M15 baseline: `4571f30` (M14.1), which sits on `main`

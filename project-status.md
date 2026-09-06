@@ -34,10 +34,51 @@ while every device build came off the branch; the trunk has caught up.
 | M20 | Translation-safe layout | **done**, on `main`. Emulator-validated 2026-09-05 |
 | M21 | pt-BR | **draft on `main`, not finished.** The copy needs the owner's read: lines marked `REVIEW:` in `game/i18n/catalogues/pt-BR.ts` are where the joke was re-invented rather than translated |
 | M22 | Local memory and sharing | **done**, on `main`. Emulator- and device-validated 2026-09-05 |
-| M24A | Setlist foundation and tempo evidence | **done**, on `m24/setlist-foundation` → `m24/music-library`. Not on `main` |
-| M24B | Music library and audition | **done and closed**, on `m24/music-library`. Owner kept 11/11 on 2026-09-06. Not on `main` |
-| M24C | Custom setlist unlock and builder | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/specs/M24C-owner-validation.md`. Not on `main` |
-| M24D | Physical replay validation | **not started.** Opens when the M24C checklist comes back |
+| M24A | Setlist foundation and tempo evidence | **complete**, on `m24/setlist-foundation` → `m24/music-library`. Not on `main` |
+| M24B | Music library and audition | **complete and closed**, on `m24/music-library`. Owner kept 11/11 on 2026-09-06. Not on `main` |
+| M24C | Custom setlist unlock and builder | **complete**, on `m24/custom-setlist`. Not on `main` |
+| M24D | Physical replay validation | **superseded.** Absorbed into M25's final device validation — see "M24 closure" below |
+| M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md`. Not on `main` |
+
+### M24 closure
+
+```text
+M24 — FEATURE COMPLETE
+
+M24A — complete
+M24B — complete
+M24C — complete
+
+Formal final physical validation:
+absorbed into M25 after pre-release polish
+```
+
+Stated precisely, because the temptation here is to write down a pass that
+never happened:
+
+```text
+M24 Custom Setlist
+
+Feature implementation: COMPLETE
+Music owner audition: PASS (11 KEEP / 0 REJECT)
+Production library: 11 tracks
+Custom Setlist: implemented
+Track preview: implemented
+
+Formal device-validation closure:
+superseded by M25 final device validation after pre-release polish.
+```
+
+**No M24D owner check is recorded as passed, because none was executed.** The
+46-item M24C/M24D physical checklist was never run. It was not run on purpose:
+M25 changes the first screen, the title screen and the results screen, so a
+device pass taken immediately before those changes would have been evidence
+about a build that no longer exists. The single current device authority is
+`docs/verification/M25-final-device-validation.md`, and every item in it is
+`PENDING OWNER`.
+
+`docs/specs/M24C-owner-validation.md` is therefore **historical**. It is not
+the current checklist and must not be reported as one.
 
 ### After the merge, from device play on 2026-09-05
 
@@ -66,6 +107,162 @@ described `crowd_applause.wav` as an untrimmed 39 s / 6.9 MB source. It has
 been 5.00 s / 0.88 MB since M16, recorded as a derivative at the time; three
 documents carried the old figure. There is no audio weight problem: nine files,
 7.9 MB total.
+
+### M25 — pre-release polish, first-run clarity and friend beta (2026-09-06, `m24/custom-setlist`)
+
+Small on purpose. Four owner-observed improvements, a friend-beta APK, and a
+stop. No gameplay value was touched: BPM, groove timing, PERFECT and GOOD
+windows, bottle speed and schedule, mug timing, hit detection, defense and
+groove scoring, stage duration, Show Integrity, the countdown, the controls,
+the Custom Setlist architecture and music conditioning are all identical to
+M24C.
+
+| | |
+|---|---|
+| Branch | `m24/custom-setlist`, continuing from M24C's HEAD `160d3a2` |
+| Tests | **563**, up from 523 |
+| Version | 1.3.0 (versionCode 8), up from 1.2.0 (7) |
+| Friend APK | `build-out/worst-gig-ever-friends.apk`, 186.9 MiB |
+| Device validation | `docs/verification/M25-final-device-validation.md` — **every item pending** |
+
+#### The owner's art was recovered, not merely preserved
+
+The brief asked that uncommitted owner art under `assets/art/` be protected.
+There was none in the worktree — and that was the finding, not the all-clear.
+
+Four vocalist frames carried an mtime of 2026-09-06 18:11, later than the last
+commit that touched them (`7d62956`, 2026-09-03), while their bytes matched
+HEAD exactly. That combination has one cause: something rewrote them with
+HEAD's content. Dangling commit `5106e998` — a stash created at 18:10:46 and
+then dropped — held the owner's versions.
+
+They were recovered from that object and committed as `f5ee657` with the
+owner's exact bytes: nothing re-exported, recompressed or regenerated. What the
+owner had actually done, measured against the discarded versions:
+
+| File | px erased to clear | px added as paint |
+|---|---|---|
+| `vocalist_blocking.png` | 1888 | 0 |
+| `vocalist_dodge.png` | 652 | 0 |
+| `vocalist_hit_reaction.png` | 444 | 0 |
+| `vocalist_loop_a.png` | 3131 | 0 |
+
+Removal and edge softening only, in every frame — which is what background
+cleanup is, and what confirms these were the owner's corrections rather than a
+regeneration. `measure:art --require-continuity` passes on them: the vocalist
+triplet holds 0 px anchor drift at 12%/14%/10% frame change.
+
+**`vocalist_idle` and `vocalist_loop_b` were not part of that pass** and still
+carry their original edges. Since idle and loop_a alternate during ambient
+motion, that is a specific thing to look at on device.
+
+#### Language before the story
+
+The opening five panels are writing, so they must already be in the language
+the player reads. The save arrives asynchronously, so on the first frames of a
+cold start the game does not know whether this player has chosen one — and
+guessing is what produced the original bug, where the story opened in the
+device's language and changed underneath.
+
+So there is a new first screen, `BOOT`, which draws **nothing**: it is the only
+screen that is correct in a language nobody has picked. `resolveBoot` leaves it
+for `LANGUAGE` on a fresh install and for `STORY` when the save holds a choice.
+
+M15's rule that session progress must never gate a cold start still holds, so
+the wait ends: `BOOT_TIMEOUT_MS` (2 s) opens the chooser if the read has not
+answered. `loadSave` always resolves, so that timer is insurance against a
+native promise that never settles rather than something a real disk hits.
+
+The chooser is a heading and two endonym buttons — `English`,
+`Português (BR)` — built from `SUPPORTED_LOCALES`, never `availableLocales()`:
+the pseudo-locale may not decide what a story is read in. The title and pause
+language controls are unchanged.
+
+#### The locked Custom Setlist is visible
+
+Two dim lines under the title's button row naming the feature and what earns
+it. Not a control, and it opens nothing — `openSetlist` is still the gate. The
+teaser and the way in read the same predicate, one negated, so they can never
+both be drawn. The first-completion banner is untouched: motivation and payoff
+are different jobs and M25 kept both.
+
+#### Beers down
+
+`RoundState.beersDrunk` counts mugs the drummer actually drank, raised in the
+one place `drunk` is decided — the same expression that pays the M18 bonus.
+Not spawning, not proximity, not the drink animation.
+
+Exactly once per mug **by construction**: `resolveTap` skips any target whose
+status is not `active`, and a drunk mug is `hit` before the counter moves, so a
+duplicated touch cannot double-count.
+
+Per attempt, so a retry resets for free — `createRound` runs again. The run
+total is `AppFlowState.runBeers`, one entry per stage, and `recordStageCleared`
+**assigns** rather than adds. That is what stops a retried stage farming a
+finished show's total, and it is the same property that makes the results
+effect idempotent across re-renders.
+
+The summary's Defense column shows the attempt's count on every results and
+pause screen; the run total appears only when the whole show is finished. A
+ruined show reports no run total.
+
+Plain text, no emoji — this game draws monochrome glyphs (▶ ■ ✓) and a colour
+mug would be the only one in it. The brief permits this where emoji conflict
+with the existing visual style.
+
+Counting cannot see the music: the round domain imports no catalogue, setlist
+or audio module, and `tests/beerCount.test.ts` holds that, so official and
+custom runs count identically.
+
+#### The friend beta
+
+| | |
+|---|---|
+| Path | `build-out/worst-gig-ever-friends.apk` |
+| SHA-256 | `27d6556db641f9f700032cddc127c0decfd3f15474f15bd8d408aaffd8bb2d81` |
+| Size | 195,997,167 bytes (186.9 MiB) |
+| Package | `com.worstgigever.app` |
+| Version | 1.3.0 (8) |
+| Commit | `f29e824` |
+| Metro required | **No** — the JS bundle is embedded |
+| Signing | Debug keystore, `CN=Android Debug`. **Test distribution only** |
+
+Audition tooling is off at the bytecode level, not merely unset: in the shipped
+bundle `isAuditionBuild()` compiles to
+
+```js
+function o(){if('undefined'==typeof process||void 0===process.env)return!1;return!1}
+```
+
+— the Babel transform substituted the env access at bundle time and the
+allow-list comparison folded to a constant. `showsAuditionTools()` is
+`isDevelopmentBuild() || isAuditionBuild()`, and `__DEV__` is false in a release
+bundle.
+
+Identity file: `build-out/worst-gig-ever-friends.txt`. Install guide:
+`docs/testing/FRIEND-BETA-INSTALL.md`.
+
+**Signing is not the Play path.** Every local build in this project uses the
+debug keystore, so a future Play install may require an uninstall first, taking
+save data with it. No signing migration was attempted and no credential was
+created or rotated — choosing the Play upload identity is still open.
+
+#### Size, and why it was left alone
+
+186.9 MiB, which is a lot to ask a friend to download. Two causes:
+
+- **Four ABIs** — `arm64-v8a`, `armeabi-v7a`, `x86`, `x86_64` — about 87 MiB of
+  native libs, of which roughly 37 MiB is x86/x86_64 that no phone needs.
+- **Uncompressed WAV music** — the 11 library tracks at ~7.5 MiB each, about
+  83 MiB in `res/`.
+
+Neither was touched, deliberately. The x86 slices are what make the Pixel
+emulator work, which is this project's default test loop; dropping them would
+break the owner's own workflow to save bytes on a build friends install once.
+Recompressing the music would re-derive files whose tempo evidence is locked by
+`measure:tempo --require-locked`, which is audio work this milestone was told
+not to do. Both are real release debt for the store build, and neither blocks
+friend testing.
 
 ### M24C — custom setlist and the production music library (2026-09-06, `m24/custom-setlist`)
 
