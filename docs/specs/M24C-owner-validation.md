@@ -6,7 +6,7 @@ This is the checklist for the thing a machine cannot check: whether the custom
 setlist is *good*. Everything mechanical — the eleven tracks are on the grid,
 the setlist persists, the official show is byte-for-byte the show it was, the
 audition row cannot ship — is asserted by `npm run verify` and is green
-(519 tests, 0 failures). What follows is what only a person with the phone in
+(523 tests, 0 failures). What follows is what only a person with the phone in
 their hands can answer.
 
 Print it, or keep it open on a laptop. **Do not tick anything you did not do.**
@@ -22,7 +22,7 @@ npm run build:release                             # ~15 s incremental, writes bu
 adb install -r build-out/worst-gig-ever-release.apk
 ```
 
-Already built: `build-out/worst-gig-ever-release.apk`, **195,999,951 bytes
+Already built: `build-out/worst-gig-ever-release.apk`, **196,001,379 bytes
 (186.9 MiB)**, universal, four ABIs. If you only want to install, skip straight
 to the `adb install`.
 
@@ -110,6 +110,32 @@ first time. Seeing it after every show would make it wallpaper.
 [ ] B11 Back returns to the title
 ```
 
+### Listening to the songs
+
+The ▶ beside each title. This is the part you asked for, so it gets its own
+block.
+
+```text
+[ ] B12 Tapping ▶ plays that song, and the glyph becomes ■ in the accent colour
+[ ] B13 Tapping ■ stops it
+[ ] B14 Tapping a different song's ▶ swaps — you never hear two at once
+[ ] B15 The ▶ is easy to hit with a thumb without hitting the title by mistake
+[ ] B16 A song ALREADY in the setlist can still be played — its ▶ is not dead
+[ ] B17 Choosing a song while one is playing behaves sensibly
+[ ] B18 Back to the title with a song playing: the music STOPS
+[ ] B19 START THE GIG with a song playing: it stops, and Stage 1 starts clean
+[ ] B20 The preview is loud enough to judge, and matches how it sounds in a round
+```
+
+**B15 and B20 are the ones a test cannot reach.** The row is short so that
+eleven songs are one scroll rather than three, which makes the ▶ small — it has
+an invisible margin around it to compensate. If you keep assigning a song when
+you meant to hear it, that margin is wrong.
+
+**B20 matters more than it looks.** The preview goes through the same service
+and the same volume as a round, so what you hear here should be what you get.
+If the preview sounds louder or quieter than the song does in play, say so.
+
 **B9** is the one this project has got wrong before. Android's scrollbar is dark
 grey on a near-black scrim and is effectively invisible; the `▾` under the
 column is what tells you there is more. If you cannot tell there are songs below
@@ -177,6 +203,7 @@ Stage 2 verdict: ____________________________________________
 [ ] R2  Quitting a custom run to the title does not lose your saved setlist
 [ ] R3  NO development audition row anywhere — the title screen has no yellow box
 [ ] R4  No crash, no audio error toast, no silent stage
+[ ] R7  No song is ever left playing on a screen with no way to stop it
 [ ] R5  Switch language to Português: the builder still fits and reads correctly
 [ ] R6  Song titles are STILL IN ENGLISH in Portuguese — that is deliberate
 ```

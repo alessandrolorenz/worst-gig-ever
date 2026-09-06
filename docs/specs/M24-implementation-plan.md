@@ -196,8 +196,11 @@ Six departures, all of them decisions rather than slips:
    a run plays.
 5. **`TONIGHT'S SETLIST` is one line, not a four-row card.** The results screen
    has 411 dp and the two score columns already claim most of it.
-6. **Track preview deferred**, with a design recommended in the report: a `▶` on
-   the four slot rows rather than the eleven library rows.
+6. **Track preview implemented on the library rows**, after the owner said
+   listening was necessary to choose. The first draft of this milestone deferred
+   it and recommended the four *slot* rows instead — wrong in a way worth
+   recording, since a slot `▶` only plays a song already chosen and the point is
+   choosing from eleven names you have never heard.
 
 The layout budget was indeed the fiddly part, as predicted — but it failed
 nothing. The tight number is the slot title at 1.4x pseudo expansion: 28
@@ -206,7 +209,7 @@ preferred.
 
 ### Definition of done — met
 
-- `npm run verify` green: **519 tests**, 0 failures (32 new), plus
+- `npm run verify` green: **523 tests**, 0 failures (36 new), plus
   `PASS_ART_READY`, `PASS_AMBIENT_LOOP_READY`, `PASS_PROVENANCE_CURRENT`,
   `PASS_TEMPO_EVIDENCE`, `PASS_LIBRARY_SOURCES`.
 - A save with a custom setlist round-trips; nine kinds of corrupt one fall back

@@ -344,21 +344,62 @@ export default function GameEngine() {
    */
   const [justUnlockedSetlist, setJustUnlockedSetlist] = useState(false);
 
+  /**
+   * The song sounding on the builder, or null.
+   *
+   * One at a time, always. Two songs at once is not a preview of either — the
+   * same rule the development audition row already follows, and here it also
+   * keeps the resident player count at one while the player is browsing.
+   */
+  const [previewTrack, setPreviewTrack] = useState<MusicTrackId | null>(null);
+
+  /** Stops the preview if anything is sounding. Safe to call when nothing is. */
+  const stopPreview = useCallback(() => {
+    audio.stopMusic();
+    setPreviewTrack(null);
+  }, [audio]);
+
+  /**
+   * The ▶ on a library row.
+   *
+   * A toggle: pressing the song that is already sounding stops it, and
+   * pressing any other one swaps. The player asked to hear the songs before
+   * choosing them, and eleven titles they have never heard is not a choice.
+   *
+   * `preloadSetlist([track])` before `playMusic` rather than relying on
+   * `playMusic`'s own lazy load, for the reason the audition row does the same:
+   * it is the call that **releases the previous preview**, so browsing the
+   * library holds one decoder open rather than eleven by the end of it.
+   */
+  const handlePreviewTrack = useCallback(
+    (track: MusicTrackId) => {
+      if (previewTrack === track) {
+        stopPreview();
+        return;
+      }
+      audio.preloadSetlist([track]);
+      audio.playMusic(track);
+      setPreviewTrack(track);
+    },
+    [audio, previewTrack, stopPreview],
+  );
+
   const handleOpenSetlist = useCallback(() => {
     const scene = entities.scene;
     // Refused while the show has not been survived. The button is not drawn
     // then either, but the gate is here rather than in the renderer.
     if (!openSetlist(scene.flow)) return;
     /*
-     * Nothing should be sounding on the builder. A development audition
-     * preview is the only thing that could be, and carrying it into a screen
-     * with no way to stop it would be a leak the player cannot fix.
+     * Nothing carries into the builder. A development audition preview is the
+     * only thing that could be sounding here, and arriving on a screen already
+     * playing something the ▶ buttons do not know about would leave the player
+     * unable to stop it from any control on screen.
      */
-    audio.stopMusic();
+    stopPreview();
     setAuditionPlaying(false);
     setJustUnlockedSetlist(false);
     refreshFlow();
-  }, [audio, entities, refreshFlow]);
+  }, [entities, refreshFlow, stopPreview]);
 
   const handleSelectSlot = useCallback(
     (slot: number) => {
@@ -393,7 +434,13 @@ export default function GameEngine() {
    */
   const handleStartCustomGig = useCallback(() => {
     const scene = entities.scene;
-    audio.stopMusic();
+    /*
+     * The preview stops **before** the preload, and the order is the point.
+     * `preloadSetlist` keeps whatever is genuinely sounding; a stopped preview
+     * is released, so a song the player listened to and did not choose does
+     * not ride along as a fifth decoder for the whole show.
+     */
+    stopPreview();
     setAuditionPlaying(false);
     const setlist = startCustomGig(scene.flow, selectableTracks);
     if (setlist === null) return;
@@ -404,7 +451,7 @@ export default function GameEngine() {
     resetScene();
     setUiState(scene.round.state);
     refreshFlow();
-  }, [audio, entities, persist, refreshFlow, resetScene, selectableTracks]);
+  }, [audio, entities, persist, refreshFlow, resetScene, selectableTracks, stopPreview]);
 
   /* ---- development music audition (M24B) ---- */
 
@@ -522,9 +569,12 @@ export default function GameEngine() {
   }, [entities, persist, refreshFlow]);
 
   const handleBackToTitle = useCallback(() => {
+    // Back out of the builder must not leave a preview playing under the
+    // title, where nothing draws a control that could stop it.
+    stopPreview();
     returnToTitle(entities.scene.flow);
     refreshFlow();
-  }, [entities, refreshFlow]);
+  }, [entities, refreshFlow, stopPreview]);
 
   /**
    * The briefing's Start opens the `3 -> 2 -> 1 -> GO` pre-roll rather than the
@@ -733,6 +783,8 @@ export default function GameEngine() {
             onOpenSetlist={handleOpenSetlist}
             onSelectSlot={handleSelectSlot}
             onChooseTrack={handleChooseTrack}
+            previewTrack={previewTrack}
+            onPreviewTrack={handlePreviewTrack}
             onStartCustomGig={handleStartCustomGig}
             justUnlockedSetlist={justUnlockedSetlist}
             records={records}

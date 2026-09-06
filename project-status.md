@@ -92,7 +92,7 @@ stages on the music they chose. Full report:
 | New screen | `'SETLIST'` in `APP_SCREENS` — two columns, no modal, no new primitive |
 | New saved field | `SavedState.customSetlist`, additive and optional; **`SCHEMA_VERSION` stays 1** |
 | Dependencies added | **none** |
-| Gate | `npm run verify` green — **519 tests**, 0 failures (32 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_LIBRARY_SOURCES` |
+| Gate | `npm run verify` green — **523 tests**, 0 failures (36 new), plus `PASS_TEMPO_EVIDENCE`, `PASS_PROVENANCE_CURRENT`, `PASS_LIBRARY_SOURCES` |
 
 **The official show did not move.** Stage 1 `showTheme`, Stage 2 `grooveBed`,
 Stages 3 and 4 `showBed` — `OFFICIAL_SETLIST` is still derived from the stage
@@ -124,11 +124,20 @@ old `candidates/` paths alongside the new `library/` ones — 31 bundled `.wav`
 files where the tree has 20. A directory rename is invisible to an incremental
 Android build. The reported size is from a clean rebuild.
 
-**Track preview was deferred, with a recommendation.** The player chooses from
-eleven names they have never heard. The cheapest good fix is a `▶` on the four
-**slot** rows rather than the eleven library rows: a filled slot is one
-unambiguous track, the library list stays single-purpose, and it reuses the same
-two `AudioService` calls the audition row already makes.
+**Track preview is on every song in the library**, at the owner's instruction:
+*"i think is necessary to listen to the songs to choose them."* A `▶` beside
+each title, a toggle, one song at a time, and **never deaf** — including for a
+song already in the setlist, because "what did I put in slot 3?" is as real a
+question as "what is this one?". The first draft of this milestone deferred
+preview and recommended putting it on the four *slot* rows, which was wrong: a
+slot `▶` only plays what you already chose, and the point is choosing from
+eleven names you have never heard.
+
+It needed one change under the hood. `preloadSetlist` never releases what is
+sounding, and a *stopped* preview is not sounding but was still the current
+player — so it survived every later preload and rode along as a fifth decoder
+for the whole show. The guard now asks whether the current player is actually
+playing.
 
 ### M24B — music library and in-game audition (2026-09-05, `m24/music-library`)
 

@@ -181,9 +181,30 @@ export function createAudioService(preload: readonly MusicTrackId[] = []): Audio
       safely(() => {
         const wanted = new Set(ids);
         for (const id of [...tracks.keys()]) {
-          // Never release what is sounding: a setlist change while music plays
-          // would cut it off mid-bar, and the next playMusic swaps it anyway.
-          if (!wanted.has(id) && tracks.get(id) !== music) release(id);
+          if (wanted.has(id)) continue;
+          const player = tracks.get(id);
+          /*
+           * Never release what is **sounding**: a setlist change while music
+           * plays would cut it off mid-bar, and the next `playMusic` swaps it
+           * anyway.
+           *
+           * Narrowed at M24C from "is the current player" to "is the current
+           * player *and is actually playing*". The builder previews a song by
+           * loading it and playing it; when the player then starts the gig,
+           * that preview has been stopped but `music` still points at it — so
+           * under the old test it survived every later preload and the resident
+           * count went to `SETLIST_SLOTS + 1`.
+           *
+           * `playing === false` rather than `!playing`, deliberately. If the
+           * platform shim does not report the field at all the answer is
+           * `undefined`, and the safe reading of "I cannot tell" is the old,
+           * conservative one: keep it.
+           */
+          const isCurrent = player === music;
+          if (isCurrent && music?.playing !== false) continue;
+          release(id);
+          // The reference would otherwise dangle at a removed player.
+          if (isCurrent) music = null;
         }
         for (const id of wanted) load(id);
       });

@@ -313,26 +313,68 @@ needs it. Never the library: `tests/setlist.test.ts` reads every
 `selectableTracks`.
 
 Resident players: **at most `SETLIST_SLOTS` — four** for a custom run, three for
-the official show (`showBed` twice). Eleven decoders are never open at once.
+the official show (`showBed` twice), and **one** while the player is browsing
+the library with the ▶. Eleven decoders are never open at once — browsing
+releases the previous preview rather than accumulating them.
 
-Both ways into a custom gig call `stopMusic()` first, so nothing the player
-cannot stop is left sounding on a screen with no transport control.
+Every way onto and off the builder routes through one `stopPreview` helper, so
+nothing the player cannot stop is left sounding on a screen with no control for
+it — and a fourth exit cannot forget, because there is one thing to call.
 
-### Track preview: deferred, with a recommendation
+### Track preview
 
-Not implemented. The builder assigns on tap, and a second tap target per row —
-or a play button with no "which track" concept to attach to — is a real UX cost
-for eleven rows in a 380 dp column on a 411 dp screen.
+**Implemented, on the library rows** — owner decision, 2026-09-06: *"i think is
+necessary to listen to the songs to choose them in the custom setlist."*
 
-**It should be added, and the cheapest good version is a `▶` on the four slot
-rows, not on the eleven library rows.** A filled slot is already a single
-unambiguous track; the control has somewhere to live, the library list stays
-single-purpose, and it reuses `audio.preloadSetlist([track])` +
-`audio.playMusic(track)` exactly as the audition row does today. The player
-cannot hear a song *before* choosing it, which is the weaker half — but they can
-hear what they built before they play it, which is the question that actually
-changes a setlist. Revisit after M24D, when the owner has seen whether choosing
-blind from eleven names is actually a problem in the hand.
+This reverses the first draft of this milestone, which deferred preview and
+recommended putting it on the four *slot* rows instead. That recommendation was
+wrong in a way worth recording: a slot-row `▶` only plays a song you have
+already chosen, and the owner's sentence is about the other direction — you
+cannot choose from eleven names you have never heard. Preview belongs where the
+choosing happens.
+
+Each library row is therefore two targets, not one:
+
+```text
+┌──────────────────────────────────────┐
+│  NO REFUNDS                  ▶     ✓ │
+│  └── tap to choose ──┘       └ tap to listen
+└──────────────────────────────────────┘
+```
+
+- **choosing** goes deaf once the song is in the draft — the no-duplicates rule,
+  drawn;
+- **listening never goes deaf**, including for a song already in the setlist.
+  "What did I put in slot 3?" is exactly as real a question as "what is this
+  one?", and a control that dies the moment you use the row reads as broken
+  rather than as a rule;
+- it is a toggle: `▶` becomes `■` in the accent colour, and pressing the
+  sounding song stops it. One song at a time — two at once is a preview of
+  neither, the same rule the audition row already follows;
+- the accessible name is `Play {title}` / `Stop {title}`, because the control is
+  a glyph and eleven buttons all called "Play" is not a name.
+
+The title column gives up 34 dp for it and still fits the longest pseudo-locale
+title on one line (28 characters of 38). The row stays short — eleven songs
+should be one scroll, not three — so the `▶`'s own box is about 24 dp tall and
+`hitSlop` buys the rest of a thumb-sized target without buying it in layout.
+
+### The one service change this needed
+
+`preloadSetlist` deliberately never releases what is sounding. A previewed song
+that has been **stopped** is not sounding, but `music` still pointed at it — so
+it survived every later preload, and a player who listened to a song and did not
+choose it carried a fifth decoder through the whole show.
+
+The guard is now "is the current player **and is actually playing**", and
+`playing === false` rather than `!playing`: if a platform shim does not report
+the field, the answer is `undefined` and the safe reading of *I cannot tell* is
+the old conservative one. Releasing the current player also nulls `music`, which
+would otherwise dangle at a removed one.
+
+Order matters at START THE GIG, and a test pins it: the preview is stopped
+**before** the setlist is preloaded. Reversed, the preview would still be
+playing when the release decision was taken.
 
 ---
 
@@ -365,7 +407,6 @@ Two pt-BR choices deliberately differ from the brief's suggestions:
 
 ## 10. What was deferred, and why
 
-- **Track preview.** See §8 above — recommended, with a concrete design.
 - **The four-row `TONIGHT'S SETLIST` card** the brief sketches. The results
   screen has 411 dp and the two score columns already claim most of it, so the
   run's songs are one heading and one line instead. It answers the same
@@ -389,8 +430,8 @@ Unchanged by this milestone — the same eleven files, moved.
 
 | Standalone universal APK (4 ABIs) | bytes | MiB |
 |---|--:|--:|
-| `build-out/worst-gig-ever-release.apk` | 195,999,951 | 186.9 |
-| `build-out/worst-gig-ever-audition.apk` | 195,999,951 | 186.9 |
+| `build-out/worst-gig-ever-release.apk` | 196,001,379 | 186.9 |
+| `build-out/worst-gig-ever-audition.apk` | 196,001,379 | 186.9 |
 
 Both contain **20 `.wav` resources totalling 79,395,416 bytes**, which is the
 source tree exactly. Identical in size because the audition flag changes one
@@ -453,7 +494,7 @@ these tracks as they sound.
 ## 12. Automated verification
 
 ```text
-npm run verify                              519 tests, 0 failures
+npm run verify                              523 tests, 0 failures
   npm run type-check                        clean
   npm run lint                              clean
   npm run validate:art -- --require-ready   PASS_ART_READY
@@ -466,4 +507,4 @@ npx expo export --platform web              exit 0
 git diff --check                            clean
 ```
 
-Baseline before this milestone: 487 tests. M24C adds 32.
+Baseline before this milestone: 487 tests. M24C adds 36.

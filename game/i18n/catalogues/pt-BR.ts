@@ -249,6 +249,10 @@ export const ptBR: Catalogue = {
     empty: '— Toque para escolher —',
     library: 'SUAS MÚSICAS',
     chosen: 'Já está no setlist',
+    /* "Tocar" é o que se faz com uma música; "reproduzir" é o que se faz com
+       um arquivo. */
+    preview: 'Tocar {title}',
+    stopPreview: 'Parar {title}',
     /* O mesmo verbo do briefing ("Começar o show"), em caixa alta. */
     start: 'COMEÇAR O SHOW',
     tonight: 'O SETLIST DE HOJE',

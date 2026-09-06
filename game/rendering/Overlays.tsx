@@ -102,6 +102,9 @@ interface OverlayProps {
   onOpenSetlist(): void;
   onSelectSlot(slot: number): void;
   onChooseTrack(track: MusicTrackId): void;
+  /** The song sounding on the builder, or null. One at a time (M24C). */
+  previewTrack: MusicTrackId | null;
+  onPreviewTrack(track: MusicTrackId): void;
   onStartCustomGig(): void;
   /**
    * True only on the results screen that **just** crossed the unlock (M24C §37).
@@ -473,15 +476,19 @@ function slotLabel(index: number): string {
 function SetlistBuilder({
   flow,
   tracks,
+  previewTrack,
   onSelectSlot,
   onChooseTrack,
+  onPreviewTrack,
   onStart,
   onBack,
 }: {
   flow: AppFlowState;
   tracks: readonly MusicTrackId[];
+  previewTrack: MusicTrackId | null;
   onSelectSlot(slot: number): void;
   onChooseTrack(track: MusicTrackId): void;
+  onPreviewTrack(track: MusicTrackId): void;
   onStart(): void;
   onBack(): void;
 }) {
@@ -544,27 +551,67 @@ function SetlistBuilder({
           >
             {tracks.map((track) => {
               const used = chosen.has(track);
+              const sounding = previewTrack === track;
+              const title = strings.music[trackTitleKey(track)];
               return (
-                <Pressable
-                  key={track}
-                  onPress={used ? undefined : () => onChooseTrack(track)}
-                  disabled={used}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: used }}
-                  accessibilityHint={used ? setlist.chosen : undefined}
-                  style={({ pressed }) => [
-                    styles.setlistTrack,
-                    used && styles.setlistTrackUsed,
-                    pressed && !used && styles.buttonPressed,
-                  ]}
-                >
-                  <Text style={[styles.setlistTrackTitle, used && styles.setlistTrackTitleUsed]}>
-                    {strings.music[trackTitleKey(track)]}
-                  </Text>
+                <View key={track} style={[styles.setlistTrack, used && styles.setlistTrackUsed]}>
+                  {/*
+                    * Choosing. Deaf once the song is in the setlist — the
+                    * no-duplicates rule, drawn.
+                    */}
+                  <Pressable
+                    onPress={used ? undefined : () => onChooseTrack(track)}
+                    disabled={used}
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: used }}
+                    accessibilityHint={used ? setlist.chosen : undefined}
+                    style={({ pressed }) => [
+                      styles.setlistTrackChoose,
+                      pressed && !used && styles.buttonPressed,
+                    ]}
+                  >
+                    <Text style={[styles.setlistTrackTitle, used && styles.setlistTrackTitleUsed]}>
+                      {title}
+                    </Text>
+                  </Pressable>
+                  {/*
+                    * Listening. **Never deaf, including for a song already in
+                    * the setlist** — "what did I put in slot 3?" is exactly as
+                    * real a question as "what is this one?", and a control that
+                    * goes dead the moment you use the row is a control that
+                    * looks broken.
+                    *
+                    * `hitSlop` rather than a bigger box: the row is 24 dp tall
+                    * so that eleven songs are one scroll rather than three, and
+                    * the thing that has to be thumb-sized is the target, not
+                    * the glyph.
+                    */}
+                  <Pressable
+                    onPress={() => onPreviewTrack(track)}
+                    accessibilityRole="button"
+                    accessibilityLabel={format(
+                      sounding ? setlist.stopPreview : setlist.preview,
+                      { title },
+                    )}
+                    hitSlop={SETLIST.track.previewHitSlop}
+                    style={({ pressed }) => [
+                      styles.setlistPreview,
+                      pressed && styles.buttonPressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.setlistPreviewGlyph,
+                        sounding && styles.setlistPreviewGlyphOn,
+                      ]}
+                    >
+                      {sounding ? '■' : '▶'}
+                    </Text>
+                  </Pressable>
                   {/* A tick, not a colour: the used state has to survive being
                       read by somebody who cannot tell the two greys apart. */}
                   <Text style={styles.setlistTrackMark}>{used ? '✓' : ''}</Text>
-                </Pressable>
+                </View>
               );
             })}
           </ScrollView>
@@ -667,8 +714,10 @@ export function Overlays(props: OverlayProps) {
       <SetlistBuilder
         flow={flow}
         tracks={props.selectableTracks}
+        previewTrack={props.previewTrack}
         onSelectSlot={props.onSelectSlot}
         onChooseTrack={props.onChooseTrack}
+        onPreviewTrack={props.onPreviewTrack}
         onStart={props.onStartCustomGig}
         onBack={props.onBackToTitle}
       />
@@ -1056,6 +1105,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   setlistTrackUsed: { opacity: 0.55 },
+  /** The tappable title. Takes the row's width, so the whole name is a target. */
+  setlistTrackChoose: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  setlistPreview: {
+    width: SETLIST.track.previewGutter,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  setlistPreviewGlyph: {
+    color: THEME.hudDim,
+    fontSize: SETLIST.track.title.fontSize,
+  },
+  /**
+   * The song that is sounding.
+   *
+   * The accent colour and a different glyph — ■ rather than ▶ — because one
+   * row out of eleven being a slightly different grey is not a state anybody
+   * reads on a phone in a dark room.
+   */
+  setlistPreviewGlyphOn: { color: THEME.accent },
   setlistTrackTitle: {
     color: THEME.hudText,
     fontSize: SETLIST.track.title.fontSize,

@@ -259,6 +259,16 @@ export const en = {
     library: 'YOUR SONGS',
     /** Reads out an already-chosen row, which is drawn with a ✓ and is deaf. */
     chosen: 'Already in the setlist',
+    /**
+     * The ▶ on a library row, read aloud by a screen reader.
+     *
+     * The glyph is the control; this is its name. `{title}` is the song, so the
+     * reader hears which one it would play rather than eleven identical
+     * "Preview" buttons.
+     */
+    preview: 'Play {title}',
+    /** The same control while that song is sounding. */
+    stopPreview: 'Stop {title}',
     /** Starts the custom show. Deaf until all four slots are filled. */
     start: 'START THE GIG',
     /**

@@ -170,6 +170,27 @@ export const SETLIST = {
     title: { fontSize: 14 },
     /** Space kept clear on the right for the ✓ on an already-chosen song. */
     chosenGutter: 22,
+    /**
+     * The ▶ that plays the song, between the title and the ✓.
+     *
+     * A second target on the row rather than a mode, because the row has two
+     * genuinely different jobs — *put this in my setlist* and *what does this
+     * sound like* — and a player choosing from eleven names they have never
+     * heard needs the second one before they can do the first.
+     *
+     * 34 dp wide and the full height of the row, plus `hitSlop`. The visible
+     * glyph is small on purpose; what has to be big is the thing a thumb hits.
+     */
+    previewGutter: 34,
+    /**
+     * How far past the ▶ a tap still counts.
+     *
+     * The row is deliberately short — eleven songs should be one scroll, not
+     * three — which makes the glyph's own box about 24 dp tall against the
+     * ~44 dp a thumb wants. `hitSlop` buys the difference without buying it in
+     * layout, so the touch target is comfortable and the column still fits.
+     */
+    previewHitSlop: { top: 8, bottom: 8, left: 6, right: 6 },
   },
   /** The "there is more below" mark, and the row that always reserves it. */
   moreCue: { fontSize: 14, height: 16 },
@@ -179,9 +200,12 @@ export const SETLIST = {
 export const SETLIST_SLOT_TEXT_WIDTH =
   SETLIST.slot.width - SETLIST.slot.paddingHorizontal * 2 - SETLIST.slot.numberGutter;
 
-/** Text column inside a library row, once the ✓ gutter is taken out. */
+/** Text column inside a library row, once the ▶ and ✓ gutters are taken out. */
 export const SETLIST_TRACK_TEXT_WIDTH =
-  SETLIST.track.width - SETLIST.track.paddingHorizontal * 2 - SETLIST.track.chosenGutter;
+  SETLIST.track.width -
+  SETLIST.track.paddingHorizontal * 2 -
+  SETLIST.track.previewGutter -
+  SETLIST.track.chosenGutter;
 
 /**
  * Everything on the builder screen that is not the two columns.

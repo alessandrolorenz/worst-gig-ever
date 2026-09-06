@@ -1201,35 +1201,130 @@ test('M24C: starting a custom gig preloads the setlist, never the library', () =
   assert.equal(new Set(songs).size, SETLIST_SLOTS, 'a setlist needs fewer players than it has slots');
 });
 
-test('M24C: no music is left sounding when the player leaves for the builder', () => {
+test('M24C: every way onto and off the builder silences whatever was playing', () => {
   /*
-   * The leak §45 names. Two screens can have music playing when the player
-   * walks away from them — a development audition preview on the title, and
-   * whatever a round left behind — and the builder has no transport control at
-   * all, so anything still sounding on it is something the player cannot stop.
+   * The leak §45 names, widened at M24C when the builder gained a ▶ on every
+   * song. Three screens can now have music sounding when the player walks away
+   * from them — the title (a development audition preview), the builder (a song
+   * preview), and whatever a round left behind — and only the builder draws a
+   * control that could stop it.
    *
-   * Asserted on the source because `audioService.ts` cannot be imported here:
-   * it reaches for files through Metro's `require`. What is checked is that
-   * both ways *into* a custom gig silence the music first.
+   * So every transition in and out routes through one `stopPreview`, and this
+   * asserts that rather than asserting `audio.stopMusic()` appears in three
+   * places: a single helper is the reason a fourth exit cannot forget.
+   *
+   * Read off the source because `audioService.ts` cannot be imported here — it
+   * reaches for files through Metro's `require`.
    */
   const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+
+  const helper = engine.slice(
+    engine.indexOf('const stopPreview = useCallback('),
+    engine.indexOf('const handlePreviewTrack'),
+  );
+  assert.ok(helper.includes('audio.stopMusic()'), 'stopPreview no longer stops the music');
+  assert.ok(helper.includes('setPreviewTrack(null)'), 'stopPreview no longer clears the ▶ state');
 
   for (const [handler, why] of [
     ['handleOpenSetlist', 'opening the builder'],
     ['handleStartCustomGig', 'starting a custom gig'],
+    ['handleBackToTitle', 'leaving the builder'],
   ] as const) {
     const at = engine.indexOf(`const ${handler} = useCallback(`);
     assert.ok(at > 0, `${handler} is gone`);
     const body = engine.slice(at, engine.indexOf('}, [', at));
-    assert.ok(
-      body.includes('audio.stopMusic()'),
-      `${why} no longer stops whatever was playing`,
-    );
-    assert.ok(
-      body.includes('setAuditionPlaying(false)'),
-      `${why} leaves the audition row claiming it is still playing`,
-    );
+    assert.ok(body.includes('stopPreview()'), `${why} no longer stops what was playing`);
   }
+
+  // And the two that could be sounding from the *previous* screen are both
+  // cleared when the builder opens, not just one of them.
+  const open = engine.slice(
+    engine.indexOf('const handleOpenSetlist = useCallback('),
+    engine.indexOf('const handleSelectSlot'),
+  );
+  assert.ok(
+    open.includes('setAuditionPlaying(false)'),
+    'opening the builder leaves the audition row claiming it is still playing',
+  );
+});
+
+test('M24C: a song already in the setlist can still be listened to', () => {
+  /*
+   * The two controls on a library row have different rules, and the difference
+   * is easy to lose in a refactor that treats the row as one thing.
+   *
+   *   choosing  -> deaf once the song is in the draft. That is the
+   *                no-duplicates rule, drawn.
+   *   listening -> never deaf. "What did I put in slot 3?" is exactly as real a
+   *                question as "what is this one?", and a ▶ that dies the
+   *                moment you use the row reads as broken rather than as a rule.
+   *
+   * The domain half is asserted elsewhere — `assignSlot` refuses a duplicate.
+   * This is the drawing half, read off the source, because the failure is a
+   * `disabled` on the wrong element and nothing else would catch it.
+   */
+  const overlays = readFileSync(join(repoRoot, 'game/rendering/Overlays.tsx'), 'utf8');
+
+  const choose = overlays.slice(
+    overlays.indexOf('onPress={used ? undefined : () => onChooseTrack(track)}'),
+    overlays.indexOf('styles.setlistTrackChoose'),
+  );
+  assert.ok(choose.includes('disabled={used}'), 'a chosen song can be chosen again');
+
+  const preview = overlays.slice(
+    overlays.indexOf('onPress={() => onPreviewTrack(track)}'),
+    overlays.indexOf('styles.setlistPreview,'),
+  );
+  assert.ok(preview.length > 0, 'the preview control is gone');
+  assert.equal(
+    /\bdisabled=/.test(preview),
+    false,
+    'the preview goes deaf for a song already in the setlist',
+  );
+  assert.ok(
+    preview.includes('hitSlop'),
+    'the preview lost the hit slop that makes it thumb-sized',
+  );
+});
+
+test('M24C: a stopped preview does not survive as an extra resident player', () => {
+  /*
+   * The ceiling, and the one way this milestone could have quietly raised it.
+   *
+   * `preloadSetlist` deliberately never releases what is sounding. A previewed
+   * song that has been *stopped* is not sounding, but `music` still points at
+   * it — so under the old test it survived every later preload and a player who
+   * listened to a song they did not choose carried a fifth decoder through the
+   * whole show.
+   *
+   * The guard now asks whether the current player is actually playing, and
+   * `playing === false` rather than `!playing` so that a shim which does not
+   * report the field falls back to the old, conservative answer.
+   */
+  const service = readFileSync(join(repoRoot, 'game/audio/audioService.ts'), 'utf8');
+  assert.ok(
+    service.includes('music?.playing !== false'),
+    'preloadSetlist no longer releases a stopped preview',
+  );
+  assert.ok(
+    service.includes('if (isCurrent) music = null;'),
+    'releasing the current player leaves the reference dangling at a removed one',
+  );
+
+  /*
+   * And the order at START THE GIG, which is what makes the guard reachable:
+   * the preview is stopped *before* the setlist is preloaded. Reversed, the
+   * preview would still be playing when the release decision was taken.
+   */
+  const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+  const body = engine.slice(
+    engine.indexOf('const handleStartCustomGig = useCallback('),
+    engine.indexOf('}, [', engine.indexOf('const handleStartCustomGig = useCallback(')),
+  );
+  assert.ok(
+    body.indexOf('stopPreview()') < body.indexOf('audio.preloadSetlist(setlist)'),
+    'the setlist is preloaded before the preview is stopped, so the preview survives',
+  );
 });
 
 test('M24C: a custom setlist changes the music and nothing else', () => {

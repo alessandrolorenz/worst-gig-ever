@@ -446,6 +446,41 @@ test('M24C: the library column scrolls, and says so when there is more', () => {
   );
 });
 
+test('M24C: a library row has room for the title, the ▶ and the ✓', () => {
+  /*
+   * The preview control costs the title 34 dp of the row, so the wrapping
+   * budget above is measured against what is left rather than against the
+   * whole row. This is the arithmetic that keeps those two facts attached: if
+   * the gutters ever grow past the row, the titles start wrapping and the
+   * fixed-height rows clip.
+   */
+  const inner = SETLIST.track.width - SETLIST.track.paddingHorizontal * 2;
+  const gutters = SETLIST.track.previewGutter + SETLIST.track.chosenGutter;
+  assert.equal(
+    SETLIST_TRACK_TEXT_WIDTH,
+    inner - gutters,
+    'the text column no longer accounts for both controls on the row',
+  );
+  assert.ok(
+    SETLIST_TRACK_TEXT_WIDTH > gutters,
+    'the controls now take more of the row than the song title does',
+  );
+
+  /*
+   * And the touch target. The row is deliberately short so eleven songs are one
+   * scroll rather than three, which puts the ▶'s own box well under the ~44 dp
+   * a thumb wants — `hitSlop` is what buys the rest, and it has to be enough to
+   * matter.
+   */
+  const { top, bottom } = SETLIST.track.previewHitSlop;
+  const rowHeight =
+    SETLIST.track.title.fontSize * 1.2 + SETLIST.track.paddingVertical * 2;
+  assert.ok(
+    rowHeight + top + bottom >= 40,
+    `the preview target is ${(rowHeight + top + bottom).toFixed(0)} dp tall, which is not a thumb`,
+  );
+});
+
 test('M24C: the two columns fit side by side on the narrowest screen', () => {
   const used =
     SETLIST.slot.width + SETLIST.columnGap + SETLIST.track.width + OVERLAY_PADDING.horizontal * 2;

@@ -179,6 +179,25 @@ test('M24B: the untranslated component is one the player cannot reach', () => {
   );
 });
 
+test('M24C: the preview control names the song it would play', () => {
+  /*
+   * The ▶ on a library row is a glyph, so its whole accessible name is the
+   * `accessibilityLabel` — and eleven buttons all called "Play" is not a name.
+   * `{title}` is what makes a screen reader say which song, so every locale has
+   * to keep the placeholder even if it moves it.
+   */
+  for (const [locale, catalogue] of allCatalogues()) {
+    for (const key of ['preview', 'stopPreview'] as const) {
+      const value = (catalogue.setlist as Record<string, string>)[key];
+      assert.deepEqual(
+        placeholdersIn(value),
+        ['title'],
+        `${locale}: setlist.${key} does not name the song it acts on`,
+      );
+    }
+  }
+});
+
 test('M24C: the setlist builder is production UI and the audition row is not', () => {
   /*
    * §46 of the M24C brief, as one assertion about one file: two music screens
@@ -217,7 +236,10 @@ test('M24C: the setlist builder is production UI and the audition row is not', (
    */
   for (const [locale, catalogue] of allCatalogues()) {
     const setlist = catalogue.setlist as Record<string, string>;
-    for (const key of ['open', 'title', 'tagline', 'unlocked', 'slot', 'empty', 'library', 'chosen', 'start', 'tonight']) {
+    for (const key of [
+      'open', 'title', 'tagline', 'unlocked', 'slot', 'empty',
+      'library', 'chosen', 'preview', 'stopPreview', 'start', 'tonight',
+    ]) {
       assert.equal(typeof setlist[key], 'string', `${locale} has no setlist.${key}`);
       assert.ok((setlist[key] ?? '').trim().length > 0, `${locale}: setlist.${key} is empty`);
     }
