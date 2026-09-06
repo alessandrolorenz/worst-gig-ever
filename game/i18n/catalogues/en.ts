@@ -64,6 +64,20 @@ export const en = {
     start: 'Start the show',
   },
 
+  /**
+   * The first-run language chooser (M25).
+   *
+   * One string, because the screen is two buttons and a heading and the
+   * buttons are endonyms — `English`, `Português (BR)` — which come from
+   * `LOCALE_ENDONYMS` and are the same in every language by definition. A
+   * player who cannot read the heading can still recognise their own language
+   * in the list, which is the property that makes this screen safe to show
+   * before a language has been chosen.
+   */
+  language: {
+    heading: 'CHOOSE YOUR LANGUAGE',
+  },
+
   /** The in-round HUD (M12). Short, upper-case, and read at a glance. */
   hud: {
     defense: 'DEFENSE',
@@ -112,6 +126,18 @@ export const en = {
     /* Only drawn when this round actually beat something (M22). */
     newBest: 'A new best.',
     share: 'Share',
+    /**
+     * Beers drunk across the whole completed run (M25).
+     *
+     * Drawn only when the show is finished, so it is the total for the show
+     * rather than for the stage — the per-stage number is a summary row.
+     *
+     * Written as a label and a number rather than "{count} beers down",
+     * deliberately: this catalogue has no plural rules (see `catalogue.ts` on
+     * why no i18n runtime), and a sentence with a bare count in it reads
+     * "1 beers" the one time a player only manages one.
+     */
+    beersTonight: 'Beers down tonight: {count}',
   },
 
   /**
@@ -143,6 +169,16 @@ export const en = {
     objectsDestroyed: 'Objects destroyed',
     objectsMissed: 'Objects missed',
     bestHitCombo: 'Best hit combo',
+    /**
+     * Mugs the drummer actually drank, this attempt (M25).
+     *
+     * In the Defense column because that is where it happened: a beer is a mug
+     * that was caught instead of smashed, which is a defensive act with a
+     * punchline. No emoji, matching every other row on this screen — the game
+     * draws monochrome glyphs (▶ ■ ✓) and a colour mug would be the only one
+     * in it.
+     */
+    beersDown: 'Beers down',
     /* The record, drawn only once the stage has been finished at least once. */
     best: 'Best',
     integrityLeft: 'Show Integrity left: {left} of {total}.',
@@ -242,6 +278,23 @@ export const en = {
      * one of them.
      */
     open: 'Custom setlist',
+    /**
+     * The same feature, named on the title screen before it is earned (M25).
+     *
+     * Upper case rather than the sentence case of `open`, because this is not
+     * a button in the row — it is a line of text below it saying that
+     * something exists. The two must not both be drawn; see `Overlays`.
+     */
+    locked: 'CUSTOM SETLIST',
+    /**
+     * What earns it, in one line.
+     *
+     * The whole point of the teaser: a new player had no way of knowing that
+     * finishing the show was worth anything. It names the condition exactly —
+     * the *full* show, not a stage — because the unlock is
+     * `bestStageCleared >= STAGES.length - 1`.
+     */
+    lockedHint: 'Survive the full show to unlock.',
     /** The builder's heading, and the name of the whole feature. */
     title: 'BUILD THE WORST SETLIST',
     /** The line the feature is really about. */

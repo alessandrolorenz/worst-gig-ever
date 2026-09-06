@@ -55,6 +55,16 @@ export const ptBR: Catalogue = {
     start: 'Começar o show',
   },
 
+  /*
+   * O título da tela de escolha de idioma (M25). Os dois botões são os
+   * endônimos — `English` e `Português (BR)` — e não passam por aqui: um nome
+   * de idioma é o mesmo em qualquer idioma, e é justamente isso que permite
+   * mostrar esta tela antes de haver um idioma escolhido.
+   */
+  language: {
+    heading: 'ESCOLHA SEU IDIOMA',
+  },
+
   hud: {
     defense: 'DEFESA',
     groove: 'GROOVE',
@@ -123,6 +133,13 @@ export const ptBR: Catalogue = {
        is how a placar reads in Portuguese. */
     newBest: 'Recorde novo.',
     share: 'Compartilhar',
+    /*
+     * REVIEW: "chope" é a cerveja tirada na hora, que é o que sai daquele
+     * caneco — "cervejas tomadas" também estaria correto e seria mais neutro,
+     * mas perde a imagem do bar. "Hoje" no lugar de "no show inteiro" porque a
+     * linha aparece só quando o show acabou, e cabe melhor.
+     */
+    beersTonight: 'Chopes tomados hoje: {count}',
   },
 
   share: {
@@ -146,6 +163,8 @@ export const ptBR: Catalogue = {
     objectsDestroyed: 'Objetos destruídos',
     objectsMissed: 'Objetos perdidos',
     bestHitCombo: 'Melhor combo',
+    /* O mesmo "chope" da linha de resultado, para as duas lerem igual. */
+    beersDown: 'Chopes tomados',
     best: 'Recorde',
     integrityLeft: 'Integridade do show: {left} de {total}.',
   },
@@ -237,6 +256,12 @@ export const ptBR: Catalogue = {
    */
   setlist: {
     open: 'Setlist próprio',
+    /* Caixa alta: é a linha que anuncia o recurso na tela de título, não o
+       botão que o abre. Os dois nunca aparecem juntos. */
+    locked: 'SETLIST PRÓPRIO',
+    /* "O show inteiro" e não "o show": o que libera é terminar todas as fases,
+       e a diferença é exatamente o que a linha precisa dizer. */
+    lockedHint: 'Sobreviva ao show inteiro para liberar.',
     title: 'MONTE O PIOR SETLIST',
     /*
      * REVIEW: a frase inteira é a piada, e é a linha mais difícil daqui.

@@ -15,6 +15,7 @@ import { createSceneEntities, type GameEntities } from '../game/entities/sceneEn
 import { flowSystem } from '../game/systems/flowSystem.ts';
 import { roundSystem } from '../game/systems/roundSystem.ts';
 import { STORY_PANELS } from '../game/state/storyState.ts';
+import { resolveBoot } from '../game/state/appFlow.ts';
 import { STAGES, stageAt } from '../game/levels/stages.ts';
 import { isRoundOver, startRound, targetViews } from '../game/state/roundState.ts';
 import { createRhythm } from '../game/state/rhythmState.ts';
@@ -53,15 +54,38 @@ function step(entities: GameEntities, deltaMs = 16): void {
   roundSystem(entities, { time: { delta: deltaMs }, touches: [], input: [] });
 }
 
-test('a fresh game opens on the story, before the title', () => {
+test('a fresh game opens on the boot screen, and the story is waiting', () => {
   const entities = setup();
-  assert.equal(entities.scene.flow.screen, 'STORY');
+  /*
+   * BOOT rather than STORY since M25: the first screen is not decidable until
+   * the save says whether this player has already chosen a language. The story
+   * is still built and still at its first panel — it has not started, it is
+   * merely not what is on screen yet.
+   */
+  assert.equal(entities.scene.flow.screen, 'BOOT');
   assert.equal(entities.scene.story.index, 0);
+});
+
+test('M25: the story does not run behind the boot screen', () => {
+  const entities = setup();
+  const scene = entities.scene;
+  const frozen = { ...scene.story };
+
+  for (let i = 0; i < 2000; i += 1) step(entities, 16);
+
+  assert.deepEqual(
+    { ...scene.story },
+    frozen,
+    'the opening story played itself out while the save was still being read',
+  );
+  assert.equal(scene.flow.screen, 'BOOT', 'the boot screen resolved itself');
 });
 
 test('the story advances on engine time and ends on the title', () => {
   const entities = setup();
   const scene = entities.scene;
+  // Past the M25 boot screen, as a save with a chosen language would.
+  resolveBoot(scene.flow, true);
   let notifications = 0;
   scene.onFlowChange = () => {
     notifications += 1;
@@ -83,6 +107,7 @@ test('the story advances on engine time and ends on the title', () => {
 test('the story does not run while any other screen is up', () => {
   const entities = setup();
   const scene = entities.scene;
+  resolveBoot(scene.flow, true);
 
   // Two panels in, then leave the story exactly as the title would.
   for (let i = 0; i < 5000 && scene.story.index < 2; i += 1) step(entities, 16);

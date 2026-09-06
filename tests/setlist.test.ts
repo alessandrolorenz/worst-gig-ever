@@ -836,7 +836,7 @@ function unlockedFlow(): ReturnType<typeof createAppFlow> {
 test('M24C: the builder cannot be opened until the show has been survived', () => {
   const fresh = createAppFlow();
   assert.equal(openSetlist(fresh), false, 'a fresh player reached the builder');
-  assert.equal(fresh.screen, 'STORY', 'a refused open moved the player anyway');
+  assert.equal(fresh.screen, 'BOOT', 'a refused open moved the player anyway');
 
   // Partial progress is not progress enough.
   for (let index = 0; index < STAGES.length - 1; index += 1) {

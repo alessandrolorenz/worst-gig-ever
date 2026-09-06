@@ -38,6 +38,35 @@ import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import { DEFAULT_LOCALE, nextLocale, type Locale } from '../i18n/locales.ts';
 
 export const APP_SCREENS = [
+  /**
+   * Before anything is drawn, while the save is still being read (M25).
+   *
+   * It exists to answer one question — *has this player already chosen a
+   * language?* — without showing them a word before the answer arrives. The
+   * save is read asynchronously (see `storage.ts`), so on the first frames of a
+   * cold start the game genuinely does not know, and every other screen would
+   * have to guess: the story would open in the device's language and then
+   * change, or the chooser would appear for two frames and then vanish.
+   *
+   * So this screen draws **nothing but the background**. There is no text on
+   * it, which is what makes it the only screen that is correct in a language
+   * that has not been decided yet. `resolveBoot` is the only way out, and
+   * `GameEngine` calls it both when the save lands and on a timeout — because
+   * the M15 rule that *session progress must never gate a cold start* still
+   * holds, and a disk that never answers must not be able to keep the game on
+   * this screen.
+   */
+  'BOOT',
+  /**
+   * Pick a language, once, before the story (M25).
+   *
+   * First run only: `resolveBoot` sends a player with a saved choice straight
+   * past it. The opening story is the game's first impression and it is five
+   * lines of writing, so it must already be in the language the player reads —
+   * which means the choice has to happen before it, not on the title screen
+   * after it.
+   */
+  'LANGUAGE',
   /** The five-panel opening story. */
   'STORY',
   /** Title, stage picker, and the way back into the story. */
@@ -147,6 +176,33 @@ export interface AppFlowState {
    */
   draftSetlist: readonly (MusicTrackId | null)[];
   /**
+   * Beers drunk in each **completed** stage of the run so far (M25).
+   *
+   * One entry per stage, indexed by stage index, zero for a stage this run has
+   * not finished. The run's total is their sum (`runBeersTotal`).
+   *
+   * ## Why an array and not a running sum
+   *
+   * A sum can only be added to, and this value has to survive a retry. With a
+   * sum, finishing Stage 3 with four beers, retrying it, and finishing it again
+   * with two would report six for a run in which the player drank two — the
+   * "artificially farm the final count" failure the brief names. Writing
+   * `runBeers[stageIndex]` instead of adding to a total makes a re-completed
+   * stage *replace* its own contribution, so no amount of retrying can inflate
+   * the show total. That is a property of the shape rather than of remembering
+   * to subtract.
+   *
+   * A **ruined** attempt writes nothing at all: only `recordStageCleared` sets
+   * an entry and only `SHOW_COMPLETE` reaches it. What a ruined attempt drank
+   * is still on its own results screen, from `round.beersDrunk` — it just never
+   * becomes part of a completed show's total.
+   *
+   * Reset wherever a run begins: a stage card, START THE GIG, and quitting to
+   * the title. Deliberately *not* reset by `advanceToNextStage`, which is the
+   * middle of a run rather than the start of one.
+   */
+  runBeers: readonly number[];
+  /**
    * Which slot the next chosen song lands in.
    *
    * On the flow rather than in React state because the builder's whole
@@ -177,7 +233,17 @@ export function emptyDraft(): readonly (MusicTrackId | null)[] {
  */
 export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowState {
   return {
-    screen: 'STORY',
+    /*
+     * BOOT, not STORY (M25). The first screen is decided by `resolveBoot` once
+     * the save has been read, because until then nobody knows whether this
+     * player has already chosen a language.
+     *
+     * `initialLocale` is still the device's, and still seeded here: it is what
+     * the language chooser is *read* in and which option it highlights, which
+     * is the sensible default the brief asks for. It is not a choice — only
+     * `chooseLocale` makes one, and only a choice is saved.
+     */
+    screen: 'BOOT',
     stageIndex: 0,
     bestStageCleared: -1,
     introSeen: false,
@@ -185,8 +251,70 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
     locale: initialLocale,
     setlist: OFFICIAL_SETLIST,
     draftSetlist: emptyDraft(),
+    runBeers: emptyRunBeers(),
     activeSlot: 0,
   };
+}
+
+/**
+ * A run in which nothing has been drunk yet: one zero per stage.
+ *
+ * Built from `STAGES` rather than written out, for the same reason
+ * `emptyDraft` is built from `SETLIST_SLOTS`: a fifth stage gets an entry
+ * instead of a silently short array that `recordStageCleared` would write off
+ * the end of.
+ */
+export function emptyRunBeers(): readonly number[] {
+  return Object.freeze(new Array<number>(STAGES.length).fill(0));
+}
+
+/**
+ * Beers drunk across the completed stages of this run (M25).
+ *
+ * Derived rather than stored, exactly like `isCustomSetlistUnlocked`: the
+ * per-stage entries are the fact and this is a view of them, so there is no
+ * total that can drift from the parts it is made of.
+ */
+export function runBeersTotal(flow: AppFlowState): number {
+  return flow.runBeers.reduce((total, beers) => total + beers, 0);
+}
+
+/* ---------------------------------------------------------------- *
+ * The first screen (M25)
+ * ---------------------------------------------------------------- */
+
+/**
+ * Leaves BOOT for the language chooser, or straight for the story.
+ *
+ * `hasChosenLanguage` is what the *save* says, never what the device says. A
+ * phone set to Portuguese is a good default and not a decision: the brief asks
+ * for an explicit choice on a fresh install, and a device preference read at
+ * startup is exactly the thing that is not one.
+ *
+ * Idempotent, and it has to be. `GameEngine` calls it from the save's `then`
+ * and from a timeout, and whichever loses the race must not drag a player who
+ * has already started reading the story back to the chooser — so it returns
+ * immediately unless the flow is still sitting on BOOT.
+ */
+export function resolveBoot(flow: AppFlowState, hasChosenLanguage: boolean): void {
+  if (flow.screen !== 'BOOT') return;
+  flow.screen = hasChosenLanguage ? 'STORY' : 'LANGUAGE';
+}
+
+/**
+ * The player picked a language, and the story follows in it (M25).
+ *
+ * The one transition out of the chooser. It sets the locale and moves on in a
+ * single step, so there is no frame in which the choice has been made and the
+ * story has not started — the caller persists it before that story is read,
+ * which is what makes the choice survive a kill and a relaunch.
+ *
+ * `setLocale` rather than an assignment, so the language control and the
+ * chooser change the same field the same way.
+ */
+export function chooseLocale(flow: AppFlowState, locale: Locale): void {
+  setLocale(flow, locale);
+  flow.screen = 'STORY';
 }
 
 /**
@@ -267,6 +395,8 @@ export function startStage(flow: AppFlowState, index: number): void {
    * construction rather than by remembering to reset it.
    */
   flow.setlist = OFFICIAL_SETLIST;
+  /* A stage card is the start of a run, so the run's beers start again (M25). */
+  flow.runBeers = emptyRunBeers();
   flow.screen = 'BRIEFING';
 }
 
@@ -453,6 +583,12 @@ export function startStageWithSetlist(
 ): void {
   flow.stageIndex = clampStageIndex(index);
   flow.setlist = setlist;
+  /*
+   * As `startStage` does, and for the same reason (M25): both of these are a
+   * run beginning. START THE GIG reaches this through `startCustomGig`, so a
+   * custom show counts its beers from zero exactly as the authored one does.
+   */
+  flow.runBeers = emptyRunBeers();
   flow.screen = 'BRIEFING';
 }
 
@@ -479,6 +615,12 @@ export function showBriefing(flow: AppFlowState): void {
 export function returnToTitle(flow: AppFlowState): void {
   flow.screen = 'TITLE';
   flow.setlist = OFFICIAL_SETLIST;
+  /*
+   * The run is over, so its beers are too (M25). Leaving them would let the
+   * next run open with the last one's total already on the board — the same
+   * mistake as leaving a custom setlist under a stage card, one line above.
+   */
+  flow.runBeers = emptyRunBeers();
 }
 
 /**
@@ -502,12 +644,37 @@ export function returnToTitle(flow: AppFlowState): void {
  * and therefore reports `false` — the banner appears once per completion,
  * never once per frame.
  */
-export function recordStageCleared(flow: AppFlowState): {
+export function recordStageCleared(
+  flow: AppFlowState,
+  beersDrunk: number = 0,
+): {
   hasNext: boolean;
   unlockedCustomSetlist: boolean;
 } {
   const wasUnlocked = isCustomSetlistUnlocked(flow);
   flow.bestStageCleared = Math.max(flow.bestStageCleared, flow.stageIndex);
+
+  /*
+   * The completed attempt's beers become this stage's contribution (M25).
+   *
+   * **Assignment, not addition**, which is what makes the function idempotent
+   * for this field as well as for the high-water mark above. The effect that
+   * calls this re-runs on re-render, so adding would count the same finished
+   * stage once per frame; writing the slot lands on the same number however
+   * many times it runs. It is also what stops a retry farming the show total —
+   * see `runBeers`.
+   *
+   * Rounded and floored rather than trusted: this is a count, and a fractional
+   * or negative one has no meaning a results screen could draw.
+   */
+  const slot = clampStageIndex(flow.stageIndex);
+  const counted = Number.isFinite(beersDrunk) ? Math.max(0, Math.floor(beersDrunk)) : 0;
+  if (flow.runBeers[slot] !== counted) {
+    const next = [...flow.runBeers];
+    next[slot] = counted;
+    flow.runBeers = Object.freeze(next);
+  }
+
   return {
     hasNext: hasNextStage(flow.stageIndex),
     unlockedCustomSetlist: !wasUnlocked && isCustomSetlistUnlocked(flow),

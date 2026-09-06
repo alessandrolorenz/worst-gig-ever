@@ -20,6 +20,7 @@ import { Overlays } from '../rendering/Overlays.tsx';
 import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
 import { detectLocale } from '../i18n/deviceLocale.ts';
+import type { ShippableLocale } from '../i18n/locales.ts';
 import { LocaleProvider } from '../i18n/LocaleContext.tsx';
 import { stringsFor } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
@@ -45,8 +46,10 @@ import {
   advanceToNextStage,
   assignSlot,
   beginRound,
+  chooseLocale,
   completedDraft,
   cycleLocale,
+  resolveBoot,
   setLocale,
   finishIntro,
   loadDraft,
@@ -77,6 +80,15 @@ import { flowSystem } from './flowSystem.ts';
 import { roundSystem } from './roundSystem.ts';
 
 const EngineComponent = Platform.OS === 'web' ? WebGameEngine : ReactGameEngine;
+
+/**
+ * How long the first screen waits for the save before giving up (M25).
+ *
+ * Long enough that no real read loses the race — the file is a few hundred
+ * bytes in the app's own document directory — and short enough that a player
+ * staring at a blank screen would not yet have decided the game is broken.
+ */
+const BOOT_TIMEOUT_MS = 2000;
 
 export default function GameEngine() {
   // Created once per mount and mutated in place. In particular the Matter
@@ -222,7 +234,14 @@ export default function GameEngine() {
       // seconds before it arrived.
       flow.bestStageCleared = Math.max(flow.bestStageCleared, loaded.state.bestStageCleared);
       flow.clickEnabled = loaded.state.clickEnabled;
-      if (loaded.state.locale !== null) {
+      /*
+       * `!localeChosenRef.current` guards a race the boot timeout below can
+       * create (M25): if the read is slow enough that the chooser appeared and
+       * the player answered it, the file's older answer must not overwrite the
+       * one they just gave. On every ordinary launch nothing has been chosen
+       * yet and this applies the save exactly as it always did.
+       */
+      if (loaded.state.locale !== null && !localeChosenRef.current) {
         setLocale(flow, loaded.state.locale);
         localeChosenRef.current = true;
       }
@@ -235,12 +254,51 @@ export default function GameEngine() {
        */
       loadDraft(flow, loaded.state.customSetlist);
       applyRecords(loaded.state.records);
+      /*
+       * Now — and only now — is the first screen decidable (M25).
+       *
+       * A saved locale means the player has already answered the question, so
+       * they go straight to the story in their own language. No saved locale
+       * means a fresh install, and the chooser comes first so the story is
+       * never read in a language the player did not pick.
+       *
+       * `resolveBoot` is a no-op once the flow has left BOOT, which is what
+       * makes it safe to call from here and from the timeout below without the
+       * two having to know about each other.
+       */
+      resolveBoot(flow, loaded.state.locale !== null);
       refreshFlow();
     });
     return () => {
       cancelled = true;
     };
   }, [applyRecords, entities, refreshFlow]);
+
+  /**
+   * The boot screen cannot last (M25).
+   *
+   * M15's rule, restated in the V2 plan: *session progress must never gate a
+   * cold start.* M25 asks the opening screen to wait for the save, which is
+   * the closest this project has come to breaking that rule — so the wait has
+   * an end. If the read has not answered by now, the game opens as a fresh
+   * install would, with the chooser.
+   *
+   * `loadSave` catches everything and always resolves, so on any disk that
+   * answers at all this timer is cleared long before it fires. It is here for
+   * the case that module cannot cover: a native promise that never settles.
+   *
+   * Erring toward the chooser rather than the story is deliberate. The worst
+   * case is a returning player being asked their language a second time, and
+   * answering it re-saves the choice; the alternative failure is opening the
+   * story in the wrong language, which is the thing this milestone is fixing.
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      resolveBoot(entities.scene.flow, false);
+      refreshFlow();
+    }, BOOT_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [entities, refreshFlow]);
 
   /**
    * Rebuilds the round for the stage the flow currently points at.
@@ -568,6 +626,29 @@ export default function GameEngine() {
     refreshFlow();
   }, [entities, persist, refreshFlow]);
 
+  /**
+   * The first-run language choice (M25).
+   *
+   * The same three steps as the control above — set it, mark it chosen, write
+   * it — and then the story, which `chooseLocale` moves to itself so there is
+   * no frame between the two.
+   *
+   * The write is started before the story is drawn and not awaited, which is
+   * this project's existing convention for every preference (see
+   * `handleToggleClick`): `writeSave` never throws and never blocks a screen.
+   * The story runs for several seconds, so the file has landed long before
+   * there is anything to lose.
+   */
+  const handleChooseLocale = useCallback(
+    (locale: ShippableLocale) => {
+      chooseLocale(entities.scene.flow, locale);
+      localeChosenRef.current = true;
+      persist(recordsRef.current);
+      refreshFlow();
+    },
+    [entities, persist, refreshFlow],
+  );
+
   const handleBackToTitle = useCallback(() => {
     // Back out of the builder must not leave a preview playing under the
     // title, where nothing draws a control that could stop it.
@@ -669,7 +750,17 @@ export default function GameEngine() {
      * it. See `appFlow.recordStageCleared`.
      */
     if (uiState === 'SHOW_COMPLETE') {
-      const cleared = recordStageCleared(scene.flow);
+      /*
+       * The attempt's beers go with the completion (M25).
+       *
+       * Read off the round here rather than accumulated as mugs are drunk,
+       * because only a *finished* stage contributes to the show's total and
+       * the round is the thing that knows what this attempt drank. Like the
+       * high-water mark beside it, it is an assignment rather than an
+       * addition, so this effect re-running on a re-render records the same
+       * number instead of adding it again.
+       */
+      const cleared = recordStageCleared(scene.flow, scene.round.beersDrunk);
       if (cleared.unlockedCustomSetlist) setJustUnlockedSetlist(true);
     }
 
@@ -779,6 +870,7 @@ export default function GameEngine() {
             onQuit={handleQuit}
             onToggleClick={handleToggleClick}
             onCycleLocale={handleCycleLocale}
+            onChooseLocale={handleChooseLocale}
             selectableTracks={selectableTracks}
             onOpenSetlist={handleOpenSetlist}
             onSelectSlot={handleSelectSlot}

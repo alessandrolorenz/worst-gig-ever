@@ -275,9 +275,10 @@ test('the same taps on a Groove stage do score', () => {
 // The flow
 // ---------------------------------------------------------------------------
 
-test('the game opens on the story, at stage one, with nothing cleared', () => {
+test('the game opens on the boot screen, at stage one, with nothing cleared', () => {
   const flow = createAppFlow();
-  assert.equal(flow.screen, 'STORY');
+  /* BOOT since M25 — see `resolveBoot`, which chooses STORY or LANGUAGE. */
+  assert.equal(flow.screen, 'BOOT');
   assert.equal(flow.stageIndex, 0);
   assert.equal(flow.introSeen, false);
   assert.equal(flow.bestStageCleared, -1);

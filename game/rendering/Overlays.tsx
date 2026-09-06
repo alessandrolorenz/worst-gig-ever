@@ -26,7 +26,12 @@ import {
 } from './overlayLayout.ts';
 import type { Catalogue } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
-import { hasLocaleChoice, LOCALE_ENDONYMS } from '../i18n/locales.ts';
+import {
+  hasLocaleChoice,
+  LOCALE_ENDONYMS,
+  SUPPORTED_LOCALES,
+  type ShippableLocale,
+} from '../i18n/locales.ts';
 import { DevAuditionRow, type AuditionControls } from './DevAudition.tsx';
 import { useLocale, useStrings } from '../i18n/LocaleContext.tsx';
 import { MUG_DRINK_ART, TARGET_ART } from './artAssets.ts';
@@ -50,6 +55,7 @@ import {
   isCustomRun,
   isCustomSetlistUnlocked,
   isStageCleared,
+  runBeersTotal,
 } from '../state/appFlow.ts';
 import {
   MUSIC_TRACKS,
@@ -97,6 +103,8 @@ interface OverlayProps {
   onQuit(): void;
   onToggleClick(): void;
   onCycleLocale(): void;
+  /** The first-run language chooser's only action (M25). */
+  onChooseLocale(locale: ShippableLocale): void;
   /** The songs this build lets a player choose between (M24C). */
   selectableTracks: readonly MusicTrackId[];
   onOpenSetlist(): void;
@@ -216,6 +224,55 @@ function LanguageToggle({ onPress }: { onPress(): void }) {
 }
 
 /**
+ * The first-run language chooser (M25).
+ *
+ * The first screen a new player sees, and deliberately the smallest one in the
+ * game: a heading, one button per shippable language, and the product's name.
+ * No onboarding, no flags, no region list, no search — there are two languages
+ * and a list of two is a row of two buttons.
+ *
+ * ## Why the buttons are endonyms
+ *
+ * `LOCALE_ENDONYMS`, exactly as `LanguageToggle` uses them, so the choices
+ * read `English` and `Português (BR)` whatever language the heading happens to
+ * be in. That is what makes this screen honest before a language exists: a
+ * player who cannot read a word of the heading can still find their own
+ * language, because a language's name is the same in every language.
+ *
+ * The heading *is* in a language — the device's, seeded into `flow.locale` at
+ * startup. That is the brief's "sensible default focus": the phone's setting
+ * is a good guess and this screen is where the player either confirms it or
+ * does not.
+ *
+ * ## Why `SUPPORTED_LOCALES` and not `availableLocales()`
+ *
+ * The pseudo-locale must never be offered to a player, and this is a player's
+ * first screen. `availableLocales()` includes it in a development build, which
+ * is right for the cycling control a developer uses to check a layout and
+ * wrong for a chooser that decides what the story is read in. Developers still
+ * reach `pseudo` from the title's language control.
+ */
+function LanguageChooser({ onChoose }: { onChoose(locale: ShippableLocale): void }) {
+  const strings = useStrings();
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.languageHeading}>{strings.language.heading}</Text>
+      <View style={styles.buttonRowLayout}>
+        {SUPPORTED_LOCALES.map((locale) => (
+          <Button
+            key={locale}
+            label={LOCALE_ENDONYMS[locale]}
+            onPress={() => onChoose(locale)}
+          />
+        ))}
+      </View>
+      {/* Not a catalogue string: the product's name is never translated. */}
+      <Text style={styles.languageProduct}>{PRODUCT_TITLE}</Text>
+    </View>
+  );
+}
+
+/**
  * One stage on the title screen: its number, its name, and what it asks for.
  *
  * Nothing here is locked. See `appFlow.ts` — a progression that cannot survive
@@ -314,6 +371,16 @@ function Summary({
         <SummaryRow label={summary.objectsDestroyed} value={String(round.targetsDestroyed)} />
         <SummaryRow label={summary.objectsMissed} value={String(round.misses)} />
         <SummaryRow label={summary.bestHitCombo} value={String(round.bestCombo)} />
+        {/**
+          * Beers, this attempt (M25).
+          *
+          * An ordinary summary row, in the Defense column, reading straight
+          * off the round exactly as the three above it do. It is drawn on
+          * every attempt including a ruined one — what the player drank before
+          * the kit went over is a fact about that attempt — and it is *not*
+          * what a completed show reports; see `results.beersTonight`.
+          */}
+        <SummaryRow label={summary.beersDown} value={String(round.beersDrunk)} />
         {record !== null && (
           <SummaryRow label={summary.best} value={String(record.defenseScore)} />
         )}
@@ -644,6 +711,21 @@ export function Overlays(props: OverlayProps) {
   const { flow, stage, state, round, rhythm, story, audioAvailable } = props;
   const strings = useStrings();
 
+  /**
+   * Nothing, while the save decides what the first screen is (M25).
+   *
+   * Not a spinner and not a logo: the native splash has only just gone and the
+   * read this is waiting for takes a few frames. Anything drawn here would be
+   * drawn in a language nobody has chosen yet, which is the one thing this
+   * screen exists to avoid. `GameEngine` cannot be held here indefinitely —
+   * see `resolveBoot` and its timeout.
+   */
+  if (flow.screen === 'BOOT') return null;
+
+  if (flow.screen === 'LANGUAGE') {
+    return <LanguageChooser onChoose={props.onChooseLocale} />;
+  }
+
   if (flow.screen === 'STORY') {
     return (
       <StoryIntro story={story} onAdvance={props.onStoryAdvance} onSkip={props.onStorySkip} />
@@ -701,6 +783,27 @@ export function Overlays(props: OverlayProps) {
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <LanguageToggle onPress={props.onCycleLocale} />
         </View>
+        {/**
+          * What the player has not earned yet, said once and quietly (M25).
+          *
+          * The M24C note above explains why the *button* is absent rather than
+          * disabled while the feature is locked, and that argument still
+          * holds — this is not a control. It is two lines of text under the
+          * row saying that finishing the show is worth something, which is the
+          * thing a new player had no way of knowing.
+          *
+          * Mutually exclusive with the button by construction: both read the
+          * same `isCustomSetlistUnlocked(flow)`, one negated, so there is no
+          * state in which the player is offered the builder and told it is
+          * locked. It is still not the gate — `openSetlist` is — and nothing
+          * here is pressable.
+          */}
+        {!isCustomSetlistUnlocked(flow) && (
+          <View style={styles.lockedTeaser}>
+            <Text style={styles.lockedTitle}>{strings.setlist.locked}</Text>
+            <Text style={styles.lockedHint}>{strings.setlist.lockedHint}</Text>
+          </View>
+        )}
         {!audioAvailable && (
           <Text style={styles.warning}>{strings.title.audioUnavailable}</Text>
         )}
@@ -833,6 +936,22 @@ export function Overlays(props: OverlayProps) {
           <Text style={styles.tonightHeading}>{strings.setlist.tonight}</Text>
           <Text style={styles.tonightSongs}>{runSetlistLine(flow, strings)}</Text>
         </>
+      )}
+      {/**
+        * The whole show's beers, once the whole show is over (M25).
+        *
+        * Only on the final results — `complete && !nextStageWaiting` — because
+        * that is the only screen where "the run" is a finished thing. Between
+        * stages the number the player wants is the one in the summary column,
+        * which is this stage's.
+        *
+        * A ruined show never reaches this: `complete` is false, and the run
+        * total it would print is one the player did not finish earning.
+        */}
+      {complete && !nextStageWaiting && (
+        <Text style={styles.beersTonight}>
+          {format(strings.results.beersTonight, { count: runBeersTotal(flow) })}
+        </Text>
       )}
       <Summary
         round={round}
@@ -1007,6 +1126,62 @@ const styles = StyleSheet.create({
     maxWidth: 460,
   },
 
+  /* ---- the first-run language chooser (M25) ---- */
+
+  /**
+   * The heading, in the size the other screens give their titles.
+   *
+   * Dimmer than `title`, because the product's name is below it and the two
+   * must not compete: the name is what the player should recognise, and this
+   * is the instruction.
+   */
+  languageHeading: {
+    color: THEME.hudText,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  /** The product's name, under the choice rather than over it. */
+  languageProduct: {
+    color: THEME.hudDim,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 3,
+    textAlign: 'center',
+    marginTop: 22,
+  },
+
+  /* ---- the locked custom setlist (M25) ---- */
+
+  /**
+   * The teaser under the title's button row.
+   *
+   * Deliberately not a card and not a border: it is quieter than every control
+   * above it, which is what keeps a first-run title screen pointing at the
+   * stage cards while still saying that something is waiting.
+   */
+  lockedTeaser: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  lockedTitle: {
+    color: THEME.hudDim,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  lockedHint: {
+    color: THEME.hudDim,
+    fontSize: 11,
+    letterSpacing: 0.5,
+    textAlign: 'center',
+    marginTop: 2,
+    maxWidth: 460,
+  },
+
   /* ---- the setlist builder (M24C) ---- */
 
   /**
@@ -1176,6 +1351,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 4,
     maxWidth: 760,
+  },
+  /**
+   * The show's beer total (M25). One line, in the accent the game uses for the
+   * things it is being funny about rather than the green it uses for records.
+   */
+  beersTonight: {
+    color: THEME.accent,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
+    marginBottom: 4,
   },
 
   /** Title screen: the stages, side by side. */

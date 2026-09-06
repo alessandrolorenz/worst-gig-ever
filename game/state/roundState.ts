@@ -129,6 +129,25 @@ export interface RoundState {
   integrity: number;
   targetsDestroyed: number;
   misses: number;
+  /**
+   * Mugs the drummer actually drank, this attempt (M25).
+   *
+   * A tally beside `targetsDestroyed` rather than a domain of its own, because
+   * that is exactly what it is: a count of a thing that happened in this round.
+   * It is raised in one place — where `drunk` is decided in `resolveTap` — so
+   * the statistic and the bonus points can never disagree about what a drunk
+   * mug is.
+   *
+   * **Per attempt, and that is the whole retry rule.** `createRound` is called
+   * again for every attempt, so a retried stage starts at zero without anything
+   * having to remember to reset it. The run's total is assembled from completed
+   * attempts by `appFlow.recordStageCleared`; nothing here knows a run exists.
+   *
+   * Nothing reads it to decide anything. It is not scored, not gated on, and
+   * not part of a record — see `SCORING.drinkBonus`, which is what a drunk mug
+   * is *worth*. This is only what a drunk mug is *counted* as.
+   */
+  beersDrunk: number;
   targets: ActiveTarget[];
   /**
    * Volley members authored but not yet released, in ascending time (M17).
@@ -163,6 +182,7 @@ export function createRound(level: LevelDefinition = level01): RoundState {
     integrity: level.startingIntegrity,
     targetsDestroyed: 0,
     misses: 0,
+    beersDrunk: 0,
     targets: [],
     pendingSpawns: [],
     nextTargetId: 1,
@@ -788,6 +808,20 @@ export function resolveTap(state: RoundState, point: Point2D): RoundEvent[] {
     (drunk ? SCORING.drinkBonus : 0);
   state.score += points;
   state.targetsDestroyed += 1;
+  /*
+   * The one place a beer is counted (M25).
+   *
+   * Bound to `drunk` — the same expression that decides the bonus and the same
+   * one that goes out on the event — rather than to the mug's kind, its
+   * proximity, or the drink animation. A mug swatted far away smashes and is
+   * not a beer; a mug caught in reach is drunk and is exactly one.
+   *
+   * Counted **once** per mug by construction, not by care: the loop above
+   * skips anything whose status is not `active`, and this target's status was
+   * set to `hit` before we got here. A second tap on the same mug cannot reach
+   * this line, so a duplicate touch event cannot inflate the total.
+   */
+  if (drunk) state.beersDrunk += 1;
 
   events.push({
     type: 'TARGET_HIT',
