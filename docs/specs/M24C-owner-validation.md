@@ -1,6 +1,20 @@
 # M24C — owner device validation
 
-**Status: PENDING OWNER. Nothing below has been executed by Claude.**
+> **SUPERSEDED (2026-09-06) — historical, not the current checklist.**
+>
+> This was never executed, and nothing in it is recorded as passed. It was
+> deliberately not run: M25 changes the first screen, the title screen and the
+> results screen, so a device pass taken against the M24C build would have been
+> evidence about a build that no longer exists.
+>
+> The current device-validation authority is
+> `docs/verification/M25-final-device-validation.md`, which covers everything
+> below plus the M25 changes, against the friend-beta APK.
+>
+> Kept for the record of what M24C asked for. Do not tick anything here.
+
+**Status: NEVER EXECUTED. Nothing below has been executed by Claude or by the
+owner.**
 
 This is the checklist for the thing a machine cannot check: whether the custom
 setlist is *good*. Everything mechanical — the eleven tracks are on the grid,
