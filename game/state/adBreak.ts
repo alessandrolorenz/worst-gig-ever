@@ -29,20 +29,30 @@ import type { AppFlowState } from './appFlow.ts';
 import { stageAt, type StageId } from '../levels/stages.ts';
 
 /**
- * The only two boundaries in the show where an interstitial is allowed.
+ * The only boundary in the show where an interstitial is allowed.
  *
- * By stage id rather than by index, and that is not decoration. "Stage 2 and
- * Stage 4" is a claim about *which songs the player just finished*, not about
- * positions in an array. Reordering `STAGES` — or inserting a fifth stage —
- * would silently move an index-based ad break onto a different stage and there
- * would be nothing to notice it; by id, a reorder moves the break with the
- * stage it belongs to, and deleting a stage is a type error.
+ * By stage id rather than by index, and that is not decoration. "Stage 2" is a
+ * claim about *which song the player just finished*, not about a position in
+ * an array. Reordering `STAGES` — or inserting a fifth stage — would silently
+ * move an index-based ad break onto a different stage and there would be
+ * nothing to notice it; by id, a reorder moves the break with the stage it
+ * belongs to, and deleting a stage is a type error.
  *
- * Two, and not more, is the product decision: it caps a four-stage show at two
- * interstitial opportunities and keeps an ad away from the first thing a new
- * player finishes.
+ * ## Why Stage 4 is not in this list
+ *
+ * It was, in the 2026-09-08 spec, which allowed two opportunities per show.
+ * The owner removed it on 2026-09-09 and the reason is recorded in M23 under
+ * "Amendments": Stage 4 now runs straight into the strongest thing the game
+ * has to give — SHOW COMPLETE, the gig payout, NEXT GIG BOOKED, and on a first
+ * clear the custom setlist unlock. That sequence is the ending. An interstitial
+ * in front of it does not interrupt a stage boundary, it interrupts the payoff,
+ * and the payoff is what a player tells someone else about.
+ *
+ * The cost is deliberate and known: one opportunity per show instead of two,
+ * so roughly half the interstitial inventory of the original design. That is
+ * the price of the ending landing, and it was paid on purpose.
  */
-export const AD_BREAK_STAGES: readonly StageId[] = ['stage-2-beat', 'stage-4-encore'];
+export const AD_BREAK_STAGES: readonly StageId[] = ['stage-2-beat'];
 
 /**
  * Everything the decision needs. Assembled by the caller at the boundary, so
@@ -68,19 +78,23 @@ export interface AdBreakContext {
 /**
  * Is this a boundary where the show is *structurally* allowed to break?
  *
- * True only for a **successful** Stage 2 or Stage 4. Everything else is false,
- * and the list of everything else is the point: Stage 1 and Stage 3 successes,
- * every ruined attempt, and every non-terminal state a round can be in —
- * `READY`, `COUNTDOWN`, `PLAYING`, `PAUSED`, `VOCALIST_EVENT`.
+ * True only for a **successful Stage 2**. Everything else is false, and the
+ * list of everything else is the point: Stage 1, Stage 3 and Stage 4
+ * successes, every ruined attempt, and every non-terminal state a round can be
+ * in — `READY`, `COUNTDOWN`, `PLAYING`, `PAUSED`, `VOCALIST_EVENT`.
  *
  * Screens outside a round — boot, language, story, title, setlist, briefing —
  * cannot reach this function with a terminal outcome at all, which is why they
  * need no clause here: they are excluded by never being asked.
  *
- * A ruined show is excluded on purpose and it is the clause most likely to be
- * "optimized" later. Failing a stage is the moment a player is closest to
- * quitting, and it is also the moment they must retry through. Putting an ad
- * between a player and their retry monetizes frustration, and M23 does not.
+ * Two exclusions are product decisions rather than mechanics, and both are the
+ * kind that get "optimized" back in later by someone reading a revenue graph:
+ *
+ *   - **A ruined show.** Failing a stage is the moment a player is closest to
+ *     quitting, and also the moment they must retry through. An ad between a
+ *     player and their retry monetizes frustration.
+ *   - **Stage 4.** It leads directly into the ending — payout, next booking,
+ *     and the custom setlist unlock. See `AD_BREAK_STAGES`.
  */
 export function isAdBreakBoundary(
   flow: Pick<AppFlowState, 'stageIndex'>,

@@ -6,7 +6,7 @@
 
 Prepare Worst Gig Ever for an Android Google Play internal test with:
 
-- AdMob interstitials at two predictable full-stage boundaries;
+- an AdMob interstitial at one predictable full-stage boundary;
 - a one-time, non-consumable `remove_ads` purchase;
 - consent and privacy-choice handling before ad requests;
 - an API 36 release AAB and store-policy checklist;
@@ -23,10 +23,14 @@ Console records exist. Local builds use Google's published test identifiers.
 Only interstitials are in scope. There are no banners, rewarded ads, app-open
 ads, native ads, cross-promotion, or analytics.
 
-An ad break is eligible only after a successful Stage 2 or Stage 4 completion.
-This caps a four-stage show at two interstitial opportunities and never puts an
-ad after every action. Stage 1, Stage 3, failed attempts, boot, story, briefing,
-pause, setlist browsing, purchasing, and quitting never trigger an ad.
+An ad break is eligible only after a successful **Stage 2** completion. This
+caps a four-stage show at one interstitial opportunity and never puts an ad
+after every action. Stage 1, Stage 3, **Stage 4**, failed attempts, boot,
+story, briefing, pause, setlist browsing, purchasing, and quitting never
+trigger an ad.
+
+Stage 4 was an eligible boundary in this document's original 2026-09-08 text
+and is not one any more. See "Amendments".
 
 The ad is preloaded and may appear only at the already-finished round boundary.
 If it is not ready at that moment, the opportunity is skipped; it must not
@@ -111,8 +115,10 @@ Before the first non-internal listing:
 Pure tests own eligibility and entitlement transitions. Adapter contract tests
 must prove:
 
-- at most Stage 2 and Stage 4 success are eligible;
-- failure, first/third stages, ads-removed state, and an unready ad skip;
+- Stage 2 success is the only eligible boundary, and Stage 4 success is
+  provably never one;
+- failure, first/third/fourth stages, ads-removed state, and an unready ad
+  skip;
 - an ad can never block the result transition;
 - pending purchases do not grant entitlement;
 - purchased/restored non-consumables are finished and grant exactly once;
@@ -126,6 +132,47 @@ must prove:
 Run `npm run verify`, `git diff --check`, web export, release APK, and release
 AAB. Real purchase and live-ad delivery require Play internal testing and are
 therefore an external gate.
+
+## Amendments
+
+### 2026-09-09 — Stage 4 is no longer an ad break
+
+**Decision.** The owner removed the Stage 4 interstitial opportunity. Stage 2
+completion is the only eligible boundary for the initial monetization release.
+
+**Why.** When this document was written on 2026-09-08, Stage 4 was an ordinary
+stage boundary. It is not one any more. Stage 4 completion now runs directly
+into the strongest sequence the game has: SHOW COMPLETE, the gig payout, NEXT
+GIG BOOKED, and — on a first clear — the custom setlist unlock. That sequence
+is the ending, and it arrived after this spec was written, in the pre-release
+narrative polish work.
+
+An interstitial placed there does not interrupt a stage boundary. It interrupts
+the payoff, and the payoff is the part a player describes to someone else.
+
+**Accepted placement, in full:**
+
+| Moment | Interstitial |
+|---|---|
+| Stage 2 completion | eligible |
+| Stage 4 completion | never — straight to the final results and payoff |
+| Stage 1 / Stage 3 completion | never |
+| Any retry after a ruined show | never |
+| During gameplay | never |
+| Once results or payoff are on screen | never |
+
+**Cost, accepted knowingly.** One opportunity per show instead of two, so
+roughly half the interstitial inventory of the original design. Paid on purpose
+for the ending.
+
+**What is unchanged.** The `StageId`-based implementation stays — the eligible
+boundary is named by which song was finished, not by an array position — as
+does the boolean, non-blocking contract, so an ad still cannot delay or block
+the transition to the result.
+
+**Enforced by.** `tests/adBreak.test.ts`, "M23 amendment: Stage 4 never breaks
+for an ad, so the ending lands", which asserts that no combination of runtime
+conditions reopens the boundary.
 
 ## External records
 

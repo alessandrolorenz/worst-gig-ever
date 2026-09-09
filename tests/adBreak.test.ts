@@ -33,19 +33,37 @@ function context(overrides: Partial<AdBreakContext> = {}): AdBreakContext {
   };
 }
 
-test('M23: at most Stage 2 and Stage 4 success are eligible', () => {
+test('M23: only Stage 2 success is eligible', () => {
   assert.equal(isAdBreakBoundary({ stageIndex: stage2 }, 'SHOW_COMPLETE'), true);
-  assert.equal(isAdBreakBoundary({ stageIndex: stage4 }, 'SHOW_COMPLETE'), true);
 
   assert.equal(isAdBreakBoundary({ stageIndex: stage1 }, 'SHOW_COMPLETE'), false);
   assert.equal(isAdBreakBoundary({ stageIndex: stage3 }, 'SHOW_COMPLETE'), false);
 });
 
-test('M23: the eligible boundaries are exactly two, and named by stage', () => {
+test('M23 amendment: Stage 4 never breaks for an ad, so the ending lands', () => {
+  // The 2026-09-08 spec allowed this boundary. It was removed on 2026-09-09
+  // because Stage 4 runs straight into SHOW COMPLETE, the gig payout, NEXT GIG
+  // BOOKED and the custom setlist unlock. This assertion is the deviation:
+  // if it ever flips, someone has put an ad in front of the ending.
+  assert.equal(isAdBreakBoundary({ stageIndex: stage4 }, 'SHOW_COMPLETE'), false);
+
+  for (const adsRemoved of [true, false]) {
+    for (const adReady of [true, false]) {
+      assert.equal(
+        shouldShowAdBreak(context({ flow: { stageIndex: stage4 }, adsRemoved, adReady })),
+        false,
+        'no runtime condition may reopen the Stage 4 boundary',
+      );
+    }
+  }
+});
+
+test('M23: the eligible boundary is exactly one, and named by stage', () => {
   const eligible = STAGES.filter(stage => isAdBreakBoundary({ stageIndex: indexOf(stage.id) }, 'SHOW_COMPLETE'));
 
-  assert.equal(eligible.length, 2, 'a four-stage show has at most two ad opportunities');
+  assert.equal(eligible.length, 1, 'a four-stage show has exactly one ad opportunity');
   assert.deepEqual(eligible.map(stage => stage.id), [...AD_BREAK_STAGES]);
+  assert.deepEqual([...AD_BREAK_STAGES], ['stage-2-beat']);
 });
 
 test('M23: a ruined show is never an ad break, on any stage', () => {
@@ -79,7 +97,6 @@ test('M23: no non-terminal round state is an ad break', () => {
 
 test('M23: a confirmed remove_ads entitlement skips an otherwise eligible break', () => {
   assert.equal(shouldShowAdBreak(context({ adsRemoved: true })), false);
-  assert.equal(shouldShowAdBreak(context({ flow: { stageIndex: stage4 }, adsRemoved: true })), false);
 
   // Even with an ad already loaded: a purchase must be able to spend an
   // impression that was preloaded before it confirmed.
@@ -88,7 +105,6 @@ test('M23: a confirmed remove_ads entitlement skips an otherwise eligible break'
 
 test('M23: an unready ad skips the opportunity rather than delaying the result', () => {
   assert.equal(shouldShowAdBreak(context({ adReady: false })), false);
-  assert.equal(shouldShowAdBreak(context({ flow: { stageIndex: stage4 }, adReady: false })), false);
 });
 
 test('M23: readiness and entitlement cannot widen placement', () => {
@@ -96,7 +112,7 @@ test('M23: readiness and entitlement cannot widen placement', () => {
   // an ineligible boundary into an eligible one.
   for (const adsRemoved of [true, false]) {
     for (const adReady of [true, false]) {
-      for (const stageIndex of [stage1, stage3]) {
+      for (const stageIndex of [stage1, stage3, stage4]) {
         assert.equal(
           shouldShowAdBreak(context({ flow: { stageIndex }, adsRemoved, adReady })),
           false,
@@ -110,9 +126,8 @@ test('M23: readiness and entitlement cannot widen placement', () => {
   }
 });
 
-test('M23: an eligible boundary with a ready ad and no entitlement shows one', () => {
+test('M23: the eligible boundary with a ready ad and no entitlement shows one', () => {
   assert.equal(shouldShowAdBreak(context()), true);
-  assert.equal(shouldShowAdBreak(context({ flow: { stageIndex: stage4 } })), true);
 });
 
 test('M23: the decision is synchronous, so it cannot block the result transition', () => {
