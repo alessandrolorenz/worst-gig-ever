@@ -127,14 +127,33 @@ Run `npm run verify`, `git diff --check`, web export, release APK, and release
 AAB. Real purchase and live-ad delivery require Play internal testing and are
 therefore an external gate.
 
-## Current external blockers
+## External records
+
+### Recorded
+
+| | Value |
+|---|---|
+| Privacy policy URL | https://alessandrolorenz.github.io/worst-gig-ever/ |
+| Public support contact | worstgigevergame@gmail.com |
+
+The policy is served by GitHub Pages from `site/` in this repository, deployed
+by `.github/workflows/pages.yml`. Only that directory is published; the specs,
+prompts and marketing pack stay in the repository without becoming pages.
+
+**The policy describes the build that ships with ads and `remove_ads`, which
+does not exist yet.** The URL is sufficient for the AdMob consent message,
+which only requires a reachable page. It is *not* yet safe for the Play
+listing: what the page claims must be what the uploaded artifact does. Section
+4 of the policy promises a privacy-options control inside a Remove Ads screen,
+so that screen is a release blocker for the listing, not a nice-to-have.
+
+### Still blocking
 
 - The Expo project linked by id still needs its server-side slug renamed to
   `worst-gig-ever`; do not create a replacement project.
 - Google Play app, product, license testers, and signing track are not yet
   recorded in this repository.
 - AdMob app id and interstitial unit id are not yet recorded.
-- Privacy policy URL and public support contact are not yet recorded.
 
 These block store submission and live monetization, not the local test-mode
 implementation.
