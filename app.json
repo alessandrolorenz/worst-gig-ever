@@ -48,7 +48,10 @@
       ],
       "expo-asset",
       "expo-font",
-      "expo-localization"
+      "expo-localization",
+      "expo-build-properties",
+      "react-native-google-mobile-ads",
+      "expo-iap"
     ],
     "extra": {
       "eas": {
