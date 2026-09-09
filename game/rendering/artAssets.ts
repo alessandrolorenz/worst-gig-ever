@@ -51,6 +51,11 @@ export const PERFORMER_ART: Readonly<Record<PerformerId, PerformerArtSet>> = {
 
 export const VOCALIST_BLOCKING_ART = require('../../assets/art/band/vocalist_blocking.png');
 
+/** Narrative reward shown only after a successful full show. */
+export const RESULT_ART = {
+  gigPayout: require('../../assets/art/results/gig_payout.png'),
+} as const;
+
 export const TARGET_ART = {
   beerBottle: require('../../assets/art/props/beer_bottle.png'),
   beerMug: require('../../assets/art/props/beer_mug.png'),

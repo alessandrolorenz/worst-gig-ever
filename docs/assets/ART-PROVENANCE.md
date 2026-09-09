@@ -3,6 +3,12 @@
 Production visual assets are original images created for this project with the
 OpenAI built-in image generator.
 
+**Final result illustration (2026-09-08):**
+`FINAL-RESULT-ART-PROVENANCE.md` records the new, original
+`assets/art/results/gig_payout.png`, including its prompt, reference assets,
+conditioning, dimensions, bytes, and checksum. It is outside the fixed 33-file
+Pack 1 gameplay-art inventory and does not replace any existing character art.
+
 **Current production ledger (2026-09-03):**
 `M14-V2-PRODUCTION-PROVENANCE.md` and its companion JSON supersede all 33
 Pack 1 runtime rows and four derived identity rows below. They record the V2

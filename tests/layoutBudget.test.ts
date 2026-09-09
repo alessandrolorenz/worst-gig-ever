@@ -158,6 +158,66 @@ test('M20: the briefing sentences fit the card, in every locale', () => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// The successful full-show result: overflow is expected, so every action
+// belongs to the same scroll surface as the earned narrative content.
+// ---------------------------------------------------------------------------
+
+test('final result polish: the complete successful-show stack scrolls as one surface', () => {
+  const contentStart = overlaysSource.indexOf('const resultContent = (');
+  const contentEnd = overlaysSource.indexOf('\n  return (', contentStart);
+  const content = overlaysSource.slice(contentStart, contentEnd);
+  const wrapper = overlaysSource.slice(contentEnd, overlaysSource.indexOf('\n}', contentEnd));
+
+  assert.ok(contentStart >= 0 && contentEnd > contentStart, 'the shared result content is missing');
+  assert.match(wrapper, /gigPayout !== null \? \([\s\S]*?<ScrollView[\s\S]*?\{resultContent\}[\s\S]*?<\/ScrollView>/);
+  assert.match(wrapper, /showsVerticalScrollIndicator/);
+  assert.match(wrapper, /persistentScrollbar/);
+  assert.match(overlaysSource, /resultScroll:\s*\{[^}]*flex:\s*1/);
+  assert.match(overlaysSource, /resultScrollContent:\s*\{[^}]*flexGrow:\s*1/);
+
+  assert.equal((content.match(/<ScrollView/g) ?? []).length, 0, 'the result gained a nested scroll view');
+  assert.ok(content.includes('<View style={styles.buttonRowLayout}>'), 'the actions are outside the scroll surface');
+  assert.ok(content.includes('props.justUnlockedSetlist &&'), 'the first-completion unlock left the surface');
+  assert.ok(content.includes('complete && isCustomRun(flow) &&'), 'the custom-show setlist left the surface');
+});
+
+test('final result polish: illustration and scroll are limited to successful full shows', () => {
+  const contentStart = overlaysSource.indexOf('const resultContent = (');
+  const contentEnd = overlaysSource.indexOf('\n  return (', contentStart);
+  const content = overlaysSource.slice(contentStart, contentEnd);
+
+  assert.match(content, /gigPayout !== null && \([\s\S]*?<Image[\s\S]*?RESULT_ART\.gigPayout/);
+  assert.match(content, /accessible=\{false\}/);
+  assert.equal((content.match(/RESULT_ART\.gigPayout/g) ?? []).length, 1);
+
+  // `gigPayoutForResult` is the domain gate tested for official/custom,
+  // first/later, stage/failure, and full-show cases in gigPayout.test.ts.
+  assert.match(overlaysSource, /const gigPayout = gigPayoutForResult\(flow, state,/);
+  assert.match(overlaysSource, /gigPayout !== null \? \(/);
+});
+
+test('final result polish: every locale supplies the visible result and reward copy', () => {
+  for (const [locale, strings] of locales) {
+    for (const text of [
+      strings.results.showComplete,
+      strings.results.beersTonight,
+      strings.results.gigPayout,
+      strings.results.gigPayoutValue,
+      strings.results.nextGigBooked,
+      strings.results.nextGigLine,
+      strings.setlist.unlocked,
+      strings.setlist.tagline,
+      strings.setlist.tonight,
+      strings.results.playAgain,
+      strings.results.share,
+      strings.common.quitToTitle,
+    ]) {
+      assert.ok(text.trim().length > 0, `${locale}: final-result text is empty`);
+    }
+  }
+});
+
 test('M20: the pictures push the sentences, but not off a cliff', () => {
   /*
    * Figures and bullets together are allowed to exceed the card — that is what

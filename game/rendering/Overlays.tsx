@@ -34,7 +34,7 @@ import {
 } from '../i18n/locales.ts';
 import { DevAuditionRow, type AuditionControls } from './DevAudition.tsx';
 import { useLocale, useStrings } from '../i18n/LocaleContext.tsx';
-import { MUG_DRINK_ART, TARGET_ART } from './artAssets.ts';
+import { MUG_DRINK_ART, RESULT_ART, TARGET_ART } from './artAssets.ts';
 
 /**
  * Briefing pictures, resolved here rather than in `stages.ts` — a stage
@@ -76,6 +76,7 @@ import {
 } from '../state/rhythmState.ts';
 import { resultsArmed, type RoundState } from '../state/roundState.ts';
 import { recordFor, type Records } from '../state/records.ts';
+import { gigPayoutForResult } from '../state/gigPayout.ts';
 
 interface OverlayProps {
   flow: AppFlowState;
@@ -894,9 +895,13 @@ export function Overlays(props: OverlayProps) {
   const complete = state === 'SHOW_COMPLETE';
   const nextStageWaiting = complete && hasNextStage(flow.stageIndex);
   const armed = resultsArmed(round);
+  const gigPayout = gigPayoutForResult(flow, state, {
+    grooveScore: rhythm.score,
+    defenseScore: round.score,
+  });
 
-  return (
-    <View style={styles.scrim}>
+  const resultContent = (
+    <>
       <Text style={[styles.title, { color: complete ? THEME.integrityFull : THEME.accent }]}>
         {nextStageWaiting
           ? format(strings.results.stageCleared, { number: stage.number })
@@ -909,49 +914,13 @@ export function Overlays(props: OverlayProps) {
       </Text>
       {/* Only when this round actually beat something (M22). */}
       {props.beatRecord && <Text style={styles.newBest}>{strings.results.newBest}</Text>}
-      {/**
-        * The reward for surviving the whole show, once (M24C §37).
-        *
-        * `justUnlockedSetlist` is the *crossing*, not the state, so this
-        * appears on the results screen that earned it and on no other. The
-        * tagline comes with it because the banner alone names a feature
-        * without saying what it is for.
-        */}
-      {props.justUnlockedSetlist && (
-        <>
-          <Text style={styles.unlockBanner}>{strings.setlist.unlocked}</Text>
-          <Text style={styles.body}>{strings.setlist.tagline}</Text>
-        </>
-      )}
-      {/**
-        * The songs this run played, after a custom show (M24C §22).
-        *
-        * One heading and one line rather than the four-row card the brief
-        * sketches: the results screen has 411 dp and the two score columns
-        * below already claim most of it. It answers the same question — which
-        * four, in what order — and it is the shape a share card would reuse.
-        */}
-      {complete && isCustomRun(flow) && (
-        <>
-          <Text style={styles.tonightHeading}>{strings.setlist.tonight}</Text>
-          <Text style={styles.tonightSongs}>{runSetlistLine(flow, strings)}</Text>
-        </>
-      )}
-      {/**
-        * The whole show's beers, once the whole show is over (M25).
-        *
-        * Only on the final results — `complete && !nextStageWaiting` — because
-        * that is the only screen where "the run" is a finished thing. Between
-        * stages the number the player wants is the one in the summary column,
-        * which is this stage's.
-        *
-        * A ruined show never reaches this: `complete` is false, and the run
-        * total it would print is one the player did not finish earning.
-        */}
-      {complete && !nextStageWaiting && (
-        <Text style={styles.beersTonight}>
-          {format(strings.results.beersTonight, { count: runBeersTotal(flow) })}
-        </Text>
+      {gigPayout !== null && (
+        <Image
+          source={RESULT_ART.gigPayout}
+          style={styles.gigPayoutIllustration}
+          resizeMode="cover"
+          accessible={false}
+        />
       )}
       <Summary
         round={round}
@@ -959,6 +928,59 @@ export function Overlays(props: OverlayProps) {
         grooveEnabled={stage.groove}
         record={recordFor(props.records, stage.id)}
       />
+      {/**
+        * The whole show's beers, once the whole show is over (M25).
+        *
+        * After the score columns and before the new narrative payoff, matching
+        * the final result's scores / beers / payout hierarchy. A ruined show
+        * never reaches this: `complete` is false, and the run total it would
+        * print is one the player did not finish earning.
+        */}
+      {complete && !nextStageWaiting && (
+        <Text style={styles.beersTonight}>
+          {format(strings.results.beersTonight, { count: runBeersTotal(flow) })}
+        </Text>
+      )}
+      {gigPayout !== null && (
+        <View style={styles.gigRewardRow}>
+          <View style={styles.gigRewardColumn}>
+            <Text style={styles.gigRewardHeading}>{strings.results.gigPayout}</Text>
+            <Text style={styles.gigPayoutValue}>
+              {format(strings.results.gigPayoutValue, { amount: gigPayout })}
+            </Text>
+          </View>
+          <View style={styles.gigRewardColumn}>
+            <Text style={styles.gigRewardHeading}>{strings.results.nextGigBooked}</Text>
+            <Text style={styles.gigRewardLine}>{strings.results.nextGigLine}</Text>
+          </View>
+        </View>
+      )}
+      {/**
+        * The reward for surviving the whole show, once (M24C §37).
+        *
+        * It follows the payout and booking payoff so the first unlock
+        * complements them instead of interrupting them. `justUnlockedSetlist`
+        * remains the transition, so this still appears exactly once.
+        */}
+      {props.justUnlockedSetlist && (
+        <View style={styles.unlockReward}>
+          <Text style={styles.unlockBanner}>{strings.setlist.unlocked}</Text>
+          <Text style={styles.unlockLine}>{strings.setlist.tagline}</Text>
+        </View>
+      )}
+      {/**
+        * The songs this run played, after a custom show (M24C §22).
+        *
+        * Kept after the one-time unlock so the narrative reward reads first.
+        * One heading and one line still answer which four songs played and in
+        * what order without turning this into a second setlist screen.
+        */}
+      {complete && isCustomRun(flow) && (
+        <>
+          <Text style={styles.tonightHeading}>{strings.setlist.tonight}</Text>
+          <Text style={styles.tonightSongs}>{runSetlistLine(flow, strings)}</Text>
+        </>
+      )}
       {/**
        * The buttons are drawn immediately and deaf for a moment (M18.1).
        *
@@ -1010,6 +1032,25 @@ export function Overlays(props: OverlayProps) {
           disabled={!armed}
         />
       </View>
+    </>
+  );
+
+  return (
+    <View style={styles.scrim}>
+      {gigPayout !== null ? (
+        <ScrollView
+          style={styles.resultScroll}
+          contentContainerStyle={styles.resultScrollContent}
+          showsVerticalScrollIndicator
+          persistentScrollbar
+          alwaysBounceVertical={false}
+          overScrollMode="auto"
+        >
+          {resultContent}
+        </ScrollView>
+      ) : (
+        resultContent
+      )}
     </View>
   );
 }
@@ -1063,6 +1104,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: OVERLAY_PADDING.horizontal,
     paddingVertical: OVERLAY_PADDING.vertical,
+  },
+  /**
+   * Only the successful full-show result scrolls. `flex: 1` constrains the
+   * viewport to the safe-area-aware scrim; the content container grows past it
+   * instead of pushing either the title or the actions permanently off-screen.
+   */
+  resultScroll: {
+    flex: 1,
+    alignSelf: 'stretch',
+  },
+  resultScrollContent: {
+    flexGrow: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 4,
   },
   hudControls: {
     ...StyleSheet.absoluteFillObject,
@@ -1363,6 +1419,58 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     textAlign: 'center',
     marginBottom: 4,
+  },
+  /** 1200x675 source at 2.5x this intended phone display size. */
+  gigPayoutIllustration: {
+    width: 480,
+    height: 270,
+    maxWidth: '100%',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(244, 236, 216, 0.22)',
+    marginBottom: 10,
+  },
+  /** One compact, two-part payoff in the width landscape gives us. */
+  gigRewardRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  gigRewardColumn: {
+    minWidth: SUMMARY.columnMinWidth,
+    maxWidth: SUMMARY.columnMaxWidth,
+    marginHorizontal: SUMMARY.marginHorizontal,
+    alignItems: 'center',
+  },
+  gigRewardHeading: {
+    color: THEME.integrityFull,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  gigPayoutValue: {
+    color: THEME.hudText,
+    fontSize: 18,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  gigRewardLine: {
+    color: THEME.hudDim,
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  unlockReward: {
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  unlockLine: {
+    color: THEME.hudDim,
+    fontSize: 12,
+    lineHeight: 16,
+    textAlign: 'center',
   },
 
   /** Title screen: the stages, side by side. */

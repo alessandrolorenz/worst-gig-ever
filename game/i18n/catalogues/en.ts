@@ -138,6 +138,14 @@ export const en = {
      * "1 beers" the one time a player only manages one.
      */
     beersTonight: 'Beers down tonight: {count}',
+    /**
+     * Fictional result money, not locale pricing or exchange-rate conversion.
+     * The number is the same in every locale; only its presentation changes.
+     */
+    gigPayout: 'GIG PAYOUT',
+    gigPayoutValue: '${amount}',
+    nextGigBooked: 'NEXT GIG BOOKED',
+    nextGigLine: 'Apparently, nobody learned anything.',
   },
 
   /**

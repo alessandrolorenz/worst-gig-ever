@@ -140,6 +140,11 @@ export const ptBR: Catalogue = {
      * linha aparece só quando o show acabou, e cabe melhor.
      */
     beersTonight: 'Chopes tomados hoje: {count}',
+    /* Dinheiro fictício de resultado, sem conversão nem cotação de moeda. */
+    gigPayout: 'CACHÊ DO SHOW',
+    gigPayoutValue: 'R$ {amount}',
+    nextGigBooked: 'PRÓXIMO SHOW MARCADO',
+    nextGigLine: 'Pelo visto, ninguém aprendeu nada.',
   },
 
   share: {
