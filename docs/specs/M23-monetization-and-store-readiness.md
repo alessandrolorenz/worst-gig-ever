@@ -14,7 +14,9 @@ Prepare Worst Gig Ever for an Android Google Play internal test with:
   payout.
 
 Live ads and real purchases remain disabled until the external AdMob and Play
-Console records exist. Local builds use Google's published test identifiers.
+Console records exist. Local builds use Google's published demo **ad units**
+and the real **App ID** — the two are not interchangeable, and the reason is
+the 2026-09-09 correction under "Amendments".
 
 ## Product decisions
 
@@ -86,9 +88,14 @@ that ships.
 
 - Android package remains `com.worstgigever.app`.
 - Product id is `remove_ads`.
-- Development and friend builds use Google test app/ad-unit identifiers.
-- A production build is blocked unless real AdMob app and interstitial unit IDs
-  are injected and the test identifiers are absent.
+- The AdMob **App ID** is the real Worst Gig Ever App ID in every build that
+  initializes AdMob or UMP, development and friend builds included. It is
+  never Google's sample App ID. See the 2026-09-09 correction under
+  "Amendments".
+- Development, friend and test builds use Google's official demo **ad unit**
+  identifiers.
+- A production build is blocked unless the real interstitial unit ID is
+  configured and no Google demo identifier is present.
 - New Google Play submissions on or after 2026-08-31 target Android API 36.
 - The store artifact is an AAB; the standalone APK remains a device-test aid.
 - `RECORD_AUDIO` remains blocked.
@@ -134,6 +141,52 @@ AAB. Real purchase and live-ad delivery require Play internal testing and are
 therefore an external gate.
 
 ## Amendments
+
+### 2026-09-09 — the App ID is never a test identifier
+
+**Correction.** This document's Build configuration section previously read
+"Development and friend builds use Google test app/ad-unit identifiers." That
+is wrong for the consent architecture this milestone specifies, and it is wrong
+in a way that would have passed a casual test pass.
+
+**Accepted rule:**
+
+| Identifier | Development / friend / test | Production |
+|---|---|---|
+| AdMob **App ID** (`~`) | the real Worst Gig Ever App ID | the real Worst Gig Ever App ID |
+| **Ad unit ID** (`/`) | Google's official demo units | the real Worst Gig Ever units |
+
+A production build must fail if a Google demo ad unit ID is configured.
+
+**Why.** UMP resolves its Privacy & Messaging configuration from the AdMob
+Application ID embedded in the app. Google's sample App ID belongs to a
+Google-owned demo app, so a build carrying it asks Google for *that* app's
+consent configuration. The consent flow would appear to work — a form appears,
+choices are recorded — while testing a message this project did not write and
+cannot change. The failure is silent, which is what makes it worth a rule.
+
+The ad unit is the opposite case: it alone decides whether a real ad is served.
+Google's demo units always return the "Test Ad" card, so a test build using one
+cannot produce an impression, invalid traffic or revenue however it is
+interacted with.
+
+**No substitution.** There is deliberately no fallback that supplies the sample
+App ID when the real one is missing. A build with no App ID fails and says so.
+A fallback here would produce a build that looks configured and silently
+exercises somebody else's consent message, which is the exact failure the rule
+exists to prevent.
+
+**Enforced by.** `game/config/monetization.ts` holds the rules;
+`tests/monetizationConfig.test.ts` states them with fixture identifiers, so the
+pure layer needs no real App ID; `scripts/check-monetization-config.mjs` is the
+build boundary that reads `app.json`. The script's default mode enforces the
+invariant that any configured App ID is real and well-formed, and
+`--require-app-id` additionally demands its presence — the mode a native build
+adopts once the AdMob/UMP adapters exist.
+
+**Still open.** The real AdMob App ID and interstitial unit ID remain external
+blockers. `PRODUCTION_INTERSTITIAL_UNIT_ID` is `null` rather than a
+placeholder, because a placeholder that works is a placeholder that ships.
 
 ### 2026-09-09 — Stage 4 is no longer an ad break
 
