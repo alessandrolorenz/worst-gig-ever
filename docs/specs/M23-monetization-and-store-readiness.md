@@ -235,6 +235,19 @@ conditions reopens the boundary.
 |---|---|
 | Privacy policy URL | https://alessandrolorenz.github.io/worst-gig-ever/ |
 | Public support contact | worstgigevergame@gmail.com |
+| AdMob App ID | `ca-app-pub-2216849192122306~8216388558` |
+| Production interstitial unit | `ca-app-pub-2216849192122306/7968976548` |
+
+The App ID lives in `app.json`'s `react-native-google-mobile-ads` plugin
+options and reaches the Android manifest as
+`com.google.android.gms.ads.APPLICATION_ID`; the Google Mobile Ads SDK reads it
+from there, so it is deliberately not duplicated into the JavaScript bundle.
+The interstitial unit lives in `game/config/monetization.ts` and is requested
+only by a build that declares itself production.
+
+Neither is a secret — both are compiled into the APK and readable by anyone who
+unzips it, which is why they are committed rather than injected. The values
+that must never be committed are the signing key and the store credentials.
 
 The policy is served by GitHub Pages from `site/` in this repository, deployed
 by `.github/workflows/pages.yml`. Only that directory is published; the specs,
@@ -253,7 +266,8 @@ so that screen is a release blocker for the listing, not a nice-to-have.
   `worst-gig-ever`; do not create a replacement project.
 - Google Play app, product, license testers, and signing track are not yet
   recorded in this repository.
-- AdMob app id and interstitial unit id are not yet recorded.
+- The AdMob consent message (European regulations) is not yet published for
+  this App ID. Piece 5 cannot honestly exercise the consent flow until it is.
 
 These block store submission and live monetization, not the local test-mode
 implementation.

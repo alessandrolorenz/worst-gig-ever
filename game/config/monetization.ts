@@ -71,16 +71,20 @@ export const GOOGLE_DEMO_INTERSTITIAL_ANDROID = 'ca-app-pub-3940256099942544/103
 export const GOOGLE_SAMPLE_APP_ID = 'ca-app-pub-3940256099942544~3347511713';
 
 /**
- * The real production interstitial unit, once it exists.
+ * The real production interstitial unit (recorded 2026-09-10).
  *
- * `null` is the honest value today: the AdMob app and its interstitial unit
- * are still an open external blocker in M23. It is not filled with the demo
- * unit as a placeholder, because a placeholder that works is a placeholder
- * that ships — `validateMonetizationConfig` refuses to resolve a production
- * build while this is null, and that refusal is the only thing standing
- * between a forgotten step and a store build serving demo ads.
+ * Requested only by a build that declares itself production — see
+ * `currentAdProfile`, which defaults to `test` in every ambiguous case. A
+ * development, friend or audition build never asks for this unit however it is
+ * launched, so recording it here cannot cause an impression from a developer's
+ * own device.
+ *
+ * Not a secret: it is compiled into the APK and readable by anyone who unzips
+ * it, which is why it is committed rather than injected. The values that must
+ * never be committed are the signing key and the store credentials.
  */
-export const PRODUCTION_INTERSTITIAL_UNIT_ID: string | null = null;
+export const PRODUCTION_INTERSTITIAL_UNIT_ID: string | null =
+  'ca-app-pub-2216849192122306/7968976548';
 
 /** `ca-app-pub-` + 16-digit publisher + `~` + 10-digit app. */
 const APP_ID_PATTERN = /^ca-app-pub-\d{16}~\d{10}$/;
