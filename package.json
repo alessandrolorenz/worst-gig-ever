@@ -32,10 +32,11 @@
     "audit:provenance": "node scripts/audit-provenance.mjs",
     "make:gulp": "node scripts/make-mug-gulp.mjs",
     "build:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-library.mjs",
-    "build:release": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-release.apk && echo 'wrote build-out/worst-gig-ever-release.apk'",
+    "build:release": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-release.apk && echo 'wrote build-out/worst-gig-ever-release.apk' && npm run check:permissions",
     "condition:track": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/condition-track.mjs",
-    "build:audition": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && EXPO_PUBLIC_AUDITION_BUILD=1 ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-audition.apk && echo 'wrote build-out/worst-gig-ever-audition.apk'",
-    "check:monetization": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-monetization-config.mjs"
+    "build:audition": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && EXPO_PUBLIC_AUDITION_BUILD=1 ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-audition.apk && echo 'wrote build-out/worst-gig-ever-audition.apk' && npm run check:permissions",
+    "check:monetization": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-monetization-config.mjs",
+    "check:permissions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-android-permissions.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",

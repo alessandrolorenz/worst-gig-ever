@@ -408,13 +408,17 @@
 
       <section class="clause">
         <h2><span class="n">5</span> Permissões</h2>
-        <p>O jogo pede uma única permissão de Android,
-        <code>MODIFY_AUDIO_SETTINGS</code>, necessária para tocar a música e o clique de
-        metrônomo com a latência que um jogo de ritmo exige.</p>
-        <p>A permissão de microfone, <code>RECORD_AUDIO</code>, é explicitamente
-        <b>bloqueada</b> na configuração do build: ela não pode ser solicitada nem
-        concedida, mesmo que alguma biblioteca peça. O jogo também não usa câmera,
-        localização, contatos, telefone nem armazenamento externo.</p>
+        <p>O aplicativo usa acesso à internet para os anúncios e para o consentimento,
+        as capacidades de áudio que o jogo de ritmo exige, o Google Play Billing para a
+        compra opcional de remoção de anúncios, e o identificador de publicidade do
+        Android, que o SDK do Google Mobile Ads utiliza para selecionar um anúncio.</p>
+        <p>O aplicativo <b>não</b> pede acesso aos seus arquivos pessoais ou fotos, à
+        câmera, ao microfone, à sua localização, aos seus contatos nem ao telefone.</p>
+        <p>O microfone, em particular, é <b>bloqueado na configuração do build</b>:
+        <code>RECORD_AUDIO</code> não pode ser solicitado nem concedido, mesmo que alguma
+        biblioteca peça. O mesmo bloqueio vale para o armazenamento externo e para a
+        sobreposição sobre outros aplicativos, que bibliotecas do ecossistema adicionavam
+        sozinhas e o jogo nunca usou.</p>
       </section>
 
       <section class="clause">
@@ -557,13 +561,17 @@
 
       <section class="clause">
         <h2><span class="n">5</span> Permissions</h2>
-        <p>The game requests a single Android permission,
-        <code>MODIFY_AUDIO_SETTINGS</code>, needed to play the music and metronome click at
-        the latency a rhythm game requires.</p>
-        <p>The microphone permission, <code>RECORD_AUDIO</code>, is explicitly
-        <b>blocked</b> in the build configuration: it cannot be requested or granted, even
-        if some library asks for it. The game also uses no camera, location, contacts,
-        phone or external storage.</p>
+        <p>The app uses internet access for advertising and consent, the audio
+        capabilities the rhythm game requires, Google Play Billing for the optional
+        ad-removal purchase, and the Android advertising identifier, which the Google
+        Mobile Ads SDK uses to select an ad.</p>
+        <p>The app does <b>not</b> request access to your personal files or photos, the
+        camera, the microphone, your location, your contacts or the phone.</p>
+        <p>The microphone in particular is <b>blocked in the build configuration</b>:
+        <code>RECORD_AUDIO</code> cannot be requested or granted, even if some library
+        asks for it. The same block applies to external storage and to drawing over other
+        apps, which ecosystem libraries were adding on their own and the game has never
+        used.</p>
       </section>
 
       <section class="clause">

@@ -98,7 +98,9 @@ that ships.
   configured and no Google demo identifier is present.
 - New Google Play submissions on or after 2026-08-31 target Android API 36.
 - The store artifact is an AAB; the standalone APK remains a device-test aid.
-- `RECORD_AUDIO` remains blocked.
+- `RECORD_AUDIO`, `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`,
+  `SYSTEM_ALERT_WINDOW` and `VIBRATE` remain blocked, and the **merged**
+  manifest is the artifact that proves it. See the 2026-09-10 correction.
 - Release audition controls remain absent.
 
 ## Store declarations and assets
@@ -141,6 +143,59 @@ AAB. Real purchase and live-ad delivery require Play internal testing and are
 therefore an external gate.
 
 ## Amendments
+
+### 2026-09-10 — permissions are verified from the merged manifest, not app.json
+
+**Correction.** The published privacy policy claimed the game "requests a
+single Android permission, `MODIFY_AUDIO_SETTINGS`". That was false. It was
+written from `app.json`, which declares one permission, and `app.json` is not
+what an installed app asks for.
+
+**What the merged manifest actually contained.** React Native and Expo
+autolinking were contributing `READ_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`,
+`SYSTEM_ALERT_WINDOW` and `VIBRATE`. Nothing in this game uses any of them —
+there is not one vibration call in the codebase. Two of them are permissions
+Google Play questions during review.
+
+**Decision.** Block the four rather than document permissions the product does
+not need. `android.blockedPermissions` now lists them alongside `RECORD_AUDIO`,
+and a clean prebuild plus `:app:processReleaseManifest` confirms all five are
+absent from the merged output.
+
+**What blocking them revealed, and why it matters more.** The merged manifest
+carries permissions that appear nowhere in this repository's configuration,
+contributed by the Google Mobile Ads SDK and Play Services:
+
+```
+ACCESS_ADSERVICES_AD_ID · ACCESS_ADSERVICES_ATTRIBUTION · ACCESS_ADSERVICES_TOPICS
+ACCESS_NETWORK_STATE · FOREGROUND_SERVICE · WAKE_LOCK
+com.google.android.gms.permission.AD_ID
+```
+
+`AD_ID` and the Privacy Sandbox `ACCESS_ADSERVICES_*` permissions are
+advertising-identifier permissions. They must be reflected in the privacy
+policy and declared in the Play Console's advertising ID section of Data
+safety. A policy written from `app.json` would have described an app that does
+not exist.
+
+**Policy wording.** Rewritten by purpose rather than by enumeration, and
+deliberately not replaced with another exact count — "exactly three
+permissions" would be false the next time a dependency is added. The policy now
+names capabilities: internet for advertising and consent, audio for the game,
+Play Billing for the optional purchase, and the advertising identifier used by
+the ads SDK; and denies categories the merged manifest supports denying —
+personal files and photos, camera, microphone, location, contacts, phone.
+
+**Enforced by.** `scripts/check-android-permissions.mjs` reads the merged
+manifest, fails when any blocked permission survives or any required one goes
+missing, and refuses to run at all when no merged manifest exists — because a
+check against the source manifest is worse than no check. `app.json` and the
+source manifest both carry `tools:node="remove"` instructions rather than a
+final permission set, so grepping either one can pass while the installed app
+asks for the permission anyway. Wired into `build:release` and
+`build:audition`. `tests/androidPermissions.test.ts` additionally guards the
+`app.json` declarations and, when a merged manifest happens to exist locally,
+asserts against it too.
 
 ### 2026-09-09 — the App ID is never a test identifier
 
