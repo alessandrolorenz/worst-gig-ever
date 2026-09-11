@@ -51,6 +51,35 @@ export const ptBR: Catalogue = {
       'Áudio indisponível nesta build — recompile o cliente de desenvolvimento para ouvir o show.',
   },
 
+  removeAds: {
+    entry: 'REMOVER ANÚNCIOS',
+    heading: 'REMOVER ANÚNCIOS',
+    description:
+      'Uma compra única que remove o intervalo de anúncio entre as músicas. Nada mais muda — mesmos palcos, mesmas músicas, mesmas pontuações.',
+    /*
+     * REVIEW: o preço chega formatado pela Google Play, já com R$ e a
+     * convenção decimal do país do comprador. O placeholder se move na frase;
+     * o que entra nele nunca é traduzido.
+     */
+    buy: 'Comprar — {price}',
+    restore: 'Restaurar compra',
+    privacyOptions: 'Opções de privacidade',
+    owned: 'Anúncios removidos. Obrigado.',
+    /*
+     * REVIEW: "Aguardando" e não "Pendente". A Google Play chama este estado
+     * de pending, mas para quem está lendo o que importa é que ninguém errou
+     * nada e ninguém foi cobrado ainda.
+     */
+    pending:
+      'Aguardando a confirmação do pagamento. Nada foi cobrado ainda, e os anúncios param assim que ele for aprovado.',
+    cancelled: 'Compra cancelada. Nada foi cobrado.',
+    unavailable:
+      'A loja não está disponível neste aparelho agora, então não há o que comprar por aqui.',
+    error: 'Não deu certo. Nada foi cobrado — vale tentar de novo.',
+    restoring: 'Verificando suas compras…',
+    nothingToRestore: 'Nenhuma compra anterior encontrada nesta conta.',
+  },
+
   briefing: {
     start: 'Começar o show',
   },

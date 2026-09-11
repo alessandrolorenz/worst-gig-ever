@@ -60,6 +60,51 @@ export const en = {
       'Audio unavailable in this build — rebuild the development client to hear the show.',
   },
 
+  /**
+   * The ad-removal support screen (M23).
+   *
+   * Everything here is about advertising and nothing here is about the game.
+   * M23 forbids implying that paying changes gameplay or buys currency, and
+   * the easiest way to break that rule is an enthusiastic verb — so the copy
+   * describes a thing that stops happening, never a thing you gain.
+   *
+   * Each store outcome in `game/state/entitlement.ts` has exactly one line
+   * here, and they say different things on purpose. "Pending" is not a
+   * failure and must not read like one: the player did nothing wrong and
+   * nothing has been charged. "Cancelled" is not an error either — backing
+   * out of a purchase is a normal thing to do, and apologising for it implies
+   * they made a mistake.
+   */
+  removeAds: {
+    /** The title-screen entry, and the screen's own heading. */
+    entry: 'REMOVE ADS',
+    heading: 'REMOVE ADS',
+    /**
+     * Stated as a limit rather than a benefit. It buys the absence of one
+     * interruption; it does not buy anything inside the show.
+     */
+    description:
+      'A one-time purchase that removes the ad break between songs. Nothing else changes — same stages, same songs, same scores.',
+    /**
+     * The price is store metadata and never a catalogue literal (M23).
+     * Google Play supplies it already formatted for the buyer's country and
+     * currency, so a number typed here would be wrong somewhere on day one.
+     */
+    buy: 'Buy — {price}',
+    restore: 'Restore purchase',
+    /** Shown only when the consent SDK reports that privacy options exist. */
+    privacyOptions: 'Privacy choices',
+    owned: 'Ads removed. Thank you.',
+    pending:
+      'Waiting for your payment to clear. Nothing has been charged yet, and the ads stop as soon as it goes through.',
+    cancelled: 'Purchase cancelled. Nothing was charged.',
+    unavailable:
+      'The store is not available on this device right now, so there is nothing to buy from here.',
+    error: 'That did not go through. Nothing was charged — it is worth trying again.',
+    restoring: 'Checking your purchases…',
+    nothingToRestore: 'No previous purchase found on this account.',
+  },
+
   briefing: {
     start: 'Start the show',
   },
