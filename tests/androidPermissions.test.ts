@@ -77,8 +77,14 @@ test('M23: no blocked permission survives into the merged manifest', t => {
   for (const permission of [
     'android.permission.INTERNET',
     'android.permission.MODIFY_AUDIO_SETTINGS',
-    'com.android.vending.BILLING',
   ]) {
     assert.ok(declared.includes(permission), `${permission} must reach the manifest`);
   }
+
+  // Billing is deferred (ADR 0014). The permission left over from a removed
+  // dependency would make Play ask about a purchase flow that does not exist.
+  assert.ok(
+    !declared.includes('com.android.vending.BILLING'),
+    'BILLING must not survive expo-iap being removed; it returns with piece 5B',
+  );
 });

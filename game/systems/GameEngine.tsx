@@ -39,6 +39,8 @@ import {
   type AuditionMode,
 } from '../audio/audition.ts';
 import { showsAuditionTools } from '../config/buildFlags.ts';
+import { AdService } from '../ads/adService.ts';
+import { shouldShowAdBreak } from '../state/adBreak.ts';
 import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
@@ -209,6 +211,28 @@ export default function GameEngine() {
 
   // Release players on unmount, so a quit or reload cannot leave music running.
   useEffect(() => () => audio.dispose(), [audio]);
+
+  /**
+   * Advertising, which the game never waits for (M23 piece 5A).
+   *
+   * One service for the app's life. `start` refreshes UMP consent, and only
+   * initializes Mobile Ads and preloads when UMP's own `canRequestAds` says
+   * so — the session runs with no ads rather than guessing, which is what
+   * M23 means by failing closed.
+   *
+   * Nothing renders off the result. The title screen appears whether or not
+   * this has finished, and if it never finishes the game is a game without
+   * ads.
+   */
+  const adsRef = useRef<AdService | null>(null);
+  if (adsRef.current === null) adsRef.current = new AdService();
+
+  useEffect(() => {
+    const ads = adsRef.current;
+    if (ads === null) return undefined;
+    void ads.start(false);
+    return () => ads.dispose();
+  }, []);
 
   /**
    * Load the save, once, and apply it when it arrives (M22).
@@ -749,6 +773,28 @@ export default function GameEngine() {
      * appears on the results screen that earned it and not on every frame of
      * it. See `appFlow.recordStageCleared`.
      */
+    /*
+     * The one ad break in the show (M23).
+     *
+     * Here rather than in a handler for the same reason the rest of this
+     * effect is: the round decides it is over on a tick and the player
+     * presses nothing. `shouldShowAdBreak` is the whole decision — Stage 2
+     * success only, never Stage 4, never a ruined attempt, never without a
+     * preloaded ad — and it returns a boolean, so there is nothing here to
+     * await and no way for this to delay the result below it.
+     */
+    if (
+      adsRef.current !== null &&
+      shouldShowAdBreak({
+        flow: scene.flow,
+        outcome: uiState,
+        adsRemoved: false,
+        adReady: adsRef.current.snapshot().interstitialReady,
+      })
+    ) {
+      adsRef.current.show();
+    }
+
     if (uiState === 'SHOW_COMPLETE') {
       /*
        * The attempt's beers go with the completion (M25).

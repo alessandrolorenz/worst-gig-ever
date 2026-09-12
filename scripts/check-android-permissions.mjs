@@ -55,9 +55,18 @@ const MUST_BE_PRESENT = [
   'android.permission.INTERNET',
   // Audio latency the rhythm game depends on.
   'android.permission.MODIFY_AUDIO_SETTINGS',
-  // The remove_ads purchase.
-  'com.android.vending.BILLING',
 ];
+
+/**
+ * Permissions that must not appear until the feature that needs them does.
+ *
+ * `com.android.vending.BILLING` arrived with `expo-iap` and stayed after the
+ * billing half of M23 was deferred (ADR 0014). A permission left behind by a
+ * removed dependency is not harmless: Play asks why an app declares billing,
+ * and a privacy policy written from the manifest would describe a purchase
+ * flow that does not exist. It returns with piece 5B, not before.
+ */
+const MUST_BE_ABSENT_UNTIL_BILLING = ['com.android.vending.BILLING'];
 
 /** Candidate locations, newest first. AGP has moved this more than once. */
 function mergedManifestPath() {
@@ -93,7 +102,9 @@ const declared = [...manifest.matchAll(/uses-permission[^>]*android:name="([^"]+
   .map(match => match[1])
   .sort();
 
-const wronglyPresent = MUST_BE_ABSENT.filter(name => declared.includes(name));
+const wronglyPresent = [...MUST_BE_ABSENT, ...MUST_BE_ABSENT_UNTIL_BILLING].filter(name =>
+  declared.includes(name),
+);
 const wronglyAbsent = MUST_BE_PRESENT.filter(name => !declared.includes(name));
 
 console.log(`Merged ${variant} manifest: ${manifestPath.replace(`${repoRoot}/`, '')}`);

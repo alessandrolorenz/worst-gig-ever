@@ -68,8 +68,7 @@
         {
           "androidAppId": "ca-app-pub-2216849192122306~8216388558"
         }
-      ],
-      "expo-iap"
+      ]
     ],
     "extra": {
       "eas": {
