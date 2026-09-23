@@ -1,7 +1,9 @@
 # ADR 0014 — AdMob and Play Billing compatibility on Expo 53
 
 **Date:** 2026-09-10
-**Status:** accepted for the ads half; the billing half is blocked and open.
+**Status:** accepted for the ads half. The billing half was blocked and is now
+resolved by **ADR 0015**, which adopts `react-native-purchases` — the
+`expo-iap` findings below stand and were not revisited.
 **Context:** M23. Expo SDK 53, React Native 0.79.6, New Architecture enabled,
 Android Gradle plugin 8.8.2.
 

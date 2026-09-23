@@ -58,15 +58,18 @@ const MUST_BE_PRESENT = [
 ];
 
 /**
- * Permissions that must not appear until the feature that needs them does.
+ * Permissions that arrive with a feature, and must arrive *with* it.
  *
- * `com.android.vending.BILLING` arrived with `expo-iap` and stayed after the
- * billing half of M23 was deferred (ADR 0014). A permission left behind by a
- * removed dependency is not harmless: Play asks why an app declares billing,
- * and a privacy policy written from the manifest would describe a purchase
- * flow that does not exist. It returns with piece 5B, not before.
+ * `com.android.vending.BILLING` arrived with `expo-iap`, was removed when the
+ * billing half of M23 was deferred (ADR 0014), and is required again now that
+ * `remove_ads` is implemented on RevenueCat (ADR 0015).
+ *
+ * It is checked rather than assumed in both directions. A permission left
+ * behind by a removed dependency makes Play ask why an app declares billing it
+ * does not do; a missing one makes the Play sheet fail to open on a device,
+ * which is the kind of bug that only shows up after the build is signed.
  */
-const MUST_BE_ABSENT_UNTIL_BILLING = ['com.android.vending.BILLING'];
+const MUST_BE_PRESENT_FOR_BILLING = ['com.android.vending.BILLING'];
 
 /** Candidate locations, newest first. AGP has moved this more than once. */
 function mergedManifestPath() {
@@ -102,10 +105,10 @@ const declared = [...manifest.matchAll(/uses-permission[^>]*android:name="([^"]+
   .map(match => match[1])
   .sort();
 
-const wronglyPresent = [...MUST_BE_ABSENT, ...MUST_BE_ABSENT_UNTIL_BILLING].filter(name =>
-  declared.includes(name),
+const wronglyPresent = MUST_BE_ABSENT.filter(name => declared.includes(name));
+const wronglyAbsent = [...MUST_BE_PRESENT, ...MUST_BE_PRESENT_FOR_BILLING].filter(
+  name => !declared.includes(name),
 );
-const wronglyAbsent = MUST_BE_PRESENT.filter(name => !declared.includes(name));
 
 console.log(`Merged ${variant} manifest: ${manifestPath.replace(`${repoRoot}/`, '')}`);
 console.log('Permissions the installed app actually declares:');
