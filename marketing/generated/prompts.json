@@ -1,0 +1,56 @@
+[
+  {
+    "id": "A",
+    "name": "wge-hero-impossible-gig-portrait",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-c0ca4a8e-5a09-485d-9a7a-688acb7da67f.png",
+    "prompt": "Use case: ads-marketing. Create ONE original art-only 4:5 portrait promotional illustration for Worst Gig Ever, 1080x1350 if possible. Concept A THE IMPOSSIBLE GIG. Reference image 1 performance establishes exact four band identities and 2D style; reference 2 payout establishes drummer face and outfits; reference 3 establishes amber bottle with blank teal label. New composition: slim tan black-haired drummer in black T-shirt central and large, fiercely concentrating behind battered red gold-star drums, one stick keeping rhythm and the other poised to defend. ONE amber bottle flies diagonally toward him in clear negative space. The canonical teal mohawk woman vocalist, stocky dark-skinned puff-haired woman bassist with red bass and tall orange-haired man guitarist in blue jacket with cream guitar keep performing behind him. Chaotic crowd silhouettes at bottom, dirty small brick bar with magenta/teal/amber lights. Suggest groove through a simple pulse arc on the cymbal, not invented UI. Strong angular ink, simplified cel shading, rough garage poster texture, same character proportions. Keep central joke readable on phone. No text anywhere, no lettering on drums/signs/bottle, no logos, no watermark, no UI, no photorealism, no 3D, no anime, no heroic arena. Preserve canonical clothing/hair/skin/instruments precisely. One illustration, not a contact sheet."
+  },
+  {
+    "id": "B",
+    "name": "wge-keep-the-groove-initial-portrait",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-c7217757-fcba-4df9-bb68-545f3ac2e4c7.png",
+    "prompt": "Use case: ads-marketing. ONE text-free 4:5 portrait campaign illustration, target 1080x1350. Worst Gig Ever canonical reference 1 performance establishes identities; reference 2 payout drummer front face. Same angular ink/cel shading, gritty small-bar charcoal-purple/amber/magenta/teal world. Slim tan man drummer, tousled black hair, black T-shirt, dark jeans, battered red drum kit with worn gold stars and brass cymbals. Preserve exact character identity and proportions, not muscular heroic. No readable text, logos, watermark, UI, fake screenshot, 3D, anime, photorealism, branded alcohol. KEEP THE GROOVE: intimate dynamic three-quarter close view of drummer actively playing. His lower hand stick strikes central snare with a simple teal elliptical pulse, other hand taps cymbal with amber rhythm arc. His eyes intensely follow the beat but glance sideways at one amber bottle with blank teal label approaching from upper-left peripheral space. Only drummer dominates, band silhouettes dim in background. Rhythm and defense simultaneously, strong readable silhouettes, minimal background detail."
+  },
+  {
+    "id": "B2",
+    "name": "wge-keep-the-groove-portrait",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-717d5061-900c-406f-9851-9d0ec873b47f.png",
+    "prompt": "Precise object edit. Keep this entire Worst Gig Ever illustration unchanged except the upper-left corner: REMOVE the disembodied hand gripping the bottle. Keep the amber bottle with blank teal label, now flying freely toward the drummer, with a few short motion strokes behind it and continuous dark bar background where the hand was. Preserve drummer face, hands, sticks, snare pulse, costume, other band members, framing, exact art style. No text, no UI, no new objects. Output same portrait illustration."
+  },
+  {
+    "id": "C",
+    "name": "wge-gameplay-bottle-defense-portrait",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-418bba49-f77f-4223-b569-b3fa49826443.png",
+    "prompt": "Use case: ads-marketing. ONE text-free 4:5 portrait campaign illustration, target 1080x1350. Worst Gig Ever canonical reference 1 performance establishes identities; reference 2 payout drummer front face. Same angular ink/cel shading, gritty small-bar charcoal-purple/amber/magenta/teal world. Slim tan man drummer, tousled black hair, black T-shirt, dark jeans, battered red drum kit with worn gold stars and brass cymbals. Preserve exact character identity and proportions, not muscular heroic. No readable text, logos, watermark, UI, fake screenshot, 3D, anime, photorealism, branded alcohol. DEFEND THE DRUMMER: comedic clear action. Drummer bats away one approaching amber bottle with a blank teal label using a wooden stick, unmistakable contact spark at upper right; other hand remains over snare playing. Second bottle far back near crowd. The same teal-mohawk vocalist in mustard vest, dark-skinned stocky puff-haired bassist in teal vest with red bass, and tall orange-haired guitarist in blue jacket with cream/teal guitar continue performing unconcerned behind him. Wider action silhouettes, few impact marks, no gore or clutter."
+  },
+  {
+    "id": "D",
+    "name": "wge-beer-break-landscape",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-2de5a17f-7871-478d-aa44-bf9283680d9d.png",
+    "prompt": "undefinedBEER BREAK: side three-quarter composition. Same drummer actively plays snare with ONE stick in left hand while his right hand awkwardly reaches to grab a foamy angular glass mug perched beside the kit. His face is tired and incredulous, not glamorous or drunk. ONE incoming amber bottle with blank teal label in background, chaotic crowd beyond. Teal-haired vocalist continues singing and bass/guitar silhouettes. Comic inconvenience, beer occupies a small part of picture, no product advertising. Drummer has exactly two arms and two hands, no extra stick hovering."
+  },
+  {
+    "id": "E",
+    "name": "wge-custom-setlist-landscape",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-ab9093ca-f92a-4772-8541-cc7c8f475d34.png",
+    "prompt": "undefinedWORST SETLIST: new quiet-before-chaos backstage composition. Canonical slim black-haired drummer in black T-shirt leans over battered flight case and chooses music by pointing a pencil at a large paper with exactly four abstract thick horizontal strokes, NO letters or song names. Same three bandmates gather with their canonical instruments, preparing another terrible bar show. Coiled cables, red drum and cymbal edge nearby, dirty brick wall, mischievous apprehension. Paper and drummer's choosing gesture the clear focus. No UI, no legible text or tiny scribbles. Keep all four band members recognizable, full faces."
+  },
+  {
+    "id": "F",
+    "name": "wge-gig-payout-portrait",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-7b3a5f27-a1b3-4e84-b7ae-86366ddc3825.png",
+    "prompt": "Use case: ads-marketing. ONE text-free 4:5 portrait campaign illustration, target 1080x1350. Worst Gig Ever canonical reference 1 performance establishes identities; reference 2 payout drummer front face. Same angular ink/cel shading, gritty small-bar charcoal-purple/amber/magenta/teal world. Slim tan man drummer, tousled black hair, black T-shirt, dark jeans, battered red drum kit with worn gold stars and brass cymbals. Preserve exact character identity and proportions, not muscular heroic. No readable text, logos, watermark, UI, fake screenshot, 3D, anime, photorealism, branded alcohol. F — WE GOT PAID?! A new portrait composition, canonical payout reference is identity authority for all five people including owner. Exhausted four-member band gathered beside damaged red drums at closing time. Stocky bar owner with swept-back dark hair, charcoal suit, burgundy vest and short cigar calmly hands drummer a blank envelope with abstract banknote edges, while holding a second blank booking slip. Drummer's surprised face and envelope handoff central. Band's exact silhouettes/outfits recognizable around him; incredulous rather than heroic. Dirty brick bar, tipped stool and debris. No text on notes, envelope or signs. All five faces visible. Owner distinct from musicians. No mob-film imitation."
+  },
+  {
+    "id": "AL",
+    "name": "wge-hero-impossible-gig-landscape",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-831a36f4-7c00-4d3d-9dd1-6112fcfb21a8.png",
+    "prompt": "LANDSCAPE 16:9, wide horizontal canvas, target 1920x1080. Recompose this Impossible Gig campaign art for a landing hero: same drummer central at red star drums, same four band identities, one flying amber bottle in upper-right negative space, crowd foreground. Spread bassist and vocalist to left and guitarist right so all fit naturally, no missing instruments. Same angular gritty 2D style, amber/magenta/teal light. No text, no logos, no new people, no UI. Do not stretch or simply crop reference. Final canvas is WIDE LANDSCAPE."
+  },
+  {
+    "id": "SQ",
+    "name": "wge-gameplay-bottle-defense-square",
+    "path": "/Users/alessandrolorenz/.codex/generated_images/01a081cb-5274-7241-9329-2c6f921e0846/exec-15babc25-bd2e-437a-a285-91a962b51957.png",
+    "prompt": "SQUARE 1:1 canvas, target1080x1080. Recompose this bottle-defense artwork as a square, drummer center foreground, one raised stick contacting bottle with small burst upper-right, other stick keeps beat on snare, same three canonical bandmates in background. Tight readable action silhouettes, all faces and bottle fully inside canvas. Preserve exact hair, skin, outfits and instruments and angular 2D garage ink style. No text, logos or UI. Square illustration not portrait, not a crop, no extra limbs."
+  }
+]
