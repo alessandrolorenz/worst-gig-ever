@@ -22,6 +22,8 @@ module.exports = {
       files: [
         ".eslintrc.{js,cjs}",
         "*.config.js",
+        // Bundler tooling loaded by metro.config.js, not by the app.
+        "metro/*.js",
         "tests/**/*.ts",
       ],
       parserOptions: {

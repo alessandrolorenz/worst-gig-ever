@@ -71,6 +71,31 @@ export interface SavedState {
    * rather than repairs.
    */
   readonly customSetlist: Setlist | null;
+  /**
+   * Whether this player has bought Remove Ads (M23).
+   *
+   * **Additive and optional, so `SCHEMA_VERSION` stays 1**, for exactly the
+   * reason `customSetlist` above states: an older build reads a file with this
+   * field and carries it through the unknown-field passthrough, and this build
+   * reads an older file and gets `false`, which is right for a player who has
+   * not bought anything.
+   *
+   * ## This is a cache, not the record
+   *
+   * Google Play owns the fact. `entitlement.ts` says why the cached value may
+   * only ever mean "already owned": a `false` here is also what a fresh
+   * install and a wiped file look like, so it starts the session unowned and
+   * lets the store answer. What the `true` buys is the returning player who
+   * paid not seeing an ad during the seconds before RevenueCat reconnects, or
+   * for the whole of a flight. `restoreCachedEntitlement` is the only reader
+   * and it enforces that asymmetry.
+   *
+   * Which is also why a player who edits this file to `true` gets ads removed.
+   * That is a known and accepted property of a no-backend client-side
+   * entitlement, recorded as an M23 limitation; the alternative is a backend
+   * this project does not have.
+   */
+  readonly adsRemoved: boolean;
 }
 
 /** What a fresh install has. Also what any unreadable file becomes. */
@@ -82,6 +107,7 @@ export function emptySave(): SavedState {
     clickEnabled: true,
     locale: null,
     customSetlist: null,
+    adsRemoved: false,
   };
 }
 
@@ -108,6 +134,7 @@ const KNOWN_FIELDS = new Set([
   'clickEnabled',
   'locale',
   'customSetlist',
+  'adsRemoved',
 ]);
 
 /**
@@ -225,6 +252,15 @@ export function parseSave(raw: string | null): ParsedSave {
        * opening.
        */
       customSetlist: parseSetlist(decoded.customSetlist),
+      /*
+       * Strictly `=== true`, and the strictness is the point (M23).
+       *
+       * `Boolean(decoded.adsRemoved)` would grant the entitlement for the
+       * string `"false"`, and `!== false` would grant it for a missing field.
+       * Both are ways a corrupt or truncated file gives away the product, and
+       * the one shape that must mean "owned" is the one this build wrote.
+       */
+      adsRemoved: decoded.adsRemoved === true,
     },
     unknown,
     unreadable: false,
@@ -241,5 +277,6 @@ export function serializeSave(state: SavedState, unknown: UnknownFields = {}): s
     clickEnabled: state.clickEnabled,
     locale: state.locale,
     customSetlist: state.customSetlist,
+    adsRemoved: state.adsRemoved,
   });
 }

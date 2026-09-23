@@ -34,6 +34,8 @@ import {
   BRIEFING_TEXT_WIDTH,
   BUTTON,
   OVERLAY_PADDING,
+  REMOVE_ADS,
+  REMOVE_ADS_TEXT_WIDTH,
   SETLIST,
   SETLIST_SLOT_TEXT_WIDTH,
   SETLIST_TRACK_TEXT_WIDTH,
@@ -41,8 +43,10 @@ import {
   SUMMARY,
   SUMMARY_LABEL_WIDTH,
   briefingCardHeight,
+  removeAdsBodyHeight,
   setlistColumnHeight,
 } from '../game/rendering/overlayLayout.ts';
+import { REMOVE_ADS_MESSAGES } from '../game/state/entitlement.ts';
 import { GROOVE_PANEL, HUD_TYPE } from '../game/rendering/hudLayout.ts';
 import {
   MIN_VIEWPORT,
@@ -375,9 +379,21 @@ test('M20: every button label fits its button', () => {
       ['title.clickOff', strings.title.clickOff],
       /* The way into the builder, from the title and from the results (M24C). */
       ['setlist.open', strings.setlist.open],
+      /* The Remove Ads screen: its title entry, and its own controls (M23). */
+      ['removeAds.entry', strings.removeAds.entry],
+      ['removeAds.restore', strings.removeAds.restore],
+      ['removeAds.privacyOptions', strings.removeAds.privacyOptions],
     ];
 
     full.push(['setlist.start', strings.setlist.start]);
+    /*
+     * Buy carries a price the store supplies, so the label's real length is
+     * not knowable here. `R$ 1.234,56` is a deliberately unkind stand-in: a
+     * long currency symbol, a thousands separator and a decimal comma, which
+     * is roughly the worst a real Play price gets in the two markets this
+     * build ships to.
+     */
+    full.push(['removeAds.buy', format(strings.removeAds.buy, { price: 'R$ 1.234,56' })]);
 
     for (const [name, label] of full) {
       const lines = wrappedLines(label, BUTTON.fontSize, inner);
@@ -388,6 +404,87 @@ test('M20: every button label fits its button', () => {
       assert.ok(lines <= 2, `${locale}: compact button ${name} "${label}" takes ${lines} lines`);
     }
   }
+});
+
+// ---------------------------------------------------------------------------
+// The Remove Ads screen (M23): scrollable, and it should not have to be
+// ---------------------------------------------------------------------------
+
+test('M23: the Remove Ads body takes the height the screen has', () => {
+  assert.ok(
+    !/removeAdsScroll:\s*\{[^}]*maxHeight/.test(overlaysSource),
+    'a fixed maxHeight is the English-length assumption M20 exists to remove',
+  );
+  assert.ok(
+    /removeAdsScroll:\s*\{[^}]*flexShrink:\s*1/.test(overlaysSource),
+    'the body must shrink to the screen rather than be sized by a constant',
+  );
+});
+
+/**
+ * **It scrolls, and it should never need to.**
+ *
+ * Two rules rather than one, because they fail differently. The screen is a
+ * `ScrollView` with a cue, so a translation that expands past the viewport is
+ * reachable rather than clipped — that is M20's floor and the first assertion
+ * below. But a support screen with four sentences on it that a player has to
+ * scroll is a screen whose Buy button they have not seen yet, so the budget
+ * asks for more than the floor: the description and the longest thing the
+ * status box can say must fit together, in every locale.
+ *
+ * The status line is taken as the worst of all of them rather than the one
+ * that happens to be showing. Which sentence appears depends on what a store
+ * did, and a layout that fits only the short outcomes is a layout that breaks
+ * on the day a purchase fails.
+ */
+test('M23: the description and any outcome fit without scrolling, in every locale', () => {
+  const available = removeAdsBodyHeight(MIN_VIEWPORT.height);
+
+  for (const [locale, strings] of locales) {
+    const copy = strings.removeAds as Record<string, string>;
+
+    const description = textHeight(copy.description, {
+      ...REMOVE_ADS.body,
+      maxWidth: REMOVE_ADS.body.maxWidth,
+    });
+
+    /*
+     * Every line the box can hold, `restoring` included: it is not an outcome,
+     * but it is a sentence that appears in that box while a restore runs.
+     */
+    const lines = [...REMOVE_ADS_MESSAGES, 'restoring'];
+    const tallest = Math.max(
+      ...lines.map((key) =>
+        textHeight(copy[key], { ...REMOVE_ADS.body, maxWidth: REMOVE_ADS_TEXT_WIDTH }),
+      ),
+    );
+
+    const status =
+      tallest + REMOVE_ADS.status.paddingVertical * 2 + REMOVE_ADS.status.marginTop;
+    const total = description + status;
+
+    assert.ok(
+      total <= available,
+      `${locale}: the Remove Ads body needs ${Math.ceil(total)} dp of ${available}`,
+    );
+  }
+});
+
+test('M23: an overflowing Remove Ads screen says so without being touched', () => {
+  /*
+   * The same three mechanics the briefing card is held to, for the same
+   * reason: Android fades the scroll indicator, so a clipped paragraph looks
+   * exactly like a short one. The budget above says this should not happen;
+   * this says that if a future translation makes it happen, the player can
+   * tell.
+   */
+  const screen = overlaysSource.slice(overlaysSource.indexOf('function RemoveAdsScreen'));
+  const body = screen.slice(0, screen.indexOf('\nfunction '));
+
+  assert.ok(/persistentScrollbar/.test(body), 'the body must keep its scrollbar drawn');
+  assert.ok(/onContentSizeChange/.test(body), 'the body must measure its content');
+  assert.ok(/onLayout/.test(body), 'and measure itself');
+  assert.ok(/hasMore/.test(body), 'and say when the first is bigger than the second');
 });
 
 // ---------------------------------------------------------------------------

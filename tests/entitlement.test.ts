@@ -4,13 +4,16 @@ import assert from 'node:assert/strict';
 
 import {
   PURCHASE_OUTCOMES,
+  REMOVE_ADS_MESSAGES,
   applyStoreReport,
   canRequestAds,
   emptyEntitlement,
   entitlementToSave,
+  removeAdsMessage,
   restoreCachedEntitlement,
   type PurchaseOutcome,
 } from '../game/state/entitlement.ts';
+import { allCatalogues } from '../game/i18n/catalogue.ts';
 
 /** Apply a finished report, the common case. */
 function report(outcome: PurchaseOutcome, finished = true) {
@@ -160,4 +163,99 @@ test('M23: every store outcome is handled, not defaulted', () => {
     assert.equal(state.adsRemoved, grants, `${outcome} grant expectation`);
     assert.equal(state.purchasePending, outcome === 'pending', `${outcome} pending expectation`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// What the screen says about it (M23, piece 6)
+// ---------------------------------------------------------------------------
+
+test('M23: every store outcome produces a sentence, in every locale', () => {
+  /*
+   * The failure this rules out is a blank screen on a stranger's handset: an
+   * outcome with no message, or a message with no copy behind it. Both are
+   * invisible until the exact store condition that produces them happens, and
+   * neither would fail any other test in this file.
+   */
+  for (const outcome of PURCHASE_OUTCOMES) {
+    for (const finished of [true, false]) {
+      const message = removeAdsMessage({ outcome, finished });
+      assert.ok(
+        REMOVE_ADS_MESSAGES.includes(message),
+        `${outcome}/${finished} produced "${message}", which is not a message`,
+      );
+      for (const [locale, strings] of allCatalogues()) {
+        const line: string | undefined = (strings.removeAds as Record<string, string>)[message];
+        assert.equal(typeof line, 'string', `${locale} has no removeAds.${message}`);
+      }
+    }
+  }
+});
+
+test('M23: the sentence agrees with what the entitlement decided', () => {
+  /*
+   * The property that matters is not which words appear, it is that the words
+   * and the rule never disagree: "Ads removed. Thank you." must appear if and
+   * only if `applyStoreReport` actually granted. A screen that thanks a player
+   * whose purchase did not land is the one failure here that costs money.
+   */
+  for (const outcome of PURCHASE_OUTCOMES) {
+    for (const finished of [true, false]) {
+      const report = { outcome, finished };
+      const granted = applyStoreReport(emptyEntitlement(), report).adsRemoved;
+      assert.equal(
+        removeAdsMessage(report) === 'owned',
+        granted,
+        `${outcome}/${finished}: the screen and the rule disagree`,
+      );
+    }
+  }
+});
+
+test('M23: an unacknowledged purchase is never reported as a failure', () => {
+  /*
+   * Google Play refunds an unacknowledged purchase after three days, so it
+   * does not grant — but money has moved, and `error` promises "Nothing was
+   * charged", which would be false. `pending` is the only true line available.
+   */
+  for (const outcome of ['purchased', 'alreadyOwned'] as const) {
+    assert.equal(removeAdsMessage({ outcome, finished: false }), 'pending');
+  }
+});
+
+test('M23: a restore that found nothing is not the same as no store', () => {
+  /*
+   * Both arrive as `unavailable`, because an empty CustomerInfo and a dead
+   * billing client are the same absence of an entitlement. Only `completed`
+   * separates them, and getting it wrong tells a player with no Play Store
+   * that the purchase they are looking for does not exist.
+   */
+  const absent = { outcome: 'unavailable', finished: false } as const;
+
+  assert.equal(
+    removeAdsMessage(absent, { completed: true, found: false }),
+    'nothingToRestore',
+    'a restore that ran and found nothing',
+  );
+  assert.equal(
+    removeAdsMessage(absent, { completed: false, found: false }),
+    'unavailable',
+    'a restore that never ran',
+  );
+  assert.equal(
+    removeAdsMessage({ outcome: 'purchased', finished: true }, { completed: true, found: true }),
+    'owned',
+    'a restore that found the purchase',
+  );
+});
+
+test('M23: restoring twice says "owned" twice and grants once', () => {
+  // The screen repeating itself must not be able to move the entitlement.
+  const state = emptyEntitlement();
+  const found = { outcome: 'purchased', finished: true } as const;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    applyStoreReport(state, found);
+    assert.equal(removeAdsMessage(found, { completed: true, found: true }), 'owned');
+  }
+  assert.equal(state.grantCount, 1, 'three restores granted more than once');
 });

@@ -39,6 +39,51 @@ while every device build came off the branch; the trunk has caught up.
 | M24C | Custom setlist unlock and builder | **complete**, on `m24/custom-setlist`. Not on `main` |
 | M24D | Physical replay validation | **superseded.** Absorbed into M25's final device validation — see "M24 closure" below |
 | M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md`. Not on `main` |
+| M23 | Monetization and store readiness | **in progress**, on `m23/admob-compat-15.8.3`. Not on `main`. Pieces below |
+
+### M23 pieces
+
+Numbered out of order in the table above because M23 was opened after M24/M25
+and is the branch currently being worked on.
+
+| Piece | State |
+|---|---|
+| Ad eligibility rules | **done**, committed. Stage 2 is the only boundary; Stage 4 is provably never one (ADR-level amendment, 2026-09-09) |
+| Entitlement rules | **done**, committed. Pure, monotonic, pending ≠ owned |
+| Remove Ads copy, en + pt-BR | **done**, committed |
+| 5A — AdMob and UMP adapter | **done**, and **validated on a physical handset** 2026-09-11. Two defects only hardware exposed; see `docs/verification/M23-piece-5A-device-validation.md` |
+| 5B — RevenueCat billing adapter | **done**, ADR 0015. Builds, links, and is mapped — **no purchase has ever been made** |
+| Permissions gate | **done**. Reads the *merged* manifest, which is the only artifact that proves what an installed app asks for |
+| 6 — Remove Ads screen | **done** 2026-09-22, emulator-validated: `docs/verification/M23-piece-6-remove-ads-screen.md`. This is the piece that connected the entitlement to the ad break — `GameEngine` had been passing a literal `adsRemoved: false` since 5A |
+
+**What blocks M23 now is entirely external**, and none of it is code:
+
+1. No RevenueCat project, so no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`. The
+   adapter reports `unavailable`, which is a correct and playable state.
+2. No Google Play app, no `remove_ads` product, no licence testers, no internal
+   test track. A one-time product cannot be bought from a locally-signed APK,
+   so every purchase path is unexercised.
+3. The AdMob consent message for European regulations is still not resolving
+   for this App ID, so the UMP form has never been observed. Recorded as **not
+   validated** rather than worked around — see the 5A device report.
+
+The full external checklist is ADR 0015 §"Play Console / RevenueCat checklist".
+
+**Two things this branch fixed that were quietly broken:**
+
+- **The web export had not built since piece 5A.** A native-only import inside
+  the ads SDK's banner component — a format this game does not use — failed the
+  bundle outright. Both adapters guarded against exactly this with a
+  `Platform.OS` check, a lazy `require` and a `try/catch`, and none of it
+  applies: Metro resolves a statically-analyzable `require()` whether or not it
+  runs, so the package joined the web graph before any guard executed. A build
+  that never happens cannot be caught at runtime. Fixed with a resolver stub;
+  `tests/monetizationConfig.test.ts` now keeps the stub list in step with the
+  adapters.
+- **The purchase was wired to nothing.** `shouldShowAdBreak` was being asked
+  about a literal `false`. Every test passed, because a literal satisfies the
+  type and the eligibility rules. It would have shipped a purchase a player
+  could complete, be charged for, and see change nothing.
 
 ### M24 closure
 

@@ -20,10 +20,12 @@ import {
   BRIEFING,
   BUTTON,
   OVERLAY_PADDING,
+  REMOVE_ADS,
   SETLIST,
   STAGE_CARD,
   SUMMARY,
 } from './overlayLayout.ts';
+import type { RemoveAdsMessage } from '../state/entitlement.ts';
 import type { Catalogue } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
 import {
@@ -78,6 +80,37 @@ import { resultsArmed, type RoundState } from '../state/roundState.ts';
 import { recordFor, type Records } from '../state/records.ts';
 import { gigPayoutForResult } from '../state/gigPayout.ts';
 
+/**
+ * Everything the Remove Ads screen draws itself from (M23, piece 6).
+ *
+ * A view model rather than the service, and the reason is the same one that
+ * keeps `entitlement.ts` pure: the screen must render correctly for a store
+ * that is down, a build with no RevenueCat key, and a web export with no
+ * billing module at all. Handing it a `BillingService` would make every one of
+ * those an absent object the renderer has to guard; handing it six plain
+ * fields makes them ordinary values.
+ */
+export interface RemoveAdsView {
+  /** Confirmed ownership, from the pure entitlement and nothing else. */
+  owned: boolean;
+  /**
+   * Google Play's own formatted price, or null while the product has not
+   * loaded.
+   *
+   * Never a number and never assembled here (M23): Play returns it already
+   * formatted for the buyer's country and currency. Null hides Buy rather than
+   * drawing it with a blank or a guess — a product with no price is a product
+   * that cannot be bought, and saying so is the `unavailable` line.
+   */
+  price: string | null;
+  /** A store call is in flight, so every control is deaf. */
+  busy: 'buy' | 'restore' | null;
+  /** The sentence to show under the description, or null before anything happened. */
+  message: RemoveAdsMessage | null;
+  /** UMP reports that a privacy-options form exists for this player. */
+  privacyOptionsRequired: boolean;
+}
+
 interface OverlayProps {
   flow: AppFlowState;
   /** Development-only music audition tooling; `null` in a release build. */
@@ -129,6 +162,12 @@ interface OverlayProps {
   /** True when the round just finished set a new best on either dimension. */
   beatRecord: boolean;
   onShare(): void;
+  /** The Remove Ads support screen (M23). */
+  removeAds: RemoveAdsView;
+  onOpenRemoveAds(): void;
+  onBuyRemoveAds(): void;
+  onRestorePurchases(): void;
+  onShowPrivacyOptions(): void;
 }
 
 function Button({
@@ -698,6 +737,132 @@ function SetlistBuilder({
 }
 
 /**
+ * The Remove Ads support screen (M23, piece 6).
+ *
+ * What the privacy policy already promises a player, made real: a description,
+ * Google Play's own price, Buy, Restore, the privacy-choices form where the
+ * consent SDK says one is required, and a sentence for each way a store call
+ * can end.
+ *
+ * ## It never says that buying changes the game
+ *
+ * The description is written as a limit rather than a benefit — see the
+ * catalogue — and nothing on this screen is styled as a reward. M23 is
+ * explicit that the surface must not imply a purchase buys currency, an
+ * advantage, or anything inside the show, and the shape of the screen carries
+ * that as much as the words do: no price tag on the title screen, no badge, no
+ * celebration beyond one line of thanks.
+ *
+ * ## The body scrolls; the controls do not
+ *
+ * Same rule and the same mechanics as the briefing card (M20): a `ScrollView`
+ * that measures itself, a persistent scrollbar, and the `▾` cue in the accent
+ * colour when there is more below — because Android fades the indicator and a
+ * clipped paragraph looks exactly like a short one. The buttons sit outside
+ * it, so Buy is never something a player has to scroll to find.
+ */
+function RemoveAdsScreen({
+  view,
+  onBuy,
+  onRestore,
+  onPrivacyOptions,
+  onBack,
+}: {
+  view: RemoveAdsView;
+  onBuy(): void;
+  onRestore(): void;
+  onPrivacyOptions(): void;
+  onBack(): void;
+}) {
+  const strings = useStrings();
+  const copy = strings.removeAds;
+
+  const [bodyHeight, setBodyHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
+  const hasMore = bodyHeight > 0 && contentHeight > bodyHeight + 1;
+
+  /*
+   * What the status box says right now.
+   *
+   * `restoring` only while a restore is actually running: it reads "Checking
+   * your purchases…", which is a true sentence about a restore and a false one
+   * about a purchase. A buy in flight has Google's own sheet over this screen,
+   * so there is nothing for it to say that the player can see anyway.
+   */
+  const status =
+    view.busy === 'restore' ? copy.restoring : view.message === null ? null : copy[view.message];
+
+  /*
+   * Buy is drawn only when there is a real price to put on it.
+   *
+   * The label is `'Buy — {price}'`, so a null price would render "Buy — " or,
+   * worse, a price this repository made up — which is the one thing M23 says
+   * the price may never be. A product that did not load cannot be bought, and
+   * the `message` beside it already says the store is unavailable.
+   *
+   * Hidden when owned for the ordinary reason: there is nothing left to sell.
+   */
+  const busy = view.busy !== null;
+
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.removeAdsHeading}>{copy.heading}</Text>
+
+      <ScrollView
+        style={styles.removeAdsScroll}
+        contentContainerStyle={styles.removeAdsContent}
+        showsVerticalScrollIndicator
+        persistentScrollbar
+        onLayout={(event) => setBodyHeight(event.nativeEvent.layout.height)}
+        onContentSizeChange={(_width, height) => setContentHeight(height)}
+      >
+        <Text style={styles.removeAdsBody}>{copy.description}</Text>
+        {status !== null && (
+          <View style={[styles.removeAdsStatus, view.owned && styles.removeAdsStatusOwned]}>
+            <Text style={[styles.removeAdsBody, view.owned && styles.removeAdsBodyOwned]}>
+              {status}
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Always drawn, so the screen does not jump when the measurement lands. */}
+      <View style={styles.moreCueRow}>{hasMore && <Text style={styles.moreCue}>▾</Text>}</View>
+
+      <View style={styles.buttonRowLayout}>
+        {!view.owned && view.price !== null && (
+          <Button
+            label={format(copy.buy, { price: view.price })}
+            onPress={onBuy}
+            disabled={busy}
+          />
+        )}
+        <Button label={copy.restore} onPress={onRestore} tone="secondary" compact disabled={busy} />
+        {/*
+          * Privacy choices, when UMP says the player has some.
+          *
+          * Drawn independently of `owned`, and that independence is the point:
+          * buying Remove Ads removes ads, not the right to change a privacy
+          * choice. Section 4 of the published privacy policy promises this
+          * control lives here, and ADR 0015 names keeping it reachable after a
+          * purchase as a thing the billing work must not break.
+          */}
+        {view.privacyOptionsRequired && (
+          <Button
+            label={copy.privacyOptions}
+            onPress={onPrivacyOptions}
+            tone="secondary"
+            compact
+            disabled={busy}
+          />
+        )}
+        <Button label={strings.common.back} onPress={onBack} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
+/**
  * A track's title key, or its id if it somehow has no library entry.
  *
  * The fallback cannot happen — only library tracks are selectable — but the
@@ -781,6 +946,26 @@ export function Overlays(props: OverlayProps) {
               compact
             />
           )}
+          {/**
+            * The one way into the Remove Ads screen (M23).
+            *
+            * **Always drawn, including for a player who already owns it**, and
+            * that is deliberate rather than an oversight. The privacy-choices
+            * control lives behind this button, the published privacy policy
+            * promises it is reachable, and a purchase removes ads — not the
+            * right to change a privacy choice. Hiding the entry once the
+            * product is owned would take that control away from exactly the
+            * European players who are entitled to it.
+            *
+            * The screen itself is what adapts: it drops Buy when there is
+            * nothing left to sell. See `RemoveAdsScreen`.
+            */}
+          <Button
+            label={strings.removeAds.entry}
+            onPress={props.onOpenRemoveAds}
+            tone="secondary"
+            compact
+          />
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <LanguageToggle onPress={props.onCycleLocale} />
         </View>
@@ -810,6 +995,18 @@ export function Overlays(props: OverlayProps) {
         )}
         {props.audition !== null && <DevAuditionRow audition={props.audition} />}
       </View>
+    );
+  }
+
+  if (flow.screen === 'REMOVE_ADS') {
+    return (
+      <RemoveAdsScreen
+        view={props.removeAds}
+        onBuy={props.onBuyRemoveAds}
+        onRestore={props.onRestorePurchases}
+        onPrivacyOptions={props.onShowPrivacyOptions}
+        onBack={props.onBackToTitle}
+      />
     );
   }
 
@@ -1237,6 +1434,47 @@ const styles = StyleSheet.create({
     marginTop: 2,
     maxWidth: 460,
   },
+
+  /* ---- the Remove Ads support screen (M23) ---- */
+
+  removeAdsHeading: {
+    color: THEME.hudText,
+    fontSize: REMOVE_ADS.heading.fontSize,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textAlign: 'center',
+    marginBottom: REMOVE_ADS.heading.marginBottom,
+  },
+  /**
+   * `flexShrink: 1` and no `maxHeight`, for the reason M20 states about the
+   * briefing card: a fixed height is an English-length assumption, and it is
+   * what put the mug rule under the fold with 75 dp of empty screen below it.
+   */
+  removeAdsScroll: { flexShrink: 1, flexGrow: 0, alignSelf: 'center' },
+  removeAdsContent: { alignItems: 'center' },
+  removeAdsBody: {
+    color: THEME.hudText,
+    fontSize: REMOVE_ADS.body.fontSize,
+    lineHeight: REMOVE_ADS.body.lineHeight,
+    textAlign: 'center',
+    maxWidth: REMOVE_ADS.body.maxWidth,
+  },
+  removeAdsStatus: {
+    paddingHorizontal: REMOVE_ADS.status.paddingHorizontal,
+    paddingVertical: REMOVE_ADS.status.paddingVertical,
+    marginTop: REMOVE_ADS.status.marginTop,
+    borderRadius: 8,
+    backgroundColor: 'rgba(244, 236, 216, 0.08)',
+  },
+  /**
+   * The owned state, and the only colour on this screen that means anything.
+   *
+   * Green rather than the accent, which is the danger colour everywhere else
+   * in this game. It is a tint behind a sentence that already says the thing —
+   * "Ads removed. Thank you." — so nothing here is colour-only information.
+   */
+  removeAdsStatusOwned: { backgroundColor: 'rgba(79, 214, 127, 0.14)' },
+  removeAdsBodyOwned: { color: THEME.integrityFull },
 
   /* ---- the setlist builder (M24C) ---- */
 

@@ -41,6 +41,17 @@ import {
 import { showsAuditionTools } from '../config/buildFlags.ts';
 import { AdService } from '../ads/adService.ts';
 import { shouldShowAdBreak } from '../state/adBreak.ts';
+import { BillingService } from '../billing/billingService.ts';
+import {
+  applyStoreReport,
+  emptyEntitlement,
+  entitlementToSave,
+  removeAdsMessage,
+  restoreCachedEntitlement,
+  type EntitlementState,
+  type RemoveAdsMessage,
+} from '../state/entitlement.ts';
+import type { RemoveAdsView } from '../rendering/Overlays.tsx';
 import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
@@ -55,6 +66,7 @@ import {
   setLocale,
   finishIntro,
   loadDraft,
+  openRemoveAds,
   openSetlist,
   recordStageCleared,
   replayIntro,
@@ -144,6 +156,21 @@ export default function GameEngine() {
     setRecordsState(next);
   }, []);
 
+  /**
+   * Whether the player has bought Remove Ads (M23).
+   *
+   * Up here beside the records, and ahead of `persist`, because `persist`
+   * writes both and a closure that reaches a hundred lines down the file for
+   * one of them is a closure that works by accident. The rest of the Remove
+   * Ads machinery — the store adapter and the screen's view model — is further
+   * down, next to the handlers that drive it.
+   *
+   * A ref rather than state: the ad break reads it from an effect at a round
+   * boundary, and nothing renders off it directly. What renders is
+   * `removeAdsView.owned`, which is set from this.
+   */
+  const entitlementRef = useRef<EntitlementState>(emptyEntitlement());
+
   /** True when the round just finished set a best. Cleared when one starts. */
   const [beatRecord, setBeatRecord] = useState(false);
 
@@ -191,6 +218,16 @@ export default function GameEngine() {
            * back anyway.
            */
           customSetlist: completedDraft(flow),
+          /*
+           * The confirmed entitlement, and only ever the confirmed one (M23).
+           *
+           * `entitlementToSave` returns `state.adsRemoved`, which is monotonic
+           * and never set by a pending purchase — so this rides the writes the
+           * game already makes, exactly as the setlist above does, and a write
+           * triggered by something unrelated cannot record a purchase that has
+           * not cleared.
+           */
+          adsRemoved: entitlementToSave(entitlementRef.current),
         },
         savedRef.current.unknown,
       );
@@ -232,6 +269,216 @@ export default function GameEngine() {
     if (ads === null) return undefined;
     void ads.start(false);
     return () => ads.dispose();
+  }, []);
+
+  /**
+   * Remove Ads: the entitlement, the store, and the screen (M23, piece 6).
+   *
+   * Three things that are deliberately not one thing:
+   *
+   *   - `entitlementRef` is the **rule**, a pure `EntitlementState` from
+   *     `entitlement.ts`. It is what the ad break reads, it is monotonic, and
+   *     nothing else in this file is allowed to decide what owning means. It
+   *     is declared up beside `recordsRef`, because `persist` writes both.
+   *   - `billingRef` is the **store**, the one object that talks to
+   *     RevenueCat. Every method resolves, so none of the handlers below can
+   *     throw a store failure into a render.
+   *   - `removeAdsView` is what the **screen draws**, and it is React state
+   *     rather than a ref because it is the only one of the three a render
+   *     depends on.
+   *
+   * A ref for the entitlement and state for the view is the same split the
+   * rest of this component uses, and M25 records why it matters: a value that
+   * becomes true in silence is invisible to React. The entitlement is read by
+   * an effect at a round boundary, which runs after the mutation; the view is
+   * read by a renderer, which does not.
+   */
+  const billingRef = useRef<BillingService | null>(null);
+  if (billingRef.current === null) billingRef.current = new BillingService();
+
+  /**
+   * A store call is running, as a fact rather than as rendered state.
+   *
+   * `removeAdsView.busy` drives the buttons' `disabled`, and both it and the
+   * guards written against it are read at render time. Two taps inside one
+   * frame therefore both see `busy === null` and both open a Play sheet. The
+   * window is narrow and this is the one control in the game that spends
+   * money, so the guard that actually holds is this ref, set synchronously
+   * before the call and cleared when it settles.
+   */
+  const storeCallRef = useRef(false);
+
+  const [removeAdsView, setRemoveAdsView] = useState<RemoveAdsView>({
+    owned: false,
+    price: null,
+    busy: null,
+    message: null,
+    privacyOptionsRequired: false,
+  });
+
+  /**
+   * The silent launch-time ownership question (M23).
+   *
+   * Nothing renders off it and nothing waits for it, exactly as the ad service
+   * above is arranged: a store that never answers leaves a playable game whose
+   * Remove Ads screen says the store is unavailable.
+   *
+   * `initialize` uses `getCustomerInfo`, which is a quiet cache/network read.
+   * It is **not** a restore, and the distinction is load-bearing — restore can
+   * raise an OS account prompt, and M23 forbids triggering that unasked. See
+   * ADR 0015, which also records why a wiped device legitimately needs one tap
+   * on Restore before the store remembers the purchase.
+   *
+   * No `message` is set from this. The player has not asked the store
+   * anything yet, and opening Remove Ads to find "The store is not available"
+   * already waiting would report a failure nobody caused.
+   */
+  useEffect(() => {
+    const billing = billingRef.current;
+    if (billing === null) return undefined;
+
+    let cancelled = false;
+    void billing.initialize().then(async (report) => {
+      if (cancelled || report === null) return;
+      applyStoreReport(entitlementRef.current, report);
+      const price = await billing.getRemoveAdsPrice();
+      if (cancelled) return;
+      setRemoveAdsView((view) => ({
+        ...view,
+        owned: entitlementRef.current.adsRemoved,
+        price,
+      }));
+      /*
+       * A launch that finds the purchase writes it back, so the next cold
+       * start knows before the store does. `persist` is a no-op on an
+       * unreadable save and never throws.
+       */
+      if (entitlementRef.current.adsRemoved) persist(recordsRef.current);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [persist]);
+
+  /**
+   * "Remove ads" on the title.
+   *
+   * Two things are refreshed on the way in rather than watched continuously:
+   * whether UMP has a privacy-options form for this player, and the price if
+   * the product had not loaded at launch. Both are answers that arrive
+   * asynchronously after the game has already started, and polling for them
+   * would spend frames on a screen nobody is looking at.
+   *
+   * The previous outcome sentence is cleared. It described a store call the
+   * player made last time they were here; re-reading it on arrival would
+   * report a cancellation they have already forgotten about as if it had just
+   * happened.
+   */
+  const handleOpenRemoveAds = useCallback(() => {
+    const scene = entities.scene;
+    openRemoveAds(scene.flow);
+
+    const privacyOptionsRequired = adsRef.current?.snapshot().privacyOptionsRequired ?? false;
+    setRemoveAdsView((view) => ({
+      ...view,
+      message: null,
+      owned: entitlementRef.current.adsRemoved,
+      privacyOptionsRequired,
+    }));
+    refreshFlow();
+
+    const billing = billingRef.current;
+    if (billing !== null && billing.snapshot().priceString === null) {
+      void billing.getRemoveAdsPrice().then((price) => {
+        if (price === null) return;
+        setRemoveAdsView((view) => ({ ...view, price }));
+      });
+    }
+  }, [entities, refreshFlow]);
+
+  /**
+   * Fold a store call's answer into the entitlement, the save and the screen.
+   *
+   * One place, because the three things that must happen after Buy and after
+   * Restore are the same three and they must happen in the same order: the
+   * rule decides, the file records what the rule decided, and only then does
+   * the screen describe it. `applyStoreReport` is the only thing here that can
+   * grant, which is what keeps monotonicity a property of one pure function
+   * rather than of two handlers that both remembered it.
+   */
+  const settleStoreCall = useCallback(
+    (message: RemoveAdsMessage) => {
+      storeCallRef.current = false;
+      persist(recordsRef.current);
+      setRemoveAdsView((view) => ({
+        ...view,
+        busy: null,
+        message,
+        owned: entitlementRef.current.adsRemoved,
+      }));
+    },
+    [persist],
+  );
+
+  const handleBuyRemoveAds = useCallback(() => {
+    const billing = billingRef.current;
+    if (billing === null) return;
+    /*
+     * The ref, not the rendered `busy`, for the reason `storeCallRef` states:
+     * a second tap in the same frame reads the same stale `false` and opens a
+     * second Play sheet. Set before anything async can yield.
+     */
+    if (storeCallRef.current) return;
+    storeCallRef.current = true;
+
+    setRemoveAdsView((view) => ({ ...view, busy: 'buy', message: null }));
+    void billing.purchaseRemoveAds().then((report) => {
+      applyStoreReport(entitlementRef.current, report);
+      settleStoreCall(removeAdsMessage(report));
+    });
+  }, [settleStoreCall]);
+
+  /**
+   * Restore Purchases — the only path that may raise an account interaction,
+   * and therefore the only one the player has to ask for (M23, ADR 0015).
+   *
+   * It is also the documented recovery path after a reinstall: RevenueCat is
+   * used anonymously, so a wiped device mints a new App User ID with no
+   * purchases attached, and this tap is what associates the Play account's
+   * purchase with it.
+   */
+  const handleRestorePurchases = useCallback(() => {
+    const billing = billingRef.current;
+    if (billing === null) return;
+    if (storeCallRef.current) return;
+    storeCallRef.current = true;
+
+    setRemoveAdsView((view) => ({ ...view, busy: 'restore', message: null }));
+    void billing.restorePurchases().then(({ report, found, completed }) => {
+      applyStoreReport(entitlementRef.current, report);
+      settleStoreCall(removeAdsMessage(report, { completed, found }));
+    });
+  }, [settleStoreCall]);
+
+  /**
+   * The privacy-options form, where the consent SDK says one is required.
+   *
+   * Section 4 of the published privacy policy promises this control exists
+   * inside the Remove Ads screen, which is what makes it a release blocker for
+   * the Play listing rather than a nicety. `showPrivacyOptions` re-reads the
+   * requirement afterwards, because a player can withdraw consent in the form
+   * and the entry point's own visibility follows from the answer.
+   */
+  const handleShowPrivacyOptions = useCallback(() => {
+    const ads = adsRef.current;
+    if (ads === null) return;
+    void ads.showPrivacyOptions().then(() => {
+      setRemoveAdsView((view) => ({
+        ...view,
+        privacyOptionsRequired: ads.snapshot().privacyOptionsRequired,
+      }));
+    });
   }, []);
 
   /**
@@ -277,6 +524,24 @@ export default function GameEngine() {
        * music under a stage card the moment they pressed one.
        */
       loadDraft(flow, loaded.state.customSetlist);
+      /*
+       * The cached entitlement (M23).
+       *
+       * A one-way `if`, because a cached `false` is not evidence of anything —
+       * it is also what a fresh install and a wiped file look like, so the
+       * session stays unowned and lets the store answer. `restoreCachedEntitlement`
+       * is where that asymmetry is stated and tested.
+       *
+       * What the `true` buys is the returning player who paid not seeing an ad
+       * in the seconds before RevenueCat reconnects, or for the whole of a
+       * flight. Replacing the object is safe here: the only field it can
+       * discard is `purchasePending`, and nothing can have started a purchase
+       * yet — this lands a few frames into BOOT and Buy is three screens away.
+       */
+      if (loaded.state.adsRemoved) {
+        entitlementRef.current = restoreCachedEntitlement(true);
+        setRemoveAdsView((view) => ({ ...view, owned: true }));
+      }
       applyRecords(loaded.state.records);
       /*
        * Now — and only now — is the first screen decidable (M25).
@@ -788,7 +1053,18 @@ export default function GameEngine() {
       shouldShowAdBreak({
         flow: scene.flow,
         outcome: uiState,
-        adsRemoved: false,
+        /*
+         * The purchase, finally connected to the thing it buys (M23 piece 6).
+         *
+         * Read off the pure entitlement at the moment the boundary is reached,
+         * so a purchase made earlier in this session is already in effect —
+         * there is no cached copy of it here that could disagree.
+         *
+         * A preloaded interstitial that this now refuses is simply never
+         * shown. Nothing has to unload it: `shouldShowAdBreak` is the only
+         * caller of `show()`, and it is a boolean.
+         */
+        adsRemoved: entitlementRef.current.adsRemoved,
         adReady: adsRef.current.snapshot().interstitialReady,
       })
     ) {
@@ -928,6 +1204,11 @@ export default function GameEngine() {
             records={records}
             beatRecord={beatRecord}
             onShare={handleShare}
+            removeAds={removeAdsView}
+            onOpenRemoveAds={handleOpenRemoveAds}
+            onBuyRemoveAds={handleBuyRemoveAds}
+            onRestorePurchases={handleRestorePurchases}
+            onShowPrivacyOptions={handleShowPrivacyOptions}
           />
         </EngineComponent>
       </View>

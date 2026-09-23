@@ -231,22 +231,42 @@ export class BillingService {
   /**
    * Restore Purchases, and only ever from the player tapping it.
    *
-   * Returns both the report and whether anything was found, because "restored
-   * successfully, you own it" and "restored successfully, there was nothing on
-   * this account" are different sentences and the catalogue has both.
+   * Returns the report, whether anything was found, and whether the call ran
+   * at all. All three are needed, and the third is the one that is easy to
+   * leave out:
+   *
+   * A restore that ran and found nothing produces `unavailable` — an empty
+   * `CustomerInfo` has no active entitlement, and `storeReportFromCustomerInfo`
+   * cannot tell that from any other absence. So does a device with no Play
+   * Store. The reports are identical and the sentences are not: one is "No
+   * previous purchase found on this account" and the other is "The store is
+   * not available on this device". `completed` is the only thing that
+   * separates them, and `removeAdsMessage` is where it is read.
    */
-  async restorePurchases(): Promise<{ report: StoreReport; found: boolean }> {
+  async restorePurchases(): Promise<{
+    report: StoreReport;
+    found: boolean;
+    completed: boolean;
+  }> {
     const sdk = loadSdk();
     if (sdk === null || !this.state.ready) {
-      return { report: { outcome: 'unavailable', finished: false }, found: false };
+      return {
+        report: { outcome: 'unavailable', finished: false },
+        found: false,
+        completed: false,
+      };
     }
     try {
       const info = await sdk.restorePurchases();
       const found = restoreFoundEntitlement(info);
       this.state.owned = found;
-      return { report: storeReportFromRestore(info), found };
+      return { report: storeReportFromRestore(info), found, completed: true };
     } catch (error) {
-      return { report: storeReportFromPurchaseError(error as any), found: false };
+      return {
+        report: storeReportFromPurchaseError(error as any),
+        found: false,
+        completed: false,
+      };
     }
   }
 

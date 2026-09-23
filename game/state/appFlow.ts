@@ -84,6 +84,21 @@ export const APP_SCREENS = [
    * button happens to be drawn.
    */
   'SETLIST',
+  /**
+   * The Remove Ads support screen (M23).
+   *
+   * Reached from the title and from nowhere else, and it is deliberately a
+   * screen rather than a modal over the title: it has to hold a price, a
+   * description, four outcome sentences and up to three controls, and M23
+   * requires all of that to be scroll-safe in every language.
+   *
+   * No gate. Unlike `SETLIST`, which `openSetlist` refuses until the show has
+   * been survived, this is reachable on a fresh install — a player who wants
+   * to pay should not have to earn the right to. It stays reachable after the
+   * purchase, too, because the privacy-options control lives here and buying
+   * Remove Ads removes ads, not the right to change a privacy choice.
+   */
+  'REMOVE_ADS',
   /** The stage's how-to-play card, shown immediately before its round. */
   'BRIEFING',
   /**
@@ -373,6 +388,23 @@ export function finishIntro(flow: AppFlowState): void {
 /** "Story" on the title: watch it again. Does not reset anything else. */
 export function replayIntro(flow: AppFlowState): void {
   flow.screen = 'STORY';
+}
+
+/**
+ * "Remove ads" on the title: the support screen (M23).
+ *
+ * A plain transition with no gate and no return value, unlike `openSetlist`.
+ * There is nothing to earn and nothing to refuse — the screen's own controls
+ * are what report a store that cannot be reached, and they have copy for it.
+ *
+ * It touches nothing else on the flow. In particular it does **not** reset
+ * `setlist` or `runBeers`: this is only ever reached from the title, where
+ * both are already the authored show and zero, and a transition that resets
+ * state it does not own is one that goes wrong the first time it is reached
+ * from somewhere else.
+ */
+export function openRemoveAds(flow: AppFlowState): void {
+  flow.screen = 'REMOVE_ADS';
 }
 
 /**

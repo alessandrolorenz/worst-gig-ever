@@ -22,6 +22,7 @@ import {
   currentStage,
   finishIntro,
   isStageCleared,
+  openRemoveAds,
   recordStageCleared,
   replayIntro,
   returnToTitle,
@@ -409,4 +410,60 @@ test('every screen can be left', () => {
   beginRound(flow);
   returnToTitle(flow);
   assert.equal(flow.screen, 'TITLE', 'a round had no way back to the title');
+});
+
+// ---------------------------------------------------------------------------
+// The Remove Ads screen (M23, piece 6)
+// ---------------------------------------------------------------------------
+
+test('M23: the Remove Ads screen opens from the title and goes back to it', () => {
+  const flow = createAppFlow();
+  finishIntro(flow);
+  assert.equal(flow.screen, 'TITLE');
+
+  openRemoveAds(flow);
+  assert.equal(flow.screen, 'REMOVE_ADS');
+
+  returnToTitle(flow);
+  assert.equal(flow.screen, 'TITLE', 'the support screen could not be left');
+});
+
+test('M23: opening Remove Ads is not a gate and not a run', () => {
+  /*
+   * Two failures at once, and they pull in opposite directions.
+   *
+   * It must **not** be gated like the setlist builder: a player who wants to
+   * pay on a fresh install should not have to survive the show first. And it
+   * must **not** behave like a stage card, which starts a run — `startStage`
+   * resets `runBeers` and forces the authored setlist, and doing either from a
+   * screen reached off the title would quietly reset progress the player is
+   * about to go back to.
+   */
+  const fresh = createAppFlow();
+  finishIntro(fresh);
+  assert.equal(fresh.bestStageCleared, -1, 'this test needs a player who has cleared nothing');
+
+  openRemoveAds(fresh);
+  assert.equal(fresh.screen, 'REMOVE_ADS', 'a fresh install could not reach Remove Ads');
+
+  const mid = createAppFlow();
+  startStage(mid, 0);
+  recordStageCleared(mid, 3);
+  const before = {
+    stageIndex: mid.stageIndex,
+    bestStageCleared: mid.bestStageCleared,
+    setlist: mid.setlist,
+    runBeers: mid.runBeers,
+    locale: mid.locale,
+    clickEnabled: mid.clickEnabled,
+  };
+
+  openRemoveAds(mid);
+  assert.equal(mid.screen, 'REMOVE_ADS');
+  assert.equal(mid.stageIndex, before.stageIndex);
+  assert.equal(mid.bestStageCleared, before.bestStageCleared);
+  assert.equal(mid.setlist, before.setlist);
+  assert.equal(mid.runBeers, before.runBeers, 'the screen reset the run\'s beers');
+  assert.equal(mid.locale, before.locale);
+  assert.equal(mid.clickEnabled, before.clickEnabled);
 });

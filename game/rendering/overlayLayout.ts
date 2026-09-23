@@ -238,6 +238,74 @@ export function setlistColumnHeight(viewportHeight: number): number {
   return viewportHeight - SETLIST_CHROME_HEIGHT;
 }
 
+/**
+ * The Remove Ads support screen (M23).
+ *
+ * One narrow column in the middle of a landscape screen, and the narrowness is
+ * the decision: this surface is four sentences of prose, and prose set across
+ * 867 dp is prose nobody finishes. 620 dp runs about 75 characters at the body
+ * size, which is the same column the briefing card settled on at M20 and for
+ * the same reason.
+ *
+ * **The body scrolls and the controls do not.** M23 asks for a "small,
+ * scroll-safe support screen", and the two halves of that phrase pull in
+ * opposite directions: the description plus a status sentence can run long in
+ * a language that expands, while Buy and Restore must be reachable without
+ * scrolling to find them. So the text is a `ScrollView` that draws the same
+ * `▾` cue the briefing card does, and the button row sits below it in the
+ * chrome — which is what makes the fit rule here a rule about *the controls*
+ * rather than about the prose.
+ */
+export const REMOVE_ADS = {
+  heading: { fontSize: 24, marginBottom: 6 },
+  /** The description, and whichever outcome sentence is showing. */
+  body: {
+    fontSize: 15,
+    lineHeight: 20,
+    /** `marginBottom` between the description and the status line. */
+    gap: 10,
+    maxWidth: 620,
+  },
+  /**
+   * The outcome sentence, in its own tinted box under the description.
+   *
+   * Separate from the description rather than replacing it, because the two
+   * answer different questions — *what is this* and *what just happened* — and
+   * a player reading "Purchase cancelled. Nothing was charged." still needs to
+   * know what they were buying.
+   */
+  status: { paddingHorizontal: 14, paddingVertical: 8, marginTop: 10 },
+  /** The "there is more below" mark, and the row that always reserves it. */
+  moreCue: { fontSize: 14, height: 16 },
+} as const;
+
+/** Text column inside the Remove Ads body, once the status box padding is out. */
+export const REMOVE_ADS_TEXT_WIDTH = REMOVE_ADS.body.maxWidth - REMOVE_ADS.status.paddingHorizontal * 2;
+
+/**
+ * Everything on the Remove Ads screen that is not the scrolling body.
+ *
+ * **Derived and corrected by the 1.195 ratio**, exactly as
+ * `SETLIST_CHROME_HEIGHT` above is, and labelled an estimate for the same
+ * reason: the one real measurement this project has of how wrong a stylesheet
+ * sum is came off a screenshot of the briefing card, and nothing has put this
+ * screen on a device yet.
+ *
+ * The declared sum is 116 dp: 20 of scrim padding, 35 of heading and its
+ * margin, 45 of the button row and 16 of the cue row. 116 x 1.2 = 139, rounded
+ * to 140.
+ *
+ * It errs high, which makes the scrolling body *smaller* than it will really
+ * be — so the gate rejects a layout the device would have drawn rather than
+ * passing one it would have clipped.
+ */
+export const REMOVE_ADS_CHROME_HEIGHT = 140;
+
+/** Height the Remove Ads body has on a viewport of `viewportHeight`. */
+export function removeAdsBodyHeight(viewportHeight: number): number {
+  return viewportHeight - REMOVE_ADS_CHROME_HEIGHT;
+}
+
 /** One column of the results summary. */
 export const SUMMARY = {
   columnMinWidth: 280,
