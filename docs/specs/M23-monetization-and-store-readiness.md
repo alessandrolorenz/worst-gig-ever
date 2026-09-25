@@ -144,6 +144,34 @@ therefore an external gate.
 
 ## Amendments
 
+### 2026-09-25 — the consent message was never the problem
+
+**Closed.** The 5A report recorded the European regulations message as **not
+validated**, and listed three candidates: not published, not targeting this
+app, or propagation delay. It was none of them. The message was published and
+correctly targeted the whole time.
+
+`debugGeography` was being **silently ignored**, because the handset was not a
+registered UMP test device — the mechanism 5A had already named, whose two-build
+sequence had simply never been run. The first log line says it outright once
+you know to read it: `forcedEea: true` beside `testDevice: false`. Everything
+after that was correct behaviour, which is what made it look like a dead flag.
+
+Build one prints the device's hashed id; build two passes it back. The
+registration is confirmed by `testDevice: true` and by the SDK *ceasing* to
+print its `addTestDeviceHashedId` hint — neither of which is an error message,
+so both have to be looked for.
+
+Observed: `status: OBTAINED`, `privacyOptions: REQUIRED`,
+`formAvailable: true`, the form on screen, and — tapped from the Remove Ads
+screen — Google's privacy options form carrying the app's own name. That last
+one is the promise section 4 of the published privacy policy makes, which this
+document calls a release blocker for the listing. It is now kept.
+
+The hashed device id is deliberately not recorded in this repository.
+
+Full record: `docs/verification/M23-consent-message-validated.md`.
+
 ### 2026-09-22 — the web export was never playable, and the guards that were supposed to make it so could not
 
 **Correction.** The Verification contract below requires that "web remains
@@ -412,8 +440,11 @@ so that screen is a release blocker for the listing, not a nice-to-have.
   `worst-gig-ever`; do not create a replacement project.
 - Google Play app, product, license testers, and signing track are not yet
   recorded in this repository.
-- The AdMob consent message (European regulations) is not yet published for
-  this App ID. Piece 5 cannot honestly exercise the consent flow until it is.
+- ~~The AdMob consent message (European regulations) is not yet published for
+  this App ID.~~ **Closed 2026-09-25.** The message was published and targeting
+  this app correctly all along; `debugGeography` was being ignored because the
+  handset was not a registered UMP test device. Form observed, privacy-options
+  control exercised — `docs/verification/M23-consent-message-validated.md`.
 
 These block store submission and live monetization, not the local test-mode
 implementation.

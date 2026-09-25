@@ -63,9 +63,17 @@ and is the branch currently being worked on.
 2. No Google Play app, no `remove_ads` product, no licence testers, no internal
    test track. A one-time product cannot be bought from a locally-signed APK,
    so every purchase path is unexercised.
-3. The AdMob consent message for European regulations is still not resolving
-   for this App ID, so the UMP form has never been observed. Recorded as **not
-   validated** rather than worked around — see the 5A device report.
+3. ~~The AdMob consent message is not resolving for this App ID.~~ **Closed
+   2026-09-25.** It was resolving; `debugGeography` was being ignored because
+   the phone was not a registered UMP test device. The form has now been
+   observed on hardware, and the privacy-options control inside the Remove Ads
+   screen — the one section 4 of the privacy policy promises — was opened from
+   it. See `docs/verification/M23-consent-message-validated.md`.
+
+**So M23's remaining blockers are Google Play and RevenueCat accounts, and
+nothing else.** The signing and bundle tooling that stood between the repo and
+an upload landed 2026-09-25: `npm run build:bundle` produces a store AAB and
+refuses to hand over a debug-signed one.
 
 The full external checklist is ADR 0015 §"Play Console / RevenueCat checklist".
 
