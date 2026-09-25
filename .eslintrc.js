@@ -24,6 +24,8 @@ module.exports = {
         "*.config.js",
         // Bundler tooling loaded by metro.config.js, not by the app.
         "metro/*.js",
+        // Expo config plugins, run by prebuild in Node, not bundled.
+        "plugins/*.js",
         "tests/**/*.ts",
       ],
       parserOptions: {
