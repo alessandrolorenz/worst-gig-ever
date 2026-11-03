@@ -34,17 +34,17 @@ while every device build came off the branch; the trunk has caught up.
 | M20 | Translation-safe layout | **done**, on `main`. Emulator-validated 2026-09-05 |
 | M21 | pt-BR | **draft on `main`, not finished.** The copy needs the owner's read: lines marked `REVIEW:` in `game/i18n/catalogues/pt-BR.ts` are where the joke was re-invented rather than translated |
 | M22 | Local memory and sharing | **done**, on `main`. Emulator- and device-validated 2026-09-05 |
-| M24A | Setlist foundation and tempo evidence | **complete**, on `m24/setlist-foundation` → `m24/music-library`. Not on `main` |
-| M24B | Music library and audition | **complete and closed**, on `m24/music-library`. Owner kept 11/11 on 2026-09-06. Not on `main` |
-| M24C | Custom setlist unlock and builder | **complete**, on `m24/custom-setlist`. Not on `main` |
+| M24A | Setlist foundation and tempo evidence | **complete**, on `main` |
+| M24B | Music library and audition | **complete and closed**, on `main`. Owner kept 11/11 on 2026-09-06 |
+| M24C | Custom setlist unlock and builder | **complete**, on `main` |
 | M24D | Physical replay validation | **superseded.** Absorbed into M25's final device validation — see "M24 closure" below |
-| M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md`. Not on `main` |
-| M23 | Monetization and store readiness | **in progress**, on `m23/admob-compat-15.8.3`. Not on `main`. Pieces below |
+| M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `main`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md` |
+| M23 | Monetization and store readiness | **in progress.** On `main` through the Remove Ads copy (`07bf6b1`); piece 5A onward is only on `m23/admob-compat-15.8.3`. Pieces below |
+| M26–M32 | Crowd Mode, the second perspective | **implemented**, on `m26/crowd-mode` (branched from `m23/admob-compat-15.8.3`). Second phone playtest pending. See "Crowd Mode" below |
 
 ### M23 pieces
 
-Numbered out of order in the table above because M23 was opened after M24/M25
-and is the branch currently being worked on.
+Numbered out of order in the table above because M23 was opened after M24/M25.
 
 | Piece | State |
 |---|---|
@@ -92,6 +92,32 @@ The full external checklist is ADR 0015 §"Play Console / RevenueCat checklist".
   about a literal `false`. Every test passed, because a literal satisfies the
   type and the eligibility rules. It would have shipped a purchase a player
   could complete, be charged for, and see change nothing.
+
+### Crowd Mode — M26–M32 (2026-10-07 → 2026-10-08, `m26/crowd-mode`)
+
+The title now asks which side of the gig you are on. Band Mode is the existing
+game, unchanged behind that choice. Crowd Mode is new: swipe a beer from the
+front row, destroy the listed things before the bottles run out, and do not hit
+the waiter. Three open stages, original generated art for all 15 required
+slots, and music from the Band show's existing beds.
+
+The current state of the mode is `docs/handoff/CROWD-MODE-STATUS.md`; the
+contracts are the four `docs/specs/M26…M32` files and
+`docs/assets/CROWD-MODE-ASSET-CONTRACT.md`.
+
+**It sat uncommitted in the worktree for almost a month.** It was built on top
+of `922c98b` and committed on 2026-11-03 as three commits on `m26/crowd-mode`:
+art, feature, evidence. The feature is one commit rather than one per milestone
+because the files several milestones touched only ever existed in their final
+state; the specs keep the milestone boundaries. Each commit passes
+`npm run verify` on its own (670 and 717 tests).
+
+| | |
+|---|---|
+| Tests | **717**, up from 670 |
+| Physical device | First playtest done (it is what M32 tuned). **M32 itself has not been on a phone** |
+| Next action | Second phone playtest: HUD clarity, waiter readability, Next-stage flow, Band picker fit, music feel |
+| Before that build | `app.json` is still 1.3.0 / versionCode 8, the same as the friends APK. Bump it, or the two cannot be told apart from the app info |
 
 ### M24 closure
 
