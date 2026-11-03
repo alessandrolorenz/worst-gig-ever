@@ -653,9 +653,25 @@ test('M24A: exactly one place turns a stage into a sound', () => {
    * preview is excluded by name rather than by loosening the number. A third
    * caller, or a round starting its music from anything but `scene.music`,
    * still fails.
+   *
+   * Widened again at M32, the same way. Crowd Mode has music now, and it is
+   * not a setlist slot either: `playCrowdMusic` plays the Crowd stage's own
+   * `music` field. It is admitted by name and pinned to one call site below,
+   * so a Band round still has exactly one source and Crowd Mode exactly one.
    */
   const calls = engine.match(/audio\.playMusic\(([^)]*)\)/g) ?? [];
   const roundCalls = calls.filter((call) => !call.includes('track'));
+  assert.equal(
+    (engine.match(/const track = crowdStage\(stageId\)\.music;\s*audio\.playMusic\(track\);/g) ?? [])
+      .length,
+    1,
+    'Crowd Mode must start its music from exactly one place, from the stage config',
+  );
+  assert.equal(
+    calls.filter((call) => call === 'audio.playMusic(track)').length,
+    3,
+    'the builder preview, the audition preview and Crowd Mode — and no fourth',
+  );
   assert.equal(
     roundCalls.length,
     1,

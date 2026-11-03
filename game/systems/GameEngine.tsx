@@ -67,6 +67,10 @@ import {
   finishIntro,
   loadDraft,
   openRemoveAds,
+  openBandMode,
+  openCrowdMode,
+  showCrowdBriefing,
+  startCrowdRound,
   openSetlist,
   recordStageCleared,
   replayIntro,
@@ -92,6 +96,10 @@ import { clearShards } from './shards.ts';
 import { clearStageMotion } from './stageMotion.ts';
 import { flowSystem } from './flowSystem.ts';
 import { roundSystem } from './roundSystem.ts';
+import { crowdSystem } from './crowdSystem.ts';
+import { resetCrowd, selectCrowdStage } from '../crowd/crowdState.ts';
+import { crowdStage, nextCrowdStageId, type CrowdStageId } from '../crowd/crowdStages.ts';
+import { showCrowdCompositionPreview } from '../crowd/CrowdScene.tsx';
 
 const EngineComponent = Platform.OS === 'web' ? WebGameEngine : ReactGameEngine;
 
@@ -240,9 +248,11 @@ export default function GameEngine() {
     const scene = entities.scene;
     scene.onStateChange = (state) => setUiState(state);
     scene.onFlowChange = refreshFlow;
+    scene.onCrowdChange = refreshFlow;
     return () => {
       scene.onStateChange = null;
       scene.onFlowChange = null;
+      scene.onCrowdChange = null;
     };
   }, [entities, refreshFlow]);
 
@@ -652,6 +662,78 @@ export default function GameEngine() {
     },
     [entities, refreshFlow, resetScene],
   );
+
+  const handleOpenBandMode = useCallback(() => {
+    openBandMode(entities.scene.flow);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
+  /** Into the Crowd stage picker — from the title, or back out of a round. */
+  const handleOpenCrowdMode = useCallback(() => {
+    audio.stopMusic();
+    openCrowdMode(entities.scene.flow);
+    refreshFlow();
+  }, [audio, entities, refreshFlow]);
+
+  /**
+   * A picked stage goes to its how-to-play card, and its music is loaded now
+   * so it is ready by Start (M32).
+   *
+   * Loaded *alongside* the run's setlist rather than instead of it: Crowd Mode
+   * borrows the audio service, and must not evict the beds Band Mode expects
+   * to find resident the next time a briefing's Start is pressed.
+   */
+  const handleSelectCrowdStage = useCallback(
+    (stageId: CrowdStageId) => {
+      const scene = entities.scene;
+      selectCrowdStage(scene.crowd, stageId);
+      audio.preloadSetlist([...scene.flow.setlist, crowdStage(stageId).music]);
+      showCrowdBriefing(scene.flow);
+      refreshFlow();
+    },
+    [audio, entities, refreshFlow],
+  );
+
+  /**
+   * The one place Crowd Mode starts music (M32).
+   *
+   * Through the same service and the same `playMusic` as a Band round, so
+   * there is one audio lifecycle and not two. The track is the stage's own
+   * `music` field; a future song choice changes what this reads, not how it
+   * plays.
+   */
+  const playCrowdMusic = useCallback(
+    (stageId: CrowdStageId) => {
+      const track = crowdStage(stageId).music;
+      audio.playMusic(track);
+    },
+    [audio],
+  );
+
+  /** The how-to card's Start: the round, and the band starts playing. */
+  const handleStartCrowdRound = useCallback(() => {
+    const scene = entities.scene;
+    resetCrowd(scene.crowd);
+    startCrowdRound(scene.flow);
+    playCrowdMusic(scene.crowd.stageId);
+    refreshFlow();
+  }, [entities, playCrowdMusic, refreshFlow]);
+
+  /** Retry: the same stage, from the top. The band plays on. */
+  const handleResetCrowd = useCallback(() => {
+    resetCrowd(entities.scene.crowd);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
+  /** Straight from a ruined gig into the next stage, with its own track. */
+  const handleNextCrowdStage = useCallback(() => {
+    const scene = entities.scene;
+    const next = nextCrowdStageId(scene.crowd.stageId);
+    if (next === null) return;
+    selectCrowdStage(scene.crowd, next);
+    playCrowdMusic(next);
+    refreshFlow();
+  }, [entities, playCrowdMusic, refreshFlow]);
 
   /*
    * The development audition's own cursor and mode (M24B).
@@ -1132,6 +1214,16 @@ export default function GameEngine() {
   // Leaving the app mid-show must not keep the clock or the music running.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
+      /*
+       * Crowd Mode has no pause state — nothing moves without a throw except
+       * the waiter — so backgrounding only has to silence the band, and
+       * coming back only has to let it play on (M32, rule 11).
+       */
+      if (entities.scene.flow.screen === 'CROWD') {
+        if (next === 'active') audio.resumeMusic();
+        else audio.pauseMusic();
+        return;
+      }
       if (next !== 'active') {
         const round = entities.scene.round;
         if (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT') {
@@ -1159,28 +1251,37 @@ export default function GameEngine() {
   }, [audio, entities, refreshFlow]);
 
   const scene = entities.scene;
+  const compositionPreview = showCrowdCompositionPreview();
 
   return (
     <LocaleProvider locale={scene.flow.locale}>
       <View style={styles.root}>
         <EngineComponent
-          systems={[flowSystem, roundSystem]}
+          systems={[flowSystem, crowdSystem, roundSystem]}
           entities={entities}
           running
           style={styles.engine}
         >
-          <Overlays
+          {!compositionPreview && <Overlays
             flow={scene.flow}
             stage={scene.stage}
             state={uiState}
             round={scene.round}
             rhythm={scene.rhythm}
             story={scene.story}
+            crowd={scene.crowd}
             audioAvailable={audio.available}
             onStoryAdvance={handleStoryAdvance}
             onStorySkip={handleStorySkip}
             audition={audition}
             onSelectStage={handleSelectStage}
+            onOpenBandMode={handleOpenBandMode}
+            onOpenCrowdMode={handleOpenCrowdMode}
+            onResetCrowd={handleResetCrowd}
+            onSelectCrowdStage={handleSelectCrowdStage}
+            onOpenCrowdStages={handleOpenCrowdMode}
+            onStartCrowdRound={handleStartCrowdRound}
+            onNextCrowdStage={handleNextCrowdStage}
             onReplayStory={handleReplayStory}
             onShowBriefing={handleShowBriefing}
             onBeginRound={handleBeginRound}
@@ -1209,7 +1310,7 @@ export default function GameEngine() {
             onBuyRemoveAds={handleBuyRemoveAds}
             onRestorePurchases={handleRestorePurchases}
             onShowPrivacyOptions={handleShowPrivacyOptions}
-          />
+          />}
         </EngineComponent>
       </View>
     </LocaleProvider>

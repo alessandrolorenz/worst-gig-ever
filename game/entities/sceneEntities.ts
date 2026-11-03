@@ -23,6 +23,7 @@ import { stageAt, FIRST_STAGE_INDEX, type StageDefinition } from '../levels/stag
 import { OFFICIAL_SETLIST, trackForStage } from '../audio/setlist.ts';
 import type { MusicTrackId } from '../audio/musicCatalogue.ts';
 import { DEFAULT_LOCALE, type Locale } from '../i18n/locales.ts';
+import { createCrowdState, type CrowdState } from '../crowd/crowdState.ts';
 
 export interface SceneEntity {
   round: RoundState;
@@ -51,6 +52,8 @@ export interface SceneEntity {
   flow: AppFlowState;
   /** The opening story's own clock, ticked by `flowSystem` (M15). */
   story: StoryState;
+  /** The second perspective's self-contained throw session (M27). */
+  crowd: CrowdState;
   effects: EffectsState;
   shards: ShardsState;
   /** Ambient band/crowd motion and performer reactions. Presentation only. */
@@ -67,6 +70,8 @@ export interface SceneEntity {
    * carry a stale one.
    */
   onFlowChange: (() => void) | null;
+  /** Notified only at Crowd HUD boundaries, not on every animation frame. */
+  onCrowdChange: (() => void) | null;
   renderer: React.ComponentType<never>;
 }
 
@@ -96,6 +101,7 @@ export function createSceneEntities(
       music: trackForStage(OFFICIAL_SETLIST, FIRST_STAGE_INDEX),
       flow: createAppFlow(initialLocale),
       story: createStory(),
+      crowd: createCrowdState(),
       effects: createEffects(),
       shards: createShards(),
       stageMotion: createStageMotion(),
@@ -103,6 +109,7 @@ export function createSceneEntities(
       viewport: createViewport(),
       onStateChange: null,
       onFlowChange: null,
+      onCrowdChange: null,
       renderer,
     },
   };

@@ -60,6 +60,81 @@ export const en = {
       'Audio unavailable in this build — rebuild the development client to hear the show.',
   },
 
+  modeSelect: {
+    heading: 'PLAY AS',
+    band: 'THE BAND',
+    bandSubtitle: 'Survive the gig.',
+    crowd: 'THE CROWD',
+    crowdSubtitle: 'Ruin the gig.',
+    back: 'Back to modes',
+  },
+
+  crowd: {
+    title: 'CROWD MODE',
+    invalid: 'THROW UPWARD!',
+    miss: 'MISS  -50',
+    wrongTarget: 'NOT THE WAITER!  -300',
+    /** The checklist's one standing rule, under the things to hit. */
+    spareWaiter: 'Spare the waiter',
+    /**
+     * The card in front of a stage (M32). Everything the round screen used to
+     * say while the player was trying to throw.
+     */
+    howTo: {
+      kicker: 'HOW TO PLAY',
+      swipe: 'Swipe up from the bottle to throw. Swipe farther to throw farther.',
+      goal: 'Hit everything on the list before you run out of beers.',
+      waiter: 'Never hit the waiter. He costs you {penalty} points every time.',
+      waiterTag: 'DO NOT HIT',
+      start: 'Start',
+    },
+    score: 'SCORE {score}',
+    beers: 'BEERS {count}',
+    objectivesHeading: 'RUIN THE GIG',
+    /** One checklist line per target. Short: nine of them share a corner. */
+    objectives: {
+      bassist: 'Hit the bassist',
+      vocalist: 'Hit the singer',
+      guitarist: 'Hit the guitarist',
+      amplifier: 'Wreck the amp',
+      microphone: 'Knock the mic away',
+      crashCymbal: 'Down the crash',
+      rideCymbal: 'Down the ride',
+      guitar: 'Disarm the guitarist',
+      bass: 'Disarm the bassist',
+    },
+    result: {
+      success: 'GIG RUINED',
+      failure: 'SHOW SURVIVED',
+      score: 'SCORE {score}',
+      throws: 'THROWS USED {count}',
+      objectives: 'OBJECTIVES {done}/{total}',
+      retry: 'Retry',
+      nextStage: 'Next stage',
+      stages: 'Stages',
+    },
+    stageSelect: {
+      heading: 'PICK YOUR NIGHT',
+      summary: '{objectives} targets · {bottles} beers',
+    },
+    stages: {
+      warmUp: 'WARM-UP',
+      gettingWorse: 'THE CROWD GETS WORSE',
+      destroyTheGig: 'DESTROY THE GIG',
+    },
+    targets: {
+      bassist: 'BASSIST',
+      vocalist: 'VOCALIST',
+      guitarist: 'GUITARIST',
+      amplifier: 'AMPLIFIER',
+      microphone: 'MICROPHONE',
+      crashCymbal: 'CRASH CYMBAL',
+      rideCymbal: 'RIDE CYMBAL',
+      guitar: 'GUITAR',
+      bass: 'BASS',
+    },
+  },
+
   /**
    * The ad-removal support screen (M23).
    *

@@ -59,6 +59,9 @@ import { targetViews, type RoundState, type TargetView } from '../state/roundSta
 import type { StageDefinition } from '../levels/stages.ts';
 import { Hud } from './Hud.tsx';
 import { spriteTransform } from './spriteTransform.ts';
+import type { AppFlowState } from '../state/appFlow.ts';
+import type { CrowdState } from '../crowd/crowdState.ts';
+import { CrowdScene, showCrowdCompositionPreview } from '../crowd/CrowdScene.tsx';
 
 export interface SceneRendererProps {
   round: RoundState;
@@ -77,6 +80,8 @@ export interface SceneRendererProps {
   shards: ShardsState;
   stageMotion: StageMotionState;
   viewport: Viewport;
+  flow: AppFlowState;
+  crowd: CrowdState;
 }
 
 /**
@@ -415,6 +420,8 @@ export function SceneRenderer({
   shards,
   stageMotion,
   viewport,
+  flow,
+  crowd,
 }: SceneRendererProps) {
   const rootRef = useRef<View>(null);
 
@@ -466,6 +473,12 @@ export function SceneRenderer({
           },
         ]}
       >
+        {flow.screen === 'CROWD' ||
+        flow.screen === 'CROWD_BRIEFING' ||
+        showCrowdCompositionPreview() ? (
+          <CrowdScene state={crowd} />
+        ) : (
+          <>
         <Backdrop elapsedMs={stageMotion.elapsedMs} />
         {SHOW_GRAYBOX_DEBUG && <DangerLine />}
         <BandMember id="bassist" pose={performerPose(stageMotion, 'bassist')} />
@@ -538,6 +551,8 @@ export function SceneRenderer({
          */}
         {isPadPulsing(round.state) && (
           <Hud round={round} rhythm={rhythm} grooveEnabled={grooveEnabled} />
+        )}
+          </>
         )}
       </View>
     </View>

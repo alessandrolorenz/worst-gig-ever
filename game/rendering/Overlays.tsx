@@ -79,6 +79,15 @@ import {
 import { resultsArmed, type RoundState } from '../state/roundState.ts';
 import { recordFor, type Records } from '../state/records.ts';
 import { gigPayoutForResult } from '../state/gigPayout.ts';
+import { crowdObjectivesCompleted, type CrowdState } from '../crowd/crowdState.ts';
+import {
+  CROWD_STAGE_IDS,
+  crowdStage,
+  nextCrowdStageId,
+  type CrowdStageId,
+} from '../crowd/crowdStages.ts';
+import { CROWD_WAITER } from '../crowd/crowdConfig.ts';
+import { CROWD_ART } from '../crowd/crowdArt.ts';
 
 /**
  * Everything the Remove Ads screen draws itself from (M23, piece 6).
@@ -122,10 +131,20 @@ interface OverlayProps {
   round: RoundState;
   rhythm: RhythmState;
   story: StoryState;
+  crowd: CrowdState;
   audioAvailable: boolean;
   onStoryAdvance(): void;
   onStorySkip(): void;
   onSelectStage(index: number): void;
+  onOpenBandMode(): void;
+  onOpenCrowdMode(): void;
+  onResetCrowd(): void;
+  onSelectCrowdStage(stageId: CrowdStageId): void;
+  onOpenCrowdStages(): void;
+  /** The how-to-play card's Start (M32). */
+  onStartCrowdRound(): void;
+  /** Straight on from a ruined gig to the next stage (M32). */
+  onNextCrowdStage(): void;
   onReplayStory(): void;
   onShowBriefing(): void;
   onBeginRound(): void;
@@ -308,6 +327,294 @@ function LanguageChooser({ onChoose }: { onChoose(locale: ShippableLocale): void
       </View>
       {/* Not a catalogue string: the product's name is never translated. */}
       <Text style={styles.languageProduct}>{PRODUCT_TITLE}</Text>
+    </View>
+  );
+}
+
+function ModeCard({
+  name,
+  subtitle,
+  onPress,
+  compact = false,
+}: {
+  name: string;
+  subtitle: string;
+  onPress(): void;
+  /** Three across instead of two (the Crowd stage picker). */
+  compact?: boolean;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.modeCard,
+        compact && styles.modeCardCompact,
+        pressed && styles.buttonPressed,
+      ]}
+    >
+      <Text style={[styles.modeName, compact && styles.modeNameCompact]}>{name}</Text>
+      <Text style={styles.modeSubtitle}>{subtitle}</Text>
+    </Pressable>
+  );
+}
+
+/** The M29 checklist: what is left to destroy, driven only by domain state. */
+function CrowdObjectives({ state }: { state: CrowdState }) {
+  const strings = useStrings();
+  return (
+    <View style={styles.crowdObjectives} pointerEvents="none">
+      <Text style={styles.crowdObjectivesHeading}>{strings.crowd.objectivesHeading}</Text>
+      {state.objectives.map((objective) => (
+        <View key={objective.objectiveId} style={styles.crowdObjective}>
+          <View
+            style={[styles.crowdObjectiveBox, objective.completed && styles.crowdObjectiveBoxDone]}
+          />
+          <Text
+            style={[
+              styles.crowdObjectiveText,
+              objective.completed && styles.crowdObjectiveTextDone,
+            ]}
+          >
+            {strings.crowd.objectives[objective.targetId]}
+          </Text>
+        </View>
+      ))}
+      {/* The one thing on the list that is not a target (M32). */}
+      <View style={styles.crowdObjective}>
+        <Text style={styles.crowdAvoidGlyph}>✕</Text>
+        <Text style={[styles.crowdObjectiveText, styles.crowdAvoidText]}>
+          {strings.crowd.spareWaiter}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+/**
+ * The end of a Crowd round (M29): what happened, then where to next.
+ *
+ * A ruined gig leads with the next stage when there is one (M32), so clearing
+ * a stage no longer means a trip back through the picker. Retry and the
+ * picker stay beside it; a survived show leads with Retry as before.
+ */
+function CrowdResult({
+  state,
+  onRetry,
+  onStages,
+  onNextStage,
+}: {
+  state: CrowdState;
+  onRetry(): void;
+  onStages(): void;
+  onNextStage(): void;
+}) {
+  const strings = useStrings();
+  const result = strings.crowd.result;
+  const won = state.outcome === 'success';
+  const nextWaiting = won && nextCrowdStageId(state.stageId) !== null;
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.title}>{won ? result.success : result.failure}</Text>
+      <Text style={styles.tagline}>{strings.crowd.stages[state.stageId]}</Text>
+      <Text style={styles.crowdScoreText}>{format(result.score, { score: state.score })}</Text>
+      <Text style={styles.crowdResultLine}>
+        {format(result.objectives, {
+          done: crowdObjectivesCompleted(state),
+          total: state.objectives.length,
+        })}
+      </Text>
+      <Text style={styles.crowdResultLine}>{format(result.throws, { count: state.throws })}</Text>
+      <View style={styles.buttonRowLayout}>
+        {nextWaiting && <Button label={result.nextStage} onPress={onNextStage} />}
+        <Button
+          label={result.retry}
+          onPress={onRetry}
+          tone={nextWaiting ? 'secondary' : 'primary'}
+          compact={nextWaiting}
+        />
+        <Button label={result.stages} onPress={onStages} tone="secondary" compact={nextWaiting} />
+      </View>
+    </View>
+  );
+}
+
+/**
+ * How to play, in front of the picked stage (M32).
+ *
+ * Three sentences and the waiter himself, struck out. It replaces the line
+ * and the standing cue the round screen used to carry: the physical playtest
+ * found them crowding the throw, and found that nobody had understood the
+ * waiter was to be avoided. Shown from the picker only — Retry and Next stage
+ * go straight to the stage, since the player has just read it.
+ */
+function CrowdBriefing({
+  stageId,
+  onStart,
+  onBack,
+}: {
+  stageId: CrowdStageId;
+  onStart(): void;
+  onBack(): void;
+}) {
+  const strings = useStrings();
+  const howTo = strings.crowd.howTo;
+  const stage = crowdStage(stageId);
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.briefingKicker}>{howTo.kicker}</Text>
+      <Text style={styles.briefingTitle}>{strings.crowd.stages[stageId]}</Text>
+      <View style={styles.crowdHowToRow}>
+        <View style={styles.crowdHowToWaiter}>
+          <Image
+            source={CROWD_ART.waiter}
+            style={styles.crowdHowToWaiterArt}
+            resizeMode="contain"
+            accessible={false}
+          />
+          <Text style={styles.crowdHowToWaiterTag}>{howTo.waiterTag}</Text>
+        </View>
+        <View style={styles.crowdHowToList}>
+          <Text style={styles.crowdHowToLine}>{howTo.swipe}</Text>
+          <Text style={styles.crowdHowToLine}>{howTo.goal}</Text>
+          <Text style={[styles.crowdHowToLine, styles.crowdHowToWarning]}>
+            {format(howTo.waiter, { penalty: Math.abs(CROWD_WAITER.penalty) })}
+          </Text>
+          <Text style={styles.crowdHowToSummary}>
+            {format(strings.crowd.stageSelect.summary, {
+              objectives: stage.objectives.length,
+              bottles: stage.bottles,
+            })}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.buttonRowLayout}>
+        <Button label={howTo.start} onPress={onStart} />
+        <Button label={strings.common.back} onPress={onBack} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
+/** The three Crowd difficulty stages (M30), read straight from their config. */
+function CrowdStageSelect({
+  onSelect,
+  onBack,
+}: {
+  onSelect(stageId: CrowdStageId): void;
+  onBack(): void;
+}) {
+  const strings = useStrings();
+  return (
+    <View style={styles.scrim}>
+      <Text style={styles.title}>{strings.modeSelect.crowd}</Text>
+      <Text style={styles.tagline}>{strings.crowd.stageSelect.heading}</Text>
+      <View style={styles.modeRow}>
+        {CROWD_STAGE_IDS.map((stageId) => {
+          const stage = crowdStage(stageId);
+          return (
+            <ModeCard
+              key={stageId}
+              name={strings.crowd.stages[stageId]}
+              subtitle={format(strings.crowd.stageSelect.summary, {
+                objectives: stage.objectives.length,
+                bottles: stage.bottles,
+              })}
+              onPress={() => onSelect(stageId)}
+              compact
+            />
+          );
+        })}
+      </View>
+      <View style={styles.buttonRowLayout}>
+        <Button label={strings.modeSelect.back} onPress={onBack} tone="secondary" compact />
+      </View>
+    </View>
+  );
+}
+
+/** A small edge button: the shared one is wider than the column it sits in. */
+function CrowdHudButton({ label, onPress }: { label: string; onPress(): void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      hitSlop={6}
+      style={({ pressed }) => [styles.crowdHudButton, pressed && styles.buttonPressed]}
+    >
+      <Text style={styles.crowdHudButtonText}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The round's HUD (M32): two edge columns and nothing in between.
+ *
+ * Left is what to do — the stage and its checklist. Right is how it is going
+ * — score, beers, and the two ways out. On a phone both columns sit mostly in
+ * the letterbox bars beside the 16:9 stage, and the whole lower middle, where
+ * the hand, the bottle and the swipe are, carries nothing at all. The only
+ * thing that ever appears over the stage is the result of a throw, at the top
+ * and only while it is news.
+ */
+function CrowdHud({
+  state,
+  onReset,
+  onStages,
+  onNextStage,
+}: {
+  state: CrowdState;
+  onReset(): void;
+  onStages(): void;
+  onNextStage(): void;
+}) {
+  const strings = useStrings();
+  if (state.phase === 'finished') {
+    return (
+      <CrowdResult state={state} onRetry={onReset} onStages={onStages} onNextStage={onNextStage} />
+    );
+  }
+  const feedback = state.feedback;
+  const cue =
+    feedback?.type === 'hit'
+      ? `${strings.crowd.targets[feedback.target]}  +${feedback.points}`
+      : feedback?.type === 'wrong-target'
+        ? strings.crowd.wrongTarget
+        : feedback?.type === 'miss'
+          ? strings.crowd.miss
+          : feedback?.type === 'invalid'
+            ? strings.crowd.invalid
+            : null;
+
+  return (
+    <View style={styles.crowdHud} pointerEvents="box-none">
+      <View style={styles.crowdColumn} pointerEvents="none">
+        <Text style={styles.crowdTitle}>{strings.crowd.stages[state.stageId]}</Text>
+        <CrowdObjectives state={state} />
+      </View>
+      <View style={styles.crowdCueSlot} pointerEvents="none">
+        {cue !== null && (
+          <Text
+            style={[
+              styles.crowdCue,
+              feedback?.type === 'hit' && styles.crowdCueGood,
+              feedback?.type === 'wrong-target' && styles.crowdCueBad,
+            ]}
+          >
+            {cue}
+          </Text>
+        )}
+      </View>
+      <View style={[styles.crowdColumn, styles.crowdColumnRight]} pointerEvents="box-none">
+        <Text style={styles.crowdScoreText}>
+          {format(strings.crowd.score, { score: state.score })}
+        </Text>
+        <Text style={styles.crowdThrowsText}>
+          {format(strings.crowd.beers, { count: state.bottlesLeft })}
+        </Text>
+        <CrowdHudButton label={strings.crowd.result.retry} onPress={onReset} />
+        <CrowdHudButton label={strings.crowd.result.stages} onPress={onStages} />
+      </View>
     </View>
   );
 }
@@ -904,97 +1211,163 @@ export function Overlays(props: OverlayProps) {
         {/* Not a catalogue string: docs/release/product-identity.md forbids
             translating the title, so it is a constant that cannot be. */}
         <Text style={styles.title}>{PRODUCT_TITLE}</Text>
-        <Text style={styles.tagline}>{strings.title.tagline}</Text>
-        <View style={styles.stageRow}>
-          {STAGES.map((entry, index) => (
-            <StageButton
-              key={entry.id}
-              stage={entry}
-              cleared={isStageCleared(flow, index)}
-              onPress={() => props.onSelectStage(index)}
-            />
-          ))}
+        <Text style={styles.tagline}>{strings.modeSelect.heading}</Text>
+        <View style={styles.modeRow}>
+          <ModeCard
+            name={strings.modeSelect.band}
+            subtitle={strings.modeSelect.bandSubtitle}
+            onPress={props.onOpenBandMode}
+          />
+          <ModeCard
+            name={strings.modeSelect.crowd}
+            subtitle={strings.modeSelect.crowdSubtitle}
+            onPress={props.onOpenCrowdMode}
+          />
         </View>
         <View style={styles.buttonRowLayout}>
-          <Button
-            label={strings.title.howToPlay}
-            onPress={props.onShowBriefing}
-            tone="secondary"
-            compact
-          />
           <Button
             label={strings.title.story}
             onPress={props.onReplayStory}
             tone="secondary"
             compact
           />
-          {/**
-            * The custom setlist, drawn only once the show has been survived
-            * (M24C §10).
-            *
-            * **Absent rather than disabled.** A locked control on a first-run
-            * title screen is a promise the player cannot act on and a row of
-            * buttons they have to read past; the stage cards are what a new
-            * player is meant to look at. `openSetlist` refuses independently,
-            * so this is presentation and not the gate.
-            */}
-          {isCustomSetlistUnlocked(flow) && (
-            <Button
-              label={strings.setlist.open}
-              onPress={props.onOpenSetlist}
-              tone="secondary"
-              compact
-            />
-          )}
-          {/**
-            * The one way into the Remove Ads screen (M23).
-            *
-            * **Always drawn, including for a player who already owns it**, and
-            * that is deliberate rather than an oversight. The privacy-choices
-            * control lives behind this button, the published privacy policy
-            * promises it is reachable, and a purchase removes ads — not the
-            * right to change a privacy choice. Hiding the entry once the
-            * product is owned would take that control away from exactly the
-            * European players who are entitled to it.
-            *
-            * The screen itself is what adapts: it drops Buy when there is
-            * nothing left to sell. See `RemoveAdsScreen`.
-            */}
           <Button
             label={strings.removeAds.entry}
             onPress={props.onOpenRemoveAds}
             tone="secondary"
             compact
           />
-          <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <LanguageToggle onPress={props.onCycleLocale} />
         </View>
-        {/**
-          * What the player has not earned yet, said once and quietly (M25).
-          *
-          * The M24C note above explains why the *button* is absent rather than
-          * disabled while the feature is locked, and that argument still
-          * holds — this is not a control. It is two lines of text under the
-          * row saying that finishing the show is worth something, which is the
-          * thing a new player had no way of knowing.
-          *
-          * Mutually exclusive with the button by construction: both read the
-          * same `isCustomSetlistUnlocked(flow)`, one negated, so there is no
-          * state in which the player is offered the builder and told it is
-          * locked. It is still not the gate — `openSetlist` is — and nothing
-          * here is pressable.
-          */}
-        {!isCustomSetlistUnlocked(flow) && (
-          <View style={styles.lockedTeaser}>
-            <Text style={styles.lockedTitle}>{strings.setlist.locked}</Text>
-            <Text style={styles.lockedHint}>{strings.setlist.lockedHint}</Text>
-          </View>
-        )}
-        {!audioAvailable && (
-          <Text style={styles.warning}>{strings.title.audioUnavailable}</Text>
-        )}
-        {props.audition !== null && <DevAuditionRow audition={props.audition} />}
       </View>
+    );
+  }
+
+  /*
+   * The Band stage picker, refit for a phone (M32).
+   *
+   * The physical playtest found this screen overloaded and the setlist line
+   * nearly off the bottom. Two changes, neither a redesign:
+   *
+   *   - **Fewer buttons.** Story and Remove Ads left this row; both are one
+   *     Back away on the title, which has drawn them since the mode selector
+   *     arrived (M26). That includes the privacy-choices control, which lives
+   *     behind Remove Ads and is still always reachable from there. What
+   *     remains is what belongs to Band Mode and fits one row.
+   *   - **It scrolls.** The stack is the same scrolling surface the full-show
+   *     result uses, so on any screen shorter than the content the setlist
+   *     line is reached rather than clipped.
+   */
+  if (flow.screen === 'BAND_SELECT') {
+    return (
+      <View style={styles.scrim}>
+        <ScrollView
+          style={styles.resultScroll}
+          contentContainerStyle={styles.resultScrollContent}
+          showsVerticalScrollIndicator
+          persistentScrollbar
+          alwaysBounceVertical={false}
+          overScrollMode="auto"
+        >
+          <Text style={styles.title}>{strings.modeSelect.band}</Text>
+          <Text style={styles.tagline}>{strings.title.tagline}</Text>
+          <View style={styles.stageRow}>
+            {STAGES.map((entry, index) => (
+              <StageButton
+                key={entry.id}
+                stage={entry}
+                cleared={isStageCleared(flow, index)}
+                onPress={() => props.onSelectStage(index)}
+              />
+            ))}
+          </View>
+          <View style={styles.buttonRowLayout}>
+            <Button
+              label={strings.title.howToPlay}
+              onPress={props.onShowBriefing}
+              tone="secondary"
+              compact
+            />
+            {/**
+              * The custom setlist, drawn only once the show has been survived
+              * (M24C §10).
+              *
+              * **Absent rather than disabled.** A locked control on a first-run
+              * title screen is a promise the player cannot act on and a row of
+              * buttons they have to read past; the stage cards are what a new
+              * player is meant to look at. `openSetlist` refuses independently,
+              * so this is presentation and not the gate.
+              */}
+            {isCustomSetlistUnlocked(flow) && (
+              <Button
+                label={strings.setlist.open}
+                onPress={props.onOpenSetlist}
+                tone="secondary"
+                compact
+              />
+            )}
+            <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
+            <Button
+              label={strings.modeSelect.back}
+              onPress={props.onBackToTitle}
+              tone="secondary"
+              compact
+            />
+          </View>
+          {/**
+            * What the player has not earned yet, said once and quietly (M25).
+            *
+            * The M24C note above explains why the *button* is absent rather
+            * than disabled while the feature is locked, and that argument still
+            * holds — this is not a control. It is two lines of text under the
+            * row saying that finishing the show is worth something, which is
+            * the thing a new player had no way of knowing.
+            *
+            * Mutually exclusive with the button by construction: both read the
+            * same `isCustomSetlistUnlocked(flow)`, one negated, so there is no
+            * state in which the player is offered the builder and told it is
+            * locked. It is still not the gate — `openSetlist` is — and nothing
+            * here is pressable.
+            */}
+          {!isCustomSetlistUnlocked(flow) && (
+            <View style={styles.lockedTeaser}>
+              <Text style={styles.lockedTitle}>{strings.setlist.locked}</Text>
+              <Text style={styles.lockedHint}>{strings.setlist.lockedHint}</Text>
+            </View>
+          )}
+          {!audioAvailable && (
+            <Text style={styles.warning}>{strings.title.audioUnavailable}</Text>
+          )}
+          {props.audition !== null && <DevAuditionRow audition={props.audition} />}
+        </ScrollView>
+      </View>
+    );
+  }
+
+  if (flow.screen === 'CROWD_SELECT') {
+    return (
+      <CrowdStageSelect onSelect={props.onSelectCrowdStage} onBack={props.onBackToTitle} />
+    );
+  }
+
+  if (flow.screen === 'CROWD_BRIEFING') {
+    return (
+      <CrowdBriefing
+        stageId={props.crowd.stageId}
+        onStart={props.onStartCrowdRound}
+        onBack={props.onOpenCrowdStages}
+      />
+    );
+  }
+
+  if (flow.screen === 'CROWD') {
+    return (
+      <CrowdHud
+        state={props.crowd}
+        onReset={props.onResetCrowd}
+        onStages={props.onOpenCrowdStages}
+        onNextStage={props.onNextCrowdStage}
+      />
     );
   }
 
@@ -1354,6 +1727,242 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textAlign: 'center',
     marginBottom: 10,
+  },
+  modeRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+  },
+  modeCard: {
+    width: 300,
+    minHeight: 112,
+    marginHorizontal: 10,
+    marginVertical: 6,
+    paddingHorizontal: 22,
+    paddingVertical: 18,
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: THEME.accent,
+    backgroundColor: 'rgba(255, 80, 100, 0.14)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modeName: {
+    color: THEME.hudText,
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textAlign: 'center',
+  },
+  modeCardCompact: {
+    width: 220,
+    marginHorizontal: 6,
+    paddingHorizontal: 12,
+  },
+  modeNameCompact: {
+    fontSize: 17,
+    letterSpacing: 1,
+  },
+  modeSubtitle: {
+    color: THEME.hudDim,
+    fontSize: 15,
+    marginTop: 5,
+    textAlign: 'center',
+  },
+  crowdHud: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    paddingHorizontal: 8,
+    paddingVertical: 10,
+  },
+  /*
+   * 150 dp is the letterbox bar beside the stage on a 20:9 phone, give or take
+   * a few; on a 16:9 screen the column covers the wings, which hold no target.
+   */
+  crowdColumn: {
+    width: 150,
+  },
+  crowdColumnRight: {
+    alignItems: 'flex-end',
+  },
+  crowdTitle: {
+    color: THEME.hudText,
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 6,
+  },
+  crowdScoreText: {
+    color: THEME.accent,
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textAlign: 'right',
+  },
+  crowdThrowsText: {
+    color: THEME.hudText,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  crowdHudButton: {
+    minWidth: 96,
+    marginTop: 8,
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: THEME.hudDim,
+    backgroundColor: 'rgba(8, 7, 12, 0.6)',
+    alignItems: 'center',
+  },
+  crowdHudButtonText: {
+    color: THEME.hudDim,
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  crowdObjectives: {
+    alignSelf: 'stretch',
+    paddingHorizontal: 9,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: 'rgba(8, 7, 12, 0.72)',
+  },
+  crowdObjectivesHeading: {
+    color: THEME.accent,
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    marginBottom: 4,
+  },
+  /* Rows grow rather than clip: a long pt-BR line takes two, not an ellipsis. */
+  crowdObjective: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 3,
+  },
+  crowdObjectiveBox: {
+    width: 9,
+    height: 9,
+    marginTop: 3,
+    marginRight: 6,
+    borderRadius: 2,
+    borderWidth: 1.5,
+    borderColor: THEME.hudText,
+  },
+  crowdObjectiveBoxDone: {
+    borderColor: THEME.integrityFull,
+    backgroundColor: THEME.integrityFull,
+  },
+  crowdObjectiveText: {
+    flex: 1,
+    color: THEME.hudText,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '700',
+  },
+  crowdObjectiveTextDone: {
+    color: THEME.hudDim,
+    textDecorationLine: 'line-through',
+  },
+  crowdAvoidGlyph: {
+    width: 9,
+    marginRight: 6,
+    color: THEME.accent,
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900',
+    textAlign: 'center',
+  },
+  crowdAvoidText: {
+    color: THEME.accent,
+  },
+  crowdResultLine: {
+    color: THEME.hudText,
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  /* Top centre: rafters and lights, above anything a bottle can land on. */
+  crowdCueSlot: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  crowdCue: {
+    color: THEME.hudText,
+    backgroundColor: 'rgba(8, 7, 12, 0.76)',
+    borderColor: THEME.hudDim,
+    borderWidth: 2,
+    borderRadius: 16,
+    overflow: 'hidden',
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    fontSize: 13,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+    textAlign: 'center',
+  },
+  crowdCueGood: {
+    borderColor: THEME.integrityFull,
+  },
+  /* The one filled cue: hitting the waiter is the only thing that is wrong. */
+  crowdCueBad: {
+    backgroundColor: THEME.accent,
+    borderColor: THEME.hudText,
+  },
+  crowdHowToRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  crowdHowToWaiter: {
+    alignItems: 'center',
+    marginRight: 20,
+  },
+  crowdHowToWaiterArt: {
+    width: 70,
+    height: 130,
+  },
+  crowdHowToWaiterTag: {
+    marginTop: -6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: 'hidden',
+    color: THEME.hudText,
+    backgroundColor: THEME.accent,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  crowdHowToList: {
+    flexShrink: 1,
+    maxWidth: 460,
+  },
+  crowdHowToLine: {
+    color: THEME.hudText,
+    fontSize: 15,
+    lineHeight: 20,
+    marginBottom: 6,
+  },
+  crowdHowToWarning: {
+    color: THEME.accent,
+    fontWeight: '800',
+  },
+  crowdHowToSummary: {
+    color: THEME.hudDim,
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
   /* One line, in the colour the game uses for something good happening. */
   newBest: {

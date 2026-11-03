@@ -69,8 +69,16 @@ export const APP_SCREENS = [
   'LANGUAGE',
   /** The five-panel opening story. */
   'STORY',
-  /** Title, stage picker, and the way back into the story. */
+  /** Product title and the choice between the two sides of the gig (M26). */
   'TITLE',
+  /** The existing Band Mode stage picker, unchanged behind one explicit choice. */
+  'BAND_SELECT',
+  /** The three Crowd difficulty stages, picked before a round (M30). */
+  'CROWD_SELECT',
+  /** How to play, in front of the picked Crowd stage, before it starts (M32). */
+  'CROWD_BRIEFING',
+  /** A Crowd Mode round: throw, destroy, win or run dry (M27–M29). */
+  'CROWD',
   /**
    * The setlist builder (M24C).
    *
@@ -109,6 +117,27 @@ export const APP_SCREENS = [
 ] as const;
 
 export type AppScreen = (typeof APP_SCREENS)[number];
+
+export const GAME_MODES = ['band', 'crowd'] as const;
+export type GameMode = (typeof GAME_MODES)[number];
+
+/**
+ * The active perspective is derived from the screen instead of stored beside
+ * it, so navigation and mode can never disagree.
+ */
+export function gameMode(flow: AppFlowState): GameMode | null {
+  if (
+    flow.screen === 'CROWD' ||
+    flow.screen === 'CROWD_SELECT' ||
+    flow.screen === 'CROWD_BRIEFING'
+  ) {
+    return 'crowd';
+  }
+  if (flow.screen === 'BAND_SELECT' || flow.screen === 'BRIEFING' || flow.screen === 'ROUND') {
+    return 'band';
+  }
+  return null;
+}
 
 export interface AppFlowState {
   screen: AppScreen;
@@ -388,6 +417,35 @@ export function finishIntro(flow: AppFlowState): void {
 /** "Story" on the title: watch it again. Does not reset anything else. */
 export function replayIntro(flow: AppFlowState): void {
   flow.screen = 'STORY';
+}
+
+/** The mode selector's Band card opens the existing stage picker. */
+export function openBandMode(flow: AppFlowState): void {
+  flow.screen = 'BAND_SELECT';
+}
+
+/**
+ * The mode selector's Crowd card opens the Crowd stage picker (M30). Also the
+ * way back from a finished or abandoned round.
+ */
+export function openCrowdMode(flow: AppFlowState): void {
+  flow.screen = 'CROWD_SELECT';
+}
+
+/**
+ * A picked Crowd stage shows its how-to-play card first (M32). The round's
+ * screen carries no instructions, so this is where they live.
+ */
+export function showCrowdBriefing(flow: AppFlowState): void {
+  flow.screen = 'CROWD_BRIEFING';
+}
+
+/**
+ * A picked Crowd stage begins its round. Which stage is `CrowdState`'s to
+ * know, not the flow's: the flow only says a round is on screen.
+ */
+export function startCrowdRound(flow: AppFlowState): void {
+  flow.screen = 'CROWD';
 }
 
 /**
