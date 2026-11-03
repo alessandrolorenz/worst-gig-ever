@@ -116,3 +116,24 @@ Do not change these to make art fit:
 
 Run a second physical-phone playtest on Crowd HUD clarity, waiter
 readability, progression flow, Band picker fit and music feel.
+
+### The build for it (2026-11-03)
+
+| | |
+| --- | --- |
+| APK | `build-out/worst-gig-ever-release.apk` (local `npm run build:release`) |
+| Version | **1.4.0 (versionCode 9)** |
+| Commit | `be1d893` on `m26/crowd-mode` |
+| SHA-256 | `16e859a8a2e295f7aacf7e93f73494c334a377608e7593e2c66628ff54144786` |
+| Signing | Upload key (`CN=alessandro`, cert SHA-256 `56b20661…ea51e`), not the debug key |
+| Ads | Test profile: the bundle compiles `currentAdProfile()` to `'test'` |
+| Installed | Galaxy S23 FE (SM-S711B), over 1.3.0 (8) with data kept; launches to the story with no runtime error |
+
+The 1.3.0 build it replaced was installed on 2026-10-11, after M32 was
+finished, and its JavaScript bundle is **byte-identical** to this one's. So
+M32 has been on the phone since then; only the version number is new. Whether
+that build was played is not recorded anywhere.
+
+This APK is upload-key signed, so it installs over the October release builds
+but **not** over the debug-signed friends APK. Switching between the two needs
+an uninstall, which erases local progress.

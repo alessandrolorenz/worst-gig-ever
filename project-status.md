@@ -115,9 +115,9 @@ state; the specs keep the milestone boundaries. Each commit passes
 | | |
 |---|---|
 | Tests | **717**, up from 670 |
-| Physical device | First playtest done (it is what M32 tuned). **M32 itself has not been on a phone** |
+| Physical device | First playtest done (it is what M32 tuned). M32's code has been installed on the phone since 2026-10-11; no playtest of it is recorded |
 | Next action | Second phone playtest: HUD clarity, waiter readability, Next-stage flow, Band picker fit, music feel |
-| Before that build | `app.json` is still 1.3.0 / versionCode 8, the same as the friends APK. Bump it, or the two cannot be told apart from the app info |
+| Build for it | **1.4.0 (9)**, commit `be1d893`, upload-key signed, test ads, installed on the Galaxy S23 FE 2026-11-03. Identity in `docs/handoff/CROWD-MODE-STATUS.md` |
 
 ### M24 closure
 
