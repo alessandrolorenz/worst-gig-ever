@@ -79,7 +79,11 @@ import {
 import { resultsArmed, type RoundState } from '../state/roundState.ts';
 import { recordFor, type Records } from '../state/records.ts';
 import { gigPayoutForResult } from '../state/gigPayout.ts';
-import { crowdObjectivesCompleted, type CrowdState } from '../crowd/crowdState.ts';
+import {
+  crowdObjectivesCompleted,
+  type CrowdObjectiveState,
+  type CrowdState,
+} from '../crowd/crowdState.ts';
 import {
   CROWD_STAGE_IDS,
   crowdStage,
@@ -88,6 +92,7 @@ import {
 } from '../crowd/crowdStages.ts';
 import { CROWD_WAITER } from '../crowd/crowdConfig.ts';
 import { CROWD_ART } from '../crowd/crowdArt.ts';
+import { CROWD_CHECKLIST, splitCrowdChecklist } from '../crowd/crowdHudLayout.ts';
 
 /**
  * Everything the Remove Ads screen draws itself from (M23, piece 6).
@@ -359,33 +364,55 @@ function ModeCard({
   );
 }
 
-/** The M29 checklist: what is left to destroy, driven only by domain state. */
-function CrowdObjectives({ state }: { state: CrowdState }) {
+/** One checklist line: its box, ticked once the target is down (M29). */
+function CrowdObjectiveRow({ objective }: { objective: CrowdObjectiveState }) {
   const strings = useStrings();
   return (
-    <View style={styles.crowdObjectives} pointerEvents="none">
-      <Text style={styles.crowdObjectivesHeading}>{strings.crowd.objectivesHeading}</Text>
-      {state.objectives.map((objective) => (
-        <View key={objective.objectiveId} style={styles.crowdObjective}>
-          <View
-            style={[styles.crowdObjectiveBox, objective.completed && styles.crowdObjectiveBoxDone]}
-          />
-          <Text
-            style={[
-              styles.crowdObjectiveText,
-              objective.completed && styles.crowdObjectiveTextDone,
-            ]}
-          >
-            {strings.crowd.objectives[objective.targetId]}
+    <View style={styles.crowdObjective}>
+      <View
+        style={[styles.crowdObjectiveBox, objective.completed && styles.crowdObjectiveBoxDone]}
+      />
+      <Text
+        style={[styles.crowdObjectiveText, objective.completed && styles.crowdObjectiveTextDone]}
+      >
+        {strings.crowd.objectives[objective.targetId]}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * The M29 checklist, split across the two bottom corners (M33).
+ *
+ * It used to hang under the stage name in the top-left column, where on a
+ * phone it covered the bassist. Now the first half stands in the bottom-left
+ * corner under the heading and the rest in the bottom-right, both over the
+ * audience strip, where no bottle can land and no performer stands. The rows,
+ * the ticks, the strike-through and the waiter line are M32's, unchanged;
+ * `crowdHudLayout.ts` says where the corners are and why they clear the band.
+ */
+function CrowdObjectives({ state }: { state: CrowdState }) {
+  const strings = useStrings();
+  const { left, right } = splitCrowdChecklist(state.objectives);
+  return (
+    <View style={styles.crowdChecklistLayer} pointerEvents="none">
+      <View style={[styles.crowdObjectives, styles.crowdObjectivesLeft]}>
+        <Text style={styles.crowdObjectivesHeading}>{strings.crowd.objectivesHeading}</Text>
+        {left.map((objective) => (
+          <CrowdObjectiveRow key={objective.objectiveId} objective={objective} />
+        ))}
+      </View>
+      <View style={[styles.crowdObjectives, styles.crowdObjectivesRight]}>
+        {right.map((objective) => (
+          <CrowdObjectiveRow key={objective.objectiveId} objective={objective} />
+        ))}
+        {/* The one thing on the list that is not a target (M32). */}
+        <View style={styles.crowdObjective}>
+          <Text style={styles.crowdAvoidGlyph}>✕</Text>
+          <Text style={[styles.crowdObjectiveText, styles.crowdAvoidText]}>
+            {strings.crowd.spareWaiter}
           </Text>
         </View>
-      ))}
-      {/* The one thing on the list that is not a target (M32). */}
-      <View style={styles.crowdObjective}>
-        <Text style={styles.crowdAvoidGlyph}>✕</Text>
-        <Text style={[styles.crowdObjectiveText, styles.crowdAvoidText]}>
-          {strings.crowd.spareWaiter}
-        </Text>
       </View>
     </View>
   );
@@ -548,14 +575,14 @@ function CrowdHudButton({ label, onPress }: { label: string; onPress(): void }) 
 }
 
 /**
- * The round's HUD (M32): two edge columns and nothing in between.
+ * The round's HUD (M32, M33): two edge columns, and the checklist below.
  *
- * Left is what to do — the stage and its checklist. Right is how it is going
- * — score, beers, and the two ways out. On a phone both columns sit mostly in
- * the letterbox bars beside the 16:9 stage, and the whole lower middle, where
- * the hand, the bottle and the swipe are, carries nothing at all. The only
- * thing that ever appears over the stage is the result of a throw, at the top
- * and only while it is news.
+ * Top left is the stage. Top right is how it is going — score, beers, and the
+ * two ways out. The checklist is in the two bottom corners over the audience
+ * (M33), so nothing covers a performer, and the lower middle, where the hand,
+ * the bottle and the swipe are, still carries nothing at all. The only thing
+ * that ever appears over the stage is the result of a throw, at the top and
+ * only while it is news.
  */
 function CrowdHud({
   state,
@@ -587,33 +614,35 @@ function CrowdHud({
             : null;
 
   return (
-    <View style={styles.crowdHud} pointerEvents="box-none">
-      <View style={styles.crowdColumn} pointerEvents="none">
-        <Text style={styles.crowdTitle}>{strings.crowd.stages[state.stageId]}</Text>
-        <CrowdObjectives state={state} />
-      </View>
-      <View style={styles.crowdCueSlot} pointerEvents="none">
-        {cue !== null && (
-          <Text
-            style={[
-              styles.crowdCue,
-              feedback?.type === 'hit' && styles.crowdCueGood,
-              feedback?.type === 'wrong-target' && styles.crowdCueBad,
-            ]}
-          >
-            {cue}
+    <View style={styles.crowdHudLayer} pointerEvents="box-none">
+      <CrowdObjectives state={state} />
+      <View style={styles.crowdHud} pointerEvents="box-none">
+        <View style={styles.crowdColumn} pointerEvents="none">
+          <Text style={styles.crowdTitle}>{strings.crowd.stages[state.stageId]}</Text>
+        </View>
+        <View style={styles.crowdCueSlot} pointerEvents="none">
+          {cue !== null && (
+            <Text
+              style={[
+                styles.crowdCue,
+                feedback?.type === 'hit' && styles.crowdCueGood,
+                feedback?.type === 'wrong-target' && styles.crowdCueBad,
+              ]}
+            >
+              {cue}
+            </Text>
+          )}
+        </View>
+        <View style={[styles.crowdColumn, styles.crowdColumnRight]} pointerEvents="box-none">
+          <Text style={styles.crowdScoreText}>
+            {format(strings.crowd.score, { score: state.score })}
           </Text>
-        )}
-      </View>
-      <View style={[styles.crowdColumn, styles.crowdColumnRight]} pointerEvents="box-none">
-        <Text style={styles.crowdScoreText}>
-          {format(strings.crowd.score, { score: state.score })}
-        </Text>
-        <Text style={styles.crowdThrowsText}>
-          {format(strings.crowd.beers, { count: state.bottlesLeft })}
-        </Text>
-        <CrowdHudButton label={strings.crowd.result.retry} onPress={onReset} />
-        <CrowdHudButton label={strings.crowd.result.stages} onPress={onStages} />
+          <Text style={styles.crowdThrowsText}>
+            {format(strings.crowd.beers, { count: state.bottlesLeft })}
+          </Text>
+          <CrowdHudButton label={strings.crowd.result.retry} onPress={onReset} />
+          <CrowdHudButton label={strings.crowd.result.stages} onPress={onStages} />
+        </View>
       </View>
     </View>
   );
@@ -1769,6 +1798,9 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'center',
   },
+  crowdHudLayer: {
+    ...StyleSheet.absoluteFillObject,
+  },
   crowdHud: {
     ...StyleSheet.absoluteFillObject,
     flexDirection: 'row',
@@ -1825,31 +1857,43 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  crowdObjectives: {
-    alignSelf: 'stretch',
-    paddingHorizontal: 9,
-    paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: 'rgba(8, 7, 12, 0.72)',
+  /* Unpadded, so the corner insets below are measured from the safe area. */
+  crowdChecklistLayer: {
+    ...StyleSheet.absoluteFillObject,
   },
+  crowdObjectives: {
+    position: 'absolute',
+    bottom: CROWD_CHECKLIST.bottomInset,
+    width: CROWD_CHECKLIST.panelWidth,
+    paddingHorizontal: CROWD_CHECKLIST.paddingHorizontal,
+    paddingVertical: CROWD_CHECKLIST.paddingVertical,
+    borderRadius: CROWD_CHECKLIST.borderRadius,
+    backgroundColor: 'rgba(8, 7, 12, 0.72)',
+    /* Between children only — the heading counts as one — so the panel is
+       exactly the height `crowdChecklistPanelHeight` says. */
+    rowGap: CROWD_CHECKLIST.row.gap,
+  },
+  crowdObjectivesLeft: { left: CROWD_CHECKLIST.edgeInset },
+  crowdObjectivesRight: { right: CROWD_CHECKLIST.edgeInset },
   crowdObjectivesHeading: {
     color: THEME.accent,
-    fontSize: 10,
+    fontSize: CROWD_CHECKLIST.heading.fontSize,
+    lineHeight: CROWD_CHECKLIST.heading.lineHeight,
     fontWeight: '900',
-    letterSpacing: 1.5,
-    marginBottom: 4,
+    letterSpacing: CROWD_CHECKLIST.heading.letterSpacing,
+    marginBottom: CROWD_CHECKLIST.heading.marginBottom,
   },
-  /* Rows grow rather than clip: a long pt-BR line takes two, not an ellipsis. */
+  /* Rows grow rather than clip: a long line takes two, not an ellipsis — and
+     the panel grows upward from the bottom edge to hold it. */
   crowdObjective: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 3,
   },
   crowdObjectiveBox: {
-    width: 9,
-    height: 9,
-    marginTop: 3,
-    marginRight: 6,
+    width: CROWD_CHECKLIST.marker.size,
+    height: CROWD_CHECKLIST.marker.size,
+    marginTop: (CROWD_CHECKLIST.row.lineHeight - CROWD_CHECKLIST.marker.size) / 2,
+    marginRight: CROWD_CHECKLIST.marker.gap,
     borderRadius: 2,
     borderWidth: 1.5,
     borderColor: THEME.hudText,
@@ -1861,8 +1905,8 @@ const styles = StyleSheet.create({
   crowdObjectiveText: {
     flex: 1,
     color: THEME.hudText,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: CROWD_CHECKLIST.row.fontSize,
+    lineHeight: CROWD_CHECKLIST.row.lineHeight,
     fontWeight: '700',
   },
   crowdObjectiveTextDone: {
@@ -1870,11 +1914,11 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   crowdAvoidGlyph: {
-    width: 9,
-    marginRight: 6,
+    width: CROWD_CHECKLIST.marker.size,
+    marginRight: CROWD_CHECKLIST.marker.gap,
     color: THEME.accent,
-    fontSize: 11,
-    lineHeight: 14,
+    fontSize: CROWD_CHECKLIST.row.fontSize,
+    lineHeight: CROWD_CHECKLIST.row.lineHeight,
     fontWeight: '900',
     textAlign: 'center',
   },
