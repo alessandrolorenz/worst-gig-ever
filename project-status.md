@@ -41,6 +41,7 @@ while every device build came off the branch; the trunk has caught up.
 | M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `main`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md` |
 | M23 | Monetization and store readiness | **in progress.** On `main` through the Remove Ads copy (`07bf6b1`); piece 5A onward is only on `m23/admob-compat-15.8.3`. Pieces below |
 | M26–M32 | Crowd Mode, the second perspective | **implemented**, on `m26/crowd-mode` (branched from `m23/admob-compat-15.8.3`). Second phone playtest pending. See "Crowd Mode" below |
+| M33 | Crowd checklist in the bottom corners; Follow the beat optional from Band Stage 3 | **implemented**, merged to `main` 2026-11-05 with M23 5A onward and Crowd Mode. 733 tests; web export checked at 784x384 and 923x411. Local release **1.4.1 (10)** installed on the Galaxy S23 FE 2026-11-04. `docs/specs/M33-crowd-checklist-and-optional-beat.md` |
 
 ### M23 pieces
 

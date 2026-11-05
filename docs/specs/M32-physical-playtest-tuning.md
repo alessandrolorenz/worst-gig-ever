@@ -14,6 +14,10 @@ five things, in this order. Nothing else was changed.
 
 ## P1 — Crowd round screen
 
+> **Checklist placement superseded by M33** (2026-11-04): the checklist now
+> stands in the two bottom corners, split in half. See
+> `M33-crowd-checklist-and-optional-beat.md`. The rest of P1 still holds.
+
 - The round HUD is two edge columns. Left: stage name and checklist. Right:
   score, beers, Retry, Stages. On a 20:9 phone both sit mostly in the letterbox
   bars beside the 16:9 stage.
