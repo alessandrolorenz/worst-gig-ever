@@ -47,6 +47,8 @@ export const ptBR: Catalogue = {
     story: 'História',
     clickOn: 'Clique: ligado',
     clickOff: 'Clique: desligado',
+    followBeatOn: 'Seguir o ritmo: ligado',
+    followBeatOff: 'Seguir o ritmo: desligado',
     audioUnavailable:
       'Áudio indisponível nesta build — recompile o cliente de desenvolvimento para ouvir o show.',
   },
@@ -317,6 +319,13 @@ export const ptBR: Catalogue = {
         'Uma batida perdida custa a sequência. Uma garrafa perdida custa o show.',
         'Alguém pode entrar na sua frente. Resolva.',
       ],
+      briefingWithoutBeat: [
+        'O show de verdade, e a plateia esquentou.',
+        'Seguir o ritmo está desligado: nenhuma batida para segurar, só a bateria para salvar. Ligue para o desafio completo.',
+        'Os copos voltaram: deixe um chegar até você e você bebe em vez de quebrar.',
+        'Uma garrafa perdida custa o show.',
+        'Alguém pode entrar na sua frente. Resolva.',
+      ],
     },
     'stage-4-encore': {
       /* "Bis" is what the audience actually shouts in Brazil. */
@@ -329,6 +338,12 @@ export const ptBR: Catalogue = {
         'Começa fácil e não continua assim: mais rápido, e mais junto.',
         'Vêm de três em três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
         'Segure o ritmo no pad. Três passam pela bateria e o show acabou.',
+      ],
+      briefingWithoutBeat: [
+        'A plateia quer mais uma. E trouxe mais garrafas.',
+        'Começa fácil e não continua assim: mais rápido, e mais junto.',
+        'Vêm de três em três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
+        'Seguir o ritmo está desligado. Três passam pela bateria e o show acabou.',
       ],
     },
   },

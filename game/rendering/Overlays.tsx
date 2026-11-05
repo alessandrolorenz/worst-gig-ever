@@ -26,7 +26,7 @@ import {
   SUMMARY,
 } from './overlayLayout.ts';
 import type { RemoveAdsMessage } from '../state/entitlement.ts';
-import type { Catalogue } from '../i18n/catalogue.ts';
+import { briefingLines, type Catalogue } from '../i18n/catalogue.ts';
 import { format } from '../i18n/format.ts';
 import {
   hasLocaleChoice,
@@ -68,9 +68,12 @@ import type { StoryState } from '../state/storyState.ts';
 import {
   STAGES,
   hasNextStage,
+  isGrooveActive,
+  offersFollowBeat,
   type BriefingFigureId,
   type StageDefinition,
 } from '../levels/stages.ts';
+import type { StageStrings } from '../i18n/catalogues/en.ts';
 import {
   judgedBeats,
   meanAbsTimingErrorMs,
@@ -160,6 +163,8 @@ interface OverlayProps {
   onNextStage(): void;
   onQuit(): void;
   onToggleClick(): void;
+  /** Follow the beat (M33). Only drawn where the stage offers the choice. */
+  onToggleFollowBeat(): void;
   onCycleLocale(): void;
   /** The first-run language chooser's only action (M25). */
   onChooseLocale(locale: ShippableLocale): void;
@@ -258,6 +263,36 @@ function ClickToggle({ enabled, onPress }: { enabled: boolean; onPress(): void }
   return (
     <Button
       label={enabled ? strings.title.clickOn : strings.title.clickOff}
+      onPress={onPress}
+      tone="secondary"
+      compact
+    />
+  );
+}
+
+/**
+ * Follow the beat (M33): whether this stage scores the beat.
+ *
+ * The click switch's shape exactly — a secondary compact `Button` whose label
+ * states what is true — and drawn in the same two kinds of place a player is
+ * already stopped: in front of a stage (its briefing) and in a paused round.
+ * Only on a stage that offers the choice; Stages 1 and 2 never draw it, so
+ * there is no control on screen that would do nothing.
+ */
+function FollowBeatToggle({
+  stage,
+  enabled,
+  onPress,
+}: {
+  stage: StageDefinition;
+  enabled: boolean;
+  onPress(): void;
+}) {
+  const strings = useStrings();
+  if (!offersFollowBeat(stage)) return null;
+  return (
+    <Button
+      label={enabled ? strings.title.followBeatOn : strings.title.followBeatOff}
       onPress={onPress}
       tone="secondary"
       compact
@@ -798,15 +833,22 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
  */
 function BriefingCard({
   stage,
+  followBeat,
+  onToggleFollowBeat,
   onBeginRound,
   onBackToTitle,
 }: {
   stage: StageDefinition;
+  followBeat: boolean;
+  onToggleFollowBeat(): void;
   onBeginRound(): void;
   onBackToTitle(): void;
 }) {
   const strings = useStrings();
-  const stageStrings = strings.stages[stage.id];
+  const stageStrings: StageStrings = strings.stages[stage.id];
+  // Swaps as the switch below is pressed, so the card always describes the
+  // round Start is about to begin (M33).
+  const lines = briefingLines(stageStrings, isGrooveActive(stage, followBeat));
 
   /*
    * Measured rather than predicted. A budget test can say whether the words
@@ -859,7 +901,7 @@ function BriefingCard({
             ))}
           </View>
         )}
-        {stageStrings.briefing.map((line) => (
+        {lines.map((line) => (
           <View key={line} style={styles.briefingItem}>
             <Text style={styles.briefingBullet}>▸</Text>
             <Text style={styles.briefingText}>{line}</Text>
@@ -874,6 +916,7 @@ function BriefingCard({
       <View style={styles.moreCueRow}>{hasMore && <Text style={styles.moreCue}>▾</Text>}</View>
       <View style={styles.buttonRowLayout}>
         <Button label={strings.briefing.start} onPress={onBeginRound} />
+        <FollowBeatToggle stage={stage} enabled={followBeat} onPress={onToggleFollowBeat} />
         <Button label={strings.common.back} onPress={onBackToTitle} tone="secondary" compact />
       </View>
     </View>
@@ -1212,6 +1255,8 @@ function trackTitleKey(track: MusicTrackId): MusicTitleKey {
 export function Overlays(props: OverlayProps) {
   const { flow, stage, state, round, rhythm, story, audioAvailable } = props;
   const strings = useStrings();
+  /* Whether this round scores the beat: the stage, and from Stage 3 the player (M33). */
+  const grooveActive = isGrooveActive(stage, flow.followBeat);
 
   /**
    * Nothing, while the save decides what the first screen is (M25).
@@ -1439,6 +1484,8 @@ export function Overlays(props: OverlayProps) {
     return (
       <BriefingCard
         stage={stage}
+        followBeat={flow.followBeat}
+        onToggleFollowBeat={props.onToggleFollowBeat}
         onBeginRound={props.onBeginRound}
         onBackToTitle={props.onBackToTitle}
       />
@@ -1478,11 +1525,16 @@ export function Overlays(props: OverlayProps) {
         <Summary
           round={round}
           rhythm={rhythm}
-          grooveEnabled={stage.groove}
+          grooveEnabled={grooveActive}
           record={props.records[stage.id] ?? null}
         />
         <View style={styles.buttonRowLayout}>
           <Button label={strings.pause.resume} onPress={props.onResume} />
+          <FollowBeatToggle
+            stage={stage}
+            enabled={flow.followBeat}
+            onPress={props.onToggleFollowBeat}
+          />
           <ClickToggle enabled={flow.clickEnabled} onPress={props.onToggleClick} />
           <LanguageToggle onPress={props.onCycleLocale} />
           <Button label={strings.common.quitToTitle} onPress={props.onQuit} tone="secondary" icon />
@@ -1495,7 +1547,8 @@ export function Overlays(props: OverlayProps) {
   const nextStageWaiting = complete && hasNextStage(flow.stageIndex);
   const armed = resultsArmed(round);
   const gigPayout = gigPayoutForResult(flow, state, {
-    grooveScore: rhythm.score,
+    // No beat bonus for a show played with Follow the beat off (M33).
+    grooveScore: grooveActive ? rhythm.score : 0,
     defenseScore: round.score,
   });
 
@@ -1509,7 +1562,7 @@ export function Overlays(props: OverlayProps) {
             : strings.results.showRuined}
       </Text>
       <Text style={styles.body}>
-        {outcomeLine(strings.results, stage, complete, nextStageWaiting)}
+        {outcomeLine(strings.results, grooveActive, complete, nextStageWaiting)}
       </Text>
       {/* Only when this round actually beat something (M22). */}
       {props.beatRecord && <Text style={styles.newBest}>{strings.results.newBest}</Text>}
@@ -1524,7 +1577,7 @@ export function Overlays(props: OverlayProps) {
       <Summary
         round={round}
         rhythm={rhythm}
-        grooveEnabled={stage.groove}
+        grooveEnabled={grooveActive}
         record={recordFor(props.records, stage.id)}
       />
       {/**
@@ -1675,13 +1728,13 @@ function runSetlistLine(flow: AppFlowState, strings: Catalogue): string {
  */
 function outcomeLine(
   results: Catalogue['results'],
-  stage: StageDefinition,
+  grooveActive: boolean,
   complete: boolean,
   nextStageWaiting: boolean,
 ): string {
   if (nextStageWaiting) return results.outcomeStageCleared;
   if (complete) return results.outcomeShowComplete;
-  if (!stage.groove) return results.outcomeDefenseRuined;
+  if (!grooveActive) return results.outcomeDefenseRuined;
   return results.outcomeGrooveRuined;
 }
 

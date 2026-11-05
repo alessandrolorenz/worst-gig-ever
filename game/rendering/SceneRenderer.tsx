@@ -56,7 +56,7 @@ import {
 } from '../systems/stageMotion.ts';
 import { isPadPulsing, type RhythmState } from '../state/rhythmState.ts';
 import { targetViews, type RoundState, type TargetView } from '../state/roundState.ts';
-import type { StageDefinition } from '../levels/stages.ts';
+import { isGrooveActive, type StageDefinition } from '../levels/stages.ts';
 import { Hud } from './Hud.tsx';
 import { spriteTransform } from './spriteTransform.ts';
 import type { AppFlowState } from '../state/appFlow.ts';
@@ -67,9 +67,10 @@ export interface SceneRendererProps {
   round: RoundState;
   rhythm: RhythmState;
   /**
-   * The stage the round belongs to (M15). Read for one thing only —
-   * `stage.groove`, which decides whether the pad and the Groove readout are
-   * drawn at all.
+   * The stage the round belongs to (M15). Read for one thing only — whether
+   * the Groove is live, through `isGrooveActive(stage, flow.followBeat)`
+   * (M33), which decides whether the pad and the Groove readout are drawn at
+   * all.
    *
    * It arrives as a prop because the engine's default renderer spreads the
    * whole scene entity onto this component; every prop in this interface is a
@@ -440,7 +441,8 @@ export function SceneRenderer({
   );
 
   const fit = fitCanvas(viewport.width, viewport.height);
-  const grooveEnabled = stage.groove;
+  // Follow the beat off on Stage 3+ draws the round exactly as Stage 1 (M33).
+  const grooveEnabled = isGrooveActive(stage, flow.followBeat);
   const showHalos =
     SHOW_GRAYBOX_DEBUG && (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT');
 

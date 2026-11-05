@@ -53,6 +53,14 @@ export interface SavedState {
   /** Highest stage index finished, or -1. A tick mark, never a gate. */
   readonly bestStageCleared: number;
   readonly clickEnabled: boolean;
+  /**
+   * Follow the beat, for Stage 3 onward (M33).
+   *
+   * **Additive and optional, so `SCHEMA_VERSION` stays 1**, for the reason
+   * `customSetlist` below states. A file without it reads as `false`, which is
+   * the default every player starts on.
+   */
+  readonly followBeat: boolean;
   /** An explicit override. Null means "use whatever the device asks for". */
   readonly locale: Locale | null;
   /**
@@ -105,6 +113,7 @@ export function emptySave(): SavedState {
     records: emptyRecords(),
     bestStageCleared: -1,
     clickEnabled: true,
+    followBeat: false,
     locale: null,
     customSetlist: null,
     adsRemoved: false,
@@ -132,6 +141,7 @@ const KNOWN_FIELDS = new Set([
   'records',
   'bestStageCleared',
   'clickEnabled',
+  'followBeat',
   'locale',
   'customSetlist',
   'adsRemoved',
@@ -239,6 +249,8 @@ export function parseSave(raw: string | null): ParsedSave {
          does not need clamping because nothing is gated on it anyway. */
       bestStageCleared: bestStageCleared < -1 ? -1 : bestStageCleared,
       clickEnabled: typeof decoded.clickEnabled === 'boolean' ? decoded.clickEnabled : true,
+      /* Strictly `=== true`: anything else is the default, and the default is off. */
+      followBeat: decoded.followBeat === true,
       locale: typeof locale === 'string' && isLocale(locale) ? (locale as Locale) : null,
       /*
        * Rejects rather than repairs, like everything else here (M24C).
@@ -275,6 +287,7 @@ export function serializeSave(state: SavedState, unknown: UnknownFields = {}): s
     records: state.records,
     bestStageCleared: state.bestStageCleared,
     clickEnabled: state.clickEnabled,
+    followBeat: state.followBeat,
     locale: state.locale,
     customSetlist: state.customSetlist,
     adsRemoved: state.adsRemoved,

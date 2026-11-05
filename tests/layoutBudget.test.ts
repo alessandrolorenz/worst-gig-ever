@@ -25,6 +25,7 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { allCatalogues, type Catalogue } from '../game/i18n/catalogue.ts';
+import type { StageStrings } from '../game/i18n/catalogues/en.ts';
 import { PSEUDO_EXPANSION } from '../game/i18n/catalogues/pseudo.ts';
 import { format } from '../game/i18n/format.ts';
 import { STAGES } from '../game/levels/stages.ts';
@@ -145,19 +146,28 @@ test('M20: the briefing sentences fit the card, in every locale', () => {
 
   for (const [locale, strings] of locales) {
     for (const stage of STAGES) {
-      const bullets = stackHeight(
-        strings.stages[stage.id].briefing,
-        { ...BRIEFING.bullet, maxWidth: BRIEFING_TEXT_WIDTH },
-        BRIEFING.bullet.gap,
-      ) + BRIEFING.list.paddingBottom;
+      const stageStrings: StageStrings = strings.stages[stage.id];
+      /* With Follow the beat off, a Stage 3+ card shows its other list (M33). */
+      const variants: Array<[string, readonly string[] | undefined]> = [
+        ['', stageStrings.briefing],
+        [' (Follow the beat off)', stageStrings.briefingWithoutBeat],
+      ];
+      for (const [variant, lines] of variants) {
+        if (lines === undefined) continue;
+        const bullets = stackHeight(
+          lines,
+          { ...BRIEFING.bullet, maxWidth: BRIEFING_TEXT_WIDTH },
+          BRIEFING.bullet.gap,
+        ) + BRIEFING.list.paddingBottom;
 
-      assert.ok(
-        bullets <= available,
-        `${locale}: stage ${stage.number} needs ${Math.round(bullets)} dp of sentences in a ` +
-          `${Math.round(available)} dp card on the smallest supported screen. The briefing is the ` +
-          'one place a rule is ever explained, so the rules themselves must be reachable ' +
-          'in a single screenful.',
-      );
+        assert.ok(
+          bullets <= available,
+          `${locale}: stage ${stage.number}${variant} needs ${Math.round(bullets)} dp of sentences in a ` +
+            `${Math.round(available)} dp card on the smallest supported screen. The briefing is the ` +
+            'one place a rule is ever explained, so the rules themselves must be reachable ' +
+            'in a single screenful.',
+        );
+      }
     }
   }
 });
@@ -377,6 +387,9 @@ test('M20: every button label fits its button', () => {
       ['title.story', strings.title.story],
       ['title.clickOn', strings.title.clickOn],
       ['title.clickOff', strings.title.clickOff],
+      /* Follow the beat, on a Stage 3+ briefing and pause (M33). */
+      ['title.followBeatOn', strings.title.followBeatOn],
+      ['title.followBeatOff', strings.title.followBeatOff],
       /* The way into the builder, from the title and from the results (M24C). */
       ['setlist.open', strings.setlist.open],
       /* The Remove Ads screen: its title entry, and its own controls (M23). */

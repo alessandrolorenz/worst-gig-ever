@@ -26,13 +26,21 @@ import type { BriefingFigureId, StageId } from '../../levels/stages.ts';
 import type { StoryPanelId } from '../../state/storyState.ts';
 
 /** What a stage is called and what its briefing card says. */
-interface StageStrings {
+export interface StageStrings {
   /** Short name on the title screen's stage button and the briefing heading. */
   readonly name: string;
   /** One line under the name: what this stage is for. */
   readonly subtitle: string;
   /** The briefing card, one whole sentence per entry, in reading order. */
   readonly briefing: readonly string[];
+  /**
+   * The briefing with Follow the beat off (M33), on a stage that offers it.
+   *
+   * A list of its own rather than `briefing` with lines filtered out, because
+   * several sentences teach both jobs at once and a filter would either keep
+   * a pad the player cannot see or drop a rule about the kit they still need.
+   */
+  readonly briefingWithoutBeat?: readonly string[];
 }
 
 export const en = {
@@ -56,6 +64,9 @@ export const en = {
      */
     clickOn: 'Click: on',
     clickOff: 'Click: off',
+    /* Follow the beat (M33). States what is true, like the click switch. */
+    followBeatOn: 'Follow the beat: on',
+    followBeatOff: 'Follow the beat: off',
     audioUnavailable:
       'Audio unavailable in this build — rebuild the development client to hear the show.',
   },
@@ -362,6 +373,13 @@ export const en = {
         'A missed beat costs you the streak. A missed bottle costs the show.',
         'Someone may get in your way. Deal with them.',
       ],
+      briefingWithoutBeat: [
+        'The real show, and the crowd has warmed up.',
+        'Follow the beat is off: no beat to keep, just the kit to save. Switch it on for the full challenge.',
+        'Mugs are back: let one reach you and you drink it instead of smashing it.',
+        'A missed bottle costs the show.',
+        'Someone may get in your way. Deal with them.',
+      ],
     },
     'stage-4-encore': {
       name: 'Encore',
@@ -371,6 +389,12 @@ export const en = {
         'It starts easy and it does not stay that way: faster, and closer together.',
         'They come in threes now — same spot, or side to side. Smash all of them.',
         'Keep the beat on the pad. Three through the kit and the show is over.',
+      ],
+      briefingWithoutBeat: [
+        'The crowd wants one more song. They brought more bottles.',
+        'It starts easy and it does not stay that way: faster, and closer together.',
+        'They come in threes now — same spot, or side to side. Smash all of them.',
+        'Follow the beat is off. Three through the kit and the show is over.',
       ],
     },
   } satisfies Record<StageId, StageStrings>,

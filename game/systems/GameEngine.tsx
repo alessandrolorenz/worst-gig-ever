@@ -15,7 +15,11 @@ import { GameEngine as WebGameEngine } from 'react-game-engine';
 
 import { createAudioService, type AudioService } from '../audio/audioService.ts';
 import { OFFICIAL_SETLIST } from '../audio/setlist.ts';
-import { createSceneEntities, type GameEntities } from '../entities/sceneEntities.ts';
+import {
+  createSceneEntities,
+  toggleFollowBeatInScene,
+  type GameEntities,
+} from '../entities/sceneEntities.ts';
 import { Overlays } from '../rendering/Overlays.tsx';
 import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
@@ -28,7 +32,7 @@ import { PRODUCT_TITLE } from '../config/product.ts';
 import { emptyRecords, recordRound, type Records } from '../state/records.ts';
 import { SCHEMA_VERSION, type UnknownFields } from '../state/persistence.ts';
 import { loadSave, writeSave } from '../state/storage.ts';
-import { stageAt } from '../levels/stages.ts';
+import { isGrooveActive, stageAt } from '../levels/stages.ts';
 import { trackForStage } from '../audio/setlist.ts';
 import {
   auditionSetlist,
@@ -213,6 +217,7 @@ export default function GameEngine() {
           records: nextRecords,
           bestStageCleared: flow.bestStageCleared,
           clickEnabled: flow.clickEnabled,
+          followBeat: flow.followBeat,
           locale: localeChosenRef.current ? flow.locale : null,
           /*
            * The draft, and only when it is a whole setlist (M24C §16).
@@ -515,6 +520,7 @@ export default function GameEngine() {
       // seconds before it arrived.
       flow.bestStageCleared = Math.max(flow.bestStageCleared, loaded.state.bestStageCleared);
       flow.clickEnabled = loaded.state.clickEnabled;
+      flow.followBeat = loaded.state.followBeat;
       /*
        * `!localeChosenRef.current` guards a race the boot timeout below can
        * create (M25): if the read is slow enough that the chooser appeared and
@@ -983,6 +989,25 @@ export default function GameEngine() {
   }, [entities, persist, refreshFlow]);
 
   /**
+   * Follow the beat (M33), from a Stage 3+ briefing or a paused Stage 3+ round.
+   *
+   * The click switch's shape: flip the flag, save it, re-render. `roundSystem`
+   * and the renderer read it every frame through `isGrooveActive`, so a change
+   * made in a pause is the round that resumes.
+   *
+   * The one thing a change mid-round needs is switching **on**: beats whose
+   * windows shut while it was off are closed unjudged, so resuming does not
+   * file the last twenty seconds as misses — see `toggleFollowBeatInScene`.
+   * Off at the final whistle means the round is recorded, shared and paid as
+   * a defense-only one.
+   */
+  const handleToggleFollowBeat = useCallback(() => {
+    toggleFollowBeatInScene(entities);
+    persist(recordsRef.current);
+    refreshFlow();
+  }, [entities, persist, refreshFlow]);
+
+  /**
    * The language control (M19).
    *
    * Exactly the shape of the click switch above: it flips a field on the flow
@@ -1175,7 +1200,7 @@ export default function GameEngine() {
      */
     const update = recordRound(recordsRef.current, scene.stage.id, {
       defenseScore: scene.round.score,
-      grooveScore: scene.stage.groove ? scene.rhythm.score : null,
+      grooveScore: isGrooveActive(scene.stage, scene.flow.followBeat) ? scene.rhythm.score : null,
     });
     setBeatRecord(update.beatDefense || update.beatGroove);
     if (update.records !== recordsRef.current) applyRecords(update.records);
@@ -1203,7 +1228,7 @@ export default function GameEngine() {
       defense: scene.round.score,
       groove: scene.rhythm.score,
     };
-    const message = scene.stage.groove
+    const message = isGrooveActive(scene.stage, scene.flow.followBeat)
       ? format(strings.share.withGroove, parameters)
       : format(strings.share.defenseOnly, parameters);
 
@@ -1292,6 +1317,7 @@ export default function GameEngine() {
             onNextStage={handleNextStage}
             onQuit={handleQuit}
             onToggleClick={handleToggleClick}
+            onToggleFollowBeat={handleToggleFollowBeat}
             onCycleLocale={handleCycleLocale}
             onChooseLocale={handleChooseLocale}
             selectableTracks={selectableTracks}

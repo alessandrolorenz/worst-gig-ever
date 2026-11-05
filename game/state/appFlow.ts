@@ -173,6 +173,19 @@ export interface AppFlowState {
    */
   clickEnabled: boolean;
   /**
+   * Follow the beat (M33): whether the Groove is live on a stage that lets the
+   * player choose — Stage 3 onward. **Off by default**, so the show can be
+   * played as the defense game it is underneath, and the beat is a challenge
+   * the player opts into.
+   *
+   * A player choice about the whole run, so it lives here beside the click
+   * and is saved the same way. It decides nothing by itself:
+   * `isGrooveActive(stage, followBeat)` in `stages.ts` combines it with the
+   * stage, and that is what the round bridge and every screen read. Stages 1
+   * and 2 ignore it.
+   */
+  followBeat: boolean;
+  /**
    * The language the game is being read in (M19).
    *
    * Session-only, exactly like `clickEnabled`, and for the same reason:
@@ -292,6 +305,7 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
     bestStageCleared: -1,
     introSeen: false,
     clickEnabled: true,
+    followBeat: false,
     locale: initialLocale,
     setlist: OFFICIAL_SETLIST,
     draftSetlist: emptyDraft(),
@@ -397,6 +411,11 @@ export function setLocale(flow: AppFlowState, locale: Locale): void {
 /** The click switch, from the title or from a paused round. */
 export function toggleClick(flow: AppFlowState): void {
   flow.clickEnabled = !flow.clickEnabled;
+}
+
+/** Follow the beat (M33), from a Stage 3+ briefing or a paused Stage 3+ round. */
+export function toggleFollowBeat(flow: AppFlowState): void {
+  flow.followBeat = !flow.followBeat;
 }
 
 export function currentStage(flow: AppFlowState): StageDefinition {

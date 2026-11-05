@@ -79,6 +79,12 @@ function selectGrooveStage(entities: GameEntities): void {
   if (stage === undefined) throw new Error('no stage asks for both jobs at once');
   entities.scene.stage = stage;
   entities.scene.round = createRound(stage.level);
+  /*
+   * From Stage 3 the beat is the player's choice and off by default (M33).
+   * These tests are about the round that asks for both jobs, so they play it
+   * as the Rhythm Challenge — which is the original round, unchanged.
+   */
+  entities.scene.flow.followBeat = true;
 }
 
 function setup() {

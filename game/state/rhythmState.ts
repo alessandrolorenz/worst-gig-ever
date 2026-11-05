@@ -250,6 +250,35 @@ export function tickRhythm(state: RhythmState, context: BeatContext): RhythmEven
   return events;
 }
 
+/**
+ * The Groove has just been switched on partway through a round (M33).
+ *
+ * Follow the beat can be turned on from the pause screen. While it was off,
+ * `tickRhythm` closed nothing, so every beat whose window shut in the meantime
+ * is still waiting to be finalized — and the next tick would close all of
+ * them as misses, for beats the player was never asked to keep. This closes
+ * them **unjudged** instead: not hits, not misses, not counted at all.
+ *
+ * The streak is reset only when something was actually skipped. A streak
+ * cannot honestly span beats nobody played, but switching off and straight
+ * back on inside one pause skips nothing and must cost nothing.
+ *
+ * A beat whose window is still open is left alone, so a player who resumes
+ * on the beat can still take it. Safe to call at any time: at the start of a
+ * round, or with the Groove already live and up to date, it does nothing.
+ */
+export function joinGrooveAt(state: RhythmState, elapsedMs: number, durationMs: number): void {
+  const total = scheduledBeatCount(durationMs);
+  let skipped = false;
+  while (state.nextBeatToFinalize < total) {
+    // The same inclusive edge `tickRhythm` uses: still hittable at +goodWindowMs.
+    if (elapsedMs <= beatTimeMs(state.nextBeatToFinalize) + RHYTHM.goodWindowMs) break;
+    if (!isUnscoredLeadBeat(state.nextBeatToFinalize)) skipped = true;
+    state.nextBeatToFinalize += 1;
+  }
+  if (skipped) state.streak = 0;
+}
+
 /** Closes one beat out as a miss. The unscored GO beat is closed but never counted. */
 function missBeat(state: RhythmState, beatIndex: number, events: RhythmEvent[]): void {
   if (isUnscoredLeadBeat(beatIndex)) return;

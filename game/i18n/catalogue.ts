@@ -15,7 +15,7 @@
  * the guarantee above.
  */
 import { DEFAULT_LOCALE, type Locale } from './locales.ts';
-import { en } from './catalogues/en.ts';
+import { en, type StageStrings } from './catalogues/en.ts';
 import { ptBR } from './catalogues/pt-BR.ts';
 import { pseudo } from './catalogues/pseudo.ts';
 
@@ -54,4 +54,16 @@ export function stringsFor(locale: Locale): Catalogue {
 /** Every catalogue, for the contract test that compares their shapes. */
 export function allCatalogues(): ReadonlyArray<readonly [Locale, Catalogue]> {
   return Object.entries(CATALOGUES) as Array<[Locale, Catalogue]>;
+}
+
+/**
+ * The briefing a stage shows for the player's current choice (M33).
+ *
+ * A stage that offers Follow the beat carries two lists, and the card shows
+ * the one for the round Start is about to begin. A stage with no beat-free
+ * list has no choice to make, so it always shows its own.
+ */
+export function briefingLines(stageStrings: StageStrings, grooveActive: boolean): readonly string[] {
+  if (grooveActive || stageStrings.briefingWithoutBeat === undefined) return stageStrings.briefing;
+  return stageStrings.briefingWithoutBeat;
 }

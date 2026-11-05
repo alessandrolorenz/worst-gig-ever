@@ -279,6 +279,8 @@ test('M22: a full save survives a round trip unchanged', () => {
     records,
     bestStageCleared: 2,
     clickEnabled: false,
+    /* Not the default, so a round trip that dropped it would be caught (M33). */
+    followBeat: true,
     locale: 'pt-BR',
     /* Every field, so a new one added without a round trip fails here (M24C). */
     customSetlist: availableTracks(true).slice(0, SETLIST_SLOTS),
