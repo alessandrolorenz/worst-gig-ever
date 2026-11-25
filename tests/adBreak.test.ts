@@ -10,6 +10,9 @@ import {
 } from '../game/state/adBreak.ts';
 import { GAME_STATES, type GameState } from '../game/state/gameState.ts';
 import { STAGES } from '../game/levels/stages.ts';
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /** Index of a stage by id, so the tests survive a reorder the same way the rule does. */
 function indexOf(id: string): number {
@@ -136,4 +139,35 @@ test('M23: the decision is synchronous, so it cannot block the result transition
   // than by the caller remembering to advance anyway.
   assert.equal(typeof shouldShowAdBreak(context()), 'boolean');
   assert.equal(typeof isAdBreakBoundary({ stageIndex: stage2 }, 'SHOW_COMPLETE'), 'boolean');
+});
+
+/**
+ * **The rule is only worth anything if the game asks it the real question.**
+ *
+ * Everything above proves `shouldShowAdBreak` refuses when `adsRemoved` is
+ * true. None of it proves the game ever passes a true — and for the whole of
+ * piece 5A it did not: `GameEngine` passed the literal `false`, because the
+ * entitlement had nowhere to live yet and a placeholder was honest at the
+ * time. Left there, it would have shipped a purchase a player could complete,
+ * be charged for, and see change nothing.
+ *
+ * That is the failure this test exists for, and it is invisible to every other
+ * test in this file: a literal argument satisfies the type, satisfies the
+ * eligibility rules, and only ever shows up on a phone with a receipt on it.
+ */
+test('M23 piece 6: the game asks the entitlement, not a literal', () => {
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const engine = readFileSync(join(repoRoot, 'game/systems/GameEngine.tsx'), 'utf8');
+
+  const call = engine.slice(engine.indexOf('shouldShowAdBreak({'));
+  const args = call.slice(0, call.indexOf('})'));
+
+  assert.ok(
+    /adsRemoved:\s*entitlementRef\.current\.adsRemoved/.test(args),
+    'the ad break must read the entitlement the purchase actually writes',
+  );
+  assert.ok(
+    !/adsRemoved:\s*(true|false)\b/.test(args),
+    'a literal here is a purchase that changes nothing',
+  );
 });

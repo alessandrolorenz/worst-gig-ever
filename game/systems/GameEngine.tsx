@@ -15,7 +15,11 @@ import { GameEngine as WebGameEngine } from 'react-game-engine';
 
 import { createAudioService, type AudioService } from '../audio/audioService.ts';
 import { OFFICIAL_SETLIST } from '../audio/setlist.ts';
-import { createSceneEntities, type GameEntities } from '../entities/sceneEntities.ts';
+import {
+  createSceneEntities,
+  toggleFollowBeatInScene,
+  type GameEntities,
+} from '../entities/sceneEntities.ts';
 import { Overlays } from '../rendering/Overlays.tsx';
 import { SceneRenderer } from '../rendering/SceneRenderer.tsx';
 import { THEME } from '../rendering/theme.ts';
@@ -28,7 +32,7 @@ import { PRODUCT_TITLE } from '../config/product.ts';
 import { emptyRecords, recordRound, type Records } from '../state/records.ts';
 import { SCHEMA_VERSION, type UnknownFields } from '../state/persistence.ts';
 import { loadSave, writeSave } from '../state/storage.ts';
-import { stageAt } from '../levels/stages.ts';
+import { isGrooveActive, stageAt } from '../levels/stages.ts';
 import { trackForStage } from '../audio/setlist.ts';
 import {
   auditionSetlist,
@@ -39,6 +43,19 @@ import {
   type AuditionMode,
 } from '../audio/audition.ts';
 import { showsAuditionTools } from '../config/buildFlags.ts';
+import { AdService } from '../ads/adService.ts';
+import { shouldShowAdBreak } from '../state/adBreak.ts';
+import { BillingService } from '../billing/billingService.ts';
+import {
+  applyStoreReport,
+  emptyEntitlement,
+  entitlementToSave,
+  removeAdsMessage,
+  restoreCachedEntitlement,
+  type EntitlementState,
+  type RemoveAdsMessage,
+} from '../state/entitlement.ts';
+import type { RemoveAdsView } from '../rendering/Overlays.tsx';
 import { availableTracks, type MusicTrackId } from '../audio/musicCatalogue.ts';
 import type { AuditionControls } from '../rendering/DevAudition.tsx';
 import type { GameState } from '../state/gameState.ts';
@@ -53,6 +70,11 @@ import {
   setLocale,
   finishIntro,
   loadDraft,
+  openRemoveAds,
+  openBandMode,
+  openCrowdMode,
+  showCrowdBriefing,
+  startCrowdRound,
   openSetlist,
   recordStageCleared,
   replayIntro,
@@ -78,6 +100,10 @@ import { clearShards } from './shards.ts';
 import { clearStageMotion } from './stageMotion.ts';
 import { flowSystem } from './flowSystem.ts';
 import { roundSystem } from './roundSystem.ts';
+import { crowdSystem } from './crowdSystem.ts';
+import { resetCrowd, selectCrowdStage } from '../crowd/crowdState.ts';
+import { crowdStage, nextCrowdStageId, type CrowdStageId } from '../crowd/crowdStages.ts';
+import { showCrowdCompositionPreview } from '../crowd/CrowdScene.tsx';
 
 const EngineComponent = Platform.OS === 'web' ? WebGameEngine : ReactGameEngine;
 
@@ -142,6 +168,21 @@ export default function GameEngine() {
     setRecordsState(next);
   }, []);
 
+  /**
+   * Whether the player has bought Remove Ads (M23).
+   *
+   * Up here beside the records, and ahead of `persist`, because `persist`
+   * writes both and a closure that reaches a hundred lines down the file for
+   * one of them is a closure that works by accident. The rest of the Remove
+   * Ads machinery — the store adapter and the screen's view model — is further
+   * down, next to the handlers that drive it.
+   *
+   * A ref rather than state: the ad break reads it from an effect at a round
+   * boundary, and nothing renders off it directly. What renders is
+   * `removeAdsView.owned`, which is set from this.
+   */
+  const entitlementRef = useRef<EntitlementState>(emptyEntitlement());
+
   /** True when the round just finished set a best. Cleared when one starts. */
   const [beatRecord, setBeatRecord] = useState(false);
 
@@ -176,6 +217,7 @@ export default function GameEngine() {
           records: nextRecords,
           bestStageCleared: flow.bestStageCleared,
           clickEnabled: flow.clickEnabled,
+          followBeat: flow.followBeat,
           locale: localeChosenRef.current ? flow.locale : null,
           /*
            * The draft, and only when it is a whole setlist (M24C §16).
@@ -189,6 +231,16 @@ export default function GameEngine() {
            * back anyway.
            */
           customSetlist: completedDraft(flow),
+          /*
+           * The confirmed entitlement, and only ever the confirmed one (M23).
+           *
+           * `entitlementToSave` returns `state.adsRemoved`, which is monotonic
+           * and never set by a pending purchase — so this rides the writes the
+           * game already makes, exactly as the setlist above does, and a write
+           * triggered by something unrelated cannot record a purchase that has
+           * not cleared.
+           */
+          adsRemoved: entitlementToSave(entitlementRef.current),
         },
         savedRef.current.unknown,
       );
@@ -201,14 +253,248 @@ export default function GameEngine() {
     const scene = entities.scene;
     scene.onStateChange = (state) => setUiState(state);
     scene.onFlowChange = refreshFlow;
+    scene.onCrowdChange = refreshFlow;
     return () => {
       scene.onStateChange = null;
       scene.onFlowChange = null;
+      scene.onCrowdChange = null;
     };
   }, [entities, refreshFlow]);
 
   // Release players on unmount, so a quit or reload cannot leave music running.
   useEffect(() => () => audio.dispose(), [audio]);
+
+  /**
+   * Advertising, which the game never waits for (M23 piece 5A).
+   *
+   * One service for the app's life. `start` refreshes UMP consent, and only
+   * initializes Mobile Ads and preloads when UMP's own `canRequestAds` says
+   * so — the session runs with no ads rather than guessing, which is what
+   * M23 means by failing closed.
+   *
+   * Nothing renders off the result. The title screen appears whether or not
+   * this has finished, and if it never finishes the game is a game without
+   * ads.
+   */
+  const adsRef = useRef<AdService | null>(null);
+  if (adsRef.current === null) adsRef.current = new AdService();
+
+  useEffect(() => {
+    const ads = adsRef.current;
+    if (ads === null) return undefined;
+    void ads.start(false);
+    return () => ads.dispose();
+  }, []);
+
+  /**
+   * Remove Ads: the entitlement, the store, and the screen (M23, piece 6).
+   *
+   * Three things that are deliberately not one thing:
+   *
+   *   - `entitlementRef` is the **rule**, a pure `EntitlementState` from
+   *     `entitlement.ts`. It is what the ad break reads, it is monotonic, and
+   *     nothing else in this file is allowed to decide what owning means. It
+   *     is declared up beside `recordsRef`, because `persist` writes both.
+   *   - `billingRef` is the **store**, the one object that talks to
+   *     RevenueCat. Every method resolves, so none of the handlers below can
+   *     throw a store failure into a render.
+   *   - `removeAdsView` is what the **screen draws**, and it is React state
+   *     rather than a ref because it is the only one of the three a render
+   *     depends on.
+   *
+   * A ref for the entitlement and state for the view is the same split the
+   * rest of this component uses, and M25 records why it matters: a value that
+   * becomes true in silence is invisible to React. The entitlement is read by
+   * an effect at a round boundary, which runs after the mutation; the view is
+   * read by a renderer, which does not.
+   */
+  const billingRef = useRef<BillingService | null>(null);
+  if (billingRef.current === null) billingRef.current = new BillingService();
+
+  /**
+   * A store call is running, as a fact rather than as rendered state.
+   *
+   * `removeAdsView.busy` drives the buttons' `disabled`, and both it and the
+   * guards written against it are read at render time. Two taps inside one
+   * frame therefore both see `busy === null` and both open a Play sheet. The
+   * window is narrow and this is the one control in the game that spends
+   * money, so the guard that actually holds is this ref, set synchronously
+   * before the call and cleared when it settles.
+   */
+  const storeCallRef = useRef(false);
+
+  const [removeAdsView, setRemoveAdsView] = useState<RemoveAdsView>({
+    owned: false,
+    price: null,
+    busy: null,
+    message: null,
+    privacyOptionsRequired: false,
+  });
+
+  /**
+   * The silent launch-time ownership question (M23).
+   *
+   * Nothing renders off it and nothing waits for it, exactly as the ad service
+   * above is arranged: a store that never answers leaves a playable game whose
+   * Remove Ads screen says the store is unavailable.
+   *
+   * `initialize` uses `getCustomerInfo`, which is a quiet cache/network read.
+   * It is **not** a restore, and the distinction is load-bearing — restore can
+   * raise an OS account prompt, and M23 forbids triggering that unasked. See
+   * ADR 0015, which also records why a wiped device legitimately needs one tap
+   * on Restore before the store remembers the purchase.
+   *
+   * No `message` is set from this. The player has not asked the store
+   * anything yet, and opening Remove Ads to find "The store is not available"
+   * already waiting would report a failure nobody caused.
+   */
+  useEffect(() => {
+    const billing = billingRef.current;
+    if (billing === null) return undefined;
+
+    let cancelled = false;
+    void billing.initialize().then(async (report) => {
+      if (cancelled || report === null) return;
+      applyStoreReport(entitlementRef.current, report);
+      const price = await billing.getRemoveAdsPrice();
+      if (cancelled) return;
+      setRemoveAdsView((view) => ({
+        ...view,
+        owned: entitlementRef.current.adsRemoved,
+        price,
+      }));
+      /*
+       * A launch that finds the purchase writes it back, so the next cold
+       * start knows before the store does. `persist` is a no-op on an
+       * unreadable save and never throws.
+       */
+      if (entitlementRef.current.adsRemoved) persist(recordsRef.current);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [persist]);
+
+  /**
+   * "Remove ads" on the title.
+   *
+   * Two things are refreshed on the way in rather than watched continuously:
+   * whether UMP has a privacy-options form for this player, and the price if
+   * the product had not loaded at launch. Both are answers that arrive
+   * asynchronously after the game has already started, and polling for them
+   * would spend frames on a screen nobody is looking at.
+   *
+   * The previous outcome sentence is cleared. It described a store call the
+   * player made last time they were here; re-reading it on arrival would
+   * report a cancellation they have already forgotten about as if it had just
+   * happened.
+   */
+  const handleOpenRemoveAds = useCallback(() => {
+    const scene = entities.scene;
+    openRemoveAds(scene.flow);
+
+    const privacyOptionsRequired = adsRef.current?.snapshot().privacyOptionsRequired ?? false;
+    setRemoveAdsView((view) => ({
+      ...view,
+      message: null,
+      owned: entitlementRef.current.adsRemoved,
+      privacyOptionsRequired,
+    }));
+    refreshFlow();
+
+    const billing = billingRef.current;
+    if (billing !== null && billing.snapshot().priceString === null) {
+      void billing.getRemoveAdsPrice().then((price) => {
+        if (price === null) return;
+        setRemoveAdsView((view) => ({ ...view, price }));
+      });
+    }
+  }, [entities, refreshFlow]);
+
+  /**
+   * Fold a store call's answer into the entitlement, the save and the screen.
+   *
+   * One place, because the three things that must happen after Buy and after
+   * Restore are the same three and they must happen in the same order: the
+   * rule decides, the file records what the rule decided, and only then does
+   * the screen describe it. `applyStoreReport` is the only thing here that can
+   * grant, which is what keeps monotonicity a property of one pure function
+   * rather than of two handlers that both remembered it.
+   */
+  const settleStoreCall = useCallback(
+    (message: RemoveAdsMessage) => {
+      storeCallRef.current = false;
+      persist(recordsRef.current);
+      setRemoveAdsView((view) => ({
+        ...view,
+        busy: null,
+        message,
+        owned: entitlementRef.current.adsRemoved,
+      }));
+    },
+    [persist],
+  );
+
+  const handleBuyRemoveAds = useCallback(() => {
+    const billing = billingRef.current;
+    if (billing === null) return;
+    /*
+     * The ref, not the rendered `busy`, for the reason `storeCallRef` states:
+     * a second tap in the same frame reads the same stale `false` and opens a
+     * second Play sheet. Set before anything async can yield.
+     */
+    if (storeCallRef.current) return;
+    storeCallRef.current = true;
+
+    setRemoveAdsView((view) => ({ ...view, busy: 'buy', message: null }));
+    void billing.purchaseRemoveAds().then((report) => {
+      applyStoreReport(entitlementRef.current, report);
+      settleStoreCall(removeAdsMessage(report));
+    });
+  }, [settleStoreCall]);
+
+  /**
+   * Restore Purchases — the only path that may raise an account interaction,
+   * and therefore the only one the player has to ask for (M23, ADR 0015).
+   *
+   * It is also the documented recovery path after a reinstall: RevenueCat is
+   * used anonymously, so a wiped device mints a new App User ID with no
+   * purchases attached, and this tap is what associates the Play account's
+   * purchase with it.
+   */
+  const handleRestorePurchases = useCallback(() => {
+    const billing = billingRef.current;
+    if (billing === null) return;
+    if (storeCallRef.current) return;
+    storeCallRef.current = true;
+
+    setRemoveAdsView((view) => ({ ...view, busy: 'restore', message: null }));
+    void billing.restorePurchases().then(({ report, found, completed }) => {
+      applyStoreReport(entitlementRef.current, report);
+      settleStoreCall(removeAdsMessage(report, { completed, found }));
+    });
+  }, [settleStoreCall]);
+
+  /**
+   * The privacy-options form, where the consent SDK says one is required.
+   *
+   * Section 4 of the published privacy policy promises this control exists
+   * inside the Remove Ads screen, which is what makes it a release blocker for
+   * the Play listing rather than a nicety. `showPrivacyOptions` re-reads the
+   * requirement afterwards, because a player can withdraw consent in the form
+   * and the entry point's own visibility follows from the answer.
+   */
+  const handleShowPrivacyOptions = useCallback(() => {
+    const ads = adsRef.current;
+    if (ads === null) return;
+    void ads.showPrivacyOptions().then(() => {
+      setRemoveAdsView((view) => ({
+        ...view,
+        privacyOptionsRequired: ads.snapshot().privacyOptionsRequired,
+      }));
+    });
+  }, []);
 
   /**
    * Load the save, once, and apply it when it arrives (M22).
@@ -234,6 +520,7 @@ export default function GameEngine() {
       // seconds before it arrived.
       flow.bestStageCleared = Math.max(flow.bestStageCleared, loaded.state.bestStageCleared);
       flow.clickEnabled = loaded.state.clickEnabled;
+      flow.followBeat = loaded.state.followBeat;
       /*
        * `!localeChosenRef.current` guards a race the boot timeout below can
        * create (M25): if the read is slow enough that the chooser appeared and
@@ -253,6 +540,24 @@ export default function GameEngine() {
        * music under a stage card the moment they pressed one.
        */
       loadDraft(flow, loaded.state.customSetlist);
+      /*
+       * The cached entitlement (M23).
+       *
+       * A one-way `if`, because a cached `false` is not evidence of anything —
+       * it is also what a fresh install and a wiped file look like, so the
+       * session stays unowned and lets the store answer. `restoreCachedEntitlement`
+       * is where that asymmetry is stated and tested.
+       *
+       * What the `true` buys is the returning player who paid not seeing an ad
+       * in the seconds before RevenueCat reconnects, or for the whole of a
+       * flight. Replacing the object is safe here: the only field it can
+       * discard is `purchasePending`, and nothing can have started a purchase
+       * yet — this lands a few frames into BOOT and Buy is three screens away.
+       */
+      if (loaded.state.adsRemoved) {
+        entitlementRef.current = restoreCachedEntitlement(true);
+        setRemoveAdsView((view) => ({ ...view, owned: true }));
+      }
       applyRecords(loaded.state.records);
       /*
        * Now — and only now — is the first screen decidable (M25).
@@ -363,6 +668,78 @@ export default function GameEngine() {
     },
     [entities, refreshFlow, resetScene],
   );
+
+  const handleOpenBandMode = useCallback(() => {
+    openBandMode(entities.scene.flow);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
+  /** Into the Crowd stage picker — from the title, or back out of a round. */
+  const handleOpenCrowdMode = useCallback(() => {
+    audio.stopMusic();
+    openCrowdMode(entities.scene.flow);
+    refreshFlow();
+  }, [audio, entities, refreshFlow]);
+
+  /**
+   * A picked stage goes to its how-to-play card, and its music is loaded now
+   * so it is ready by Start (M32).
+   *
+   * Loaded *alongside* the run's setlist rather than instead of it: Crowd Mode
+   * borrows the audio service, and must not evict the beds Band Mode expects
+   * to find resident the next time a briefing's Start is pressed.
+   */
+  const handleSelectCrowdStage = useCallback(
+    (stageId: CrowdStageId) => {
+      const scene = entities.scene;
+      selectCrowdStage(scene.crowd, stageId);
+      audio.preloadSetlist([...scene.flow.setlist, crowdStage(stageId).music]);
+      showCrowdBriefing(scene.flow);
+      refreshFlow();
+    },
+    [audio, entities, refreshFlow],
+  );
+
+  /**
+   * The one place Crowd Mode starts music (M32).
+   *
+   * Through the same service and the same `playMusic` as a Band round, so
+   * there is one audio lifecycle and not two. The track is the stage's own
+   * `music` field; a future song choice changes what this reads, not how it
+   * plays.
+   */
+  const playCrowdMusic = useCallback(
+    (stageId: CrowdStageId) => {
+      const track = crowdStage(stageId).music;
+      audio.playMusic(track);
+    },
+    [audio],
+  );
+
+  /** The how-to card's Start: the round, and the band starts playing. */
+  const handleStartCrowdRound = useCallback(() => {
+    const scene = entities.scene;
+    resetCrowd(scene.crowd);
+    startCrowdRound(scene.flow);
+    playCrowdMusic(scene.crowd.stageId);
+    refreshFlow();
+  }, [entities, playCrowdMusic, refreshFlow]);
+
+  /** Retry: the same stage, from the top. The band plays on. */
+  const handleResetCrowd = useCallback(() => {
+    resetCrowd(entities.scene.crowd);
+    refreshFlow();
+  }, [entities, refreshFlow]);
+
+  /** Straight from a ruined gig into the next stage, with its own track. */
+  const handleNextCrowdStage = useCallback(() => {
+    const scene = entities.scene;
+    const next = nextCrowdStageId(scene.crowd.stageId);
+    if (next === null) return;
+    selectCrowdStage(scene.crowd, next);
+    playCrowdMusic(next);
+    refreshFlow();
+  }, [entities, playCrowdMusic, refreshFlow]);
 
   /*
    * The development audition's own cursor and mode (M24B).
@@ -612,6 +989,25 @@ export default function GameEngine() {
   }, [entities, persist, refreshFlow]);
 
   /**
+   * Follow the beat (M33), from a Stage 3+ briefing or a paused Stage 3+ round.
+   *
+   * The click switch's shape: flip the flag, save it, re-render. `roundSystem`
+   * and the renderer read it every frame through `isGrooveActive`, so a change
+   * made in a pause is the round that resumes.
+   *
+   * The one thing a change mid-round needs is switching **on**: beats whose
+   * windows shut while it was off are closed unjudged, so resuming does not
+   * file the last twenty seconds as misses — see `toggleFollowBeatInScene`.
+   * Off at the final whistle means the round is recorded, shared and paid as
+   * a defense-only one.
+   */
+  const handleToggleFollowBeat = useCallback(() => {
+    toggleFollowBeatInScene(entities);
+    persist(recordsRef.current);
+    refreshFlow();
+  }, [entities, persist, refreshFlow]);
+
+  /**
    * The language control (M19).
    *
    * Exactly the shape of the click switch above: it flips a field on the flow
@@ -749,6 +1145,39 @@ export default function GameEngine() {
      * appears on the results screen that earned it and not on every frame of
      * it. See `appFlow.recordStageCleared`.
      */
+    /*
+     * The one ad break in the show (M23).
+     *
+     * Here rather than in a handler for the same reason the rest of this
+     * effect is: the round decides it is over on a tick and the player
+     * presses nothing. `shouldShowAdBreak` is the whole decision — Stage 2
+     * success only, never Stage 4, never a ruined attempt, never without a
+     * preloaded ad — and it returns a boolean, so there is nothing here to
+     * await and no way for this to delay the result below it.
+     */
+    if (
+      adsRef.current !== null &&
+      shouldShowAdBreak({
+        flow: scene.flow,
+        outcome: uiState,
+        /*
+         * The purchase, finally connected to the thing it buys (M23 piece 6).
+         *
+         * Read off the pure entitlement at the moment the boundary is reached,
+         * so a purchase made earlier in this session is already in effect —
+         * there is no cached copy of it here that could disagree.
+         *
+         * A preloaded interstitial that this now refuses is simply never
+         * shown. Nothing has to unload it: `shouldShowAdBreak` is the only
+         * caller of `show()`, and it is a boolean.
+         */
+        adsRemoved: entitlementRef.current.adsRemoved,
+        adReady: adsRef.current.snapshot().interstitialReady,
+      })
+    ) {
+      adsRef.current.show();
+    }
+
     if (uiState === 'SHOW_COMPLETE') {
       /*
        * The attempt's beers go with the completion (M25).
@@ -771,7 +1200,7 @@ export default function GameEngine() {
      */
     const update = recordRound(recordsRef.current, scene.stage.id, {
       defenseScore: scene.round.score,
-      grooveScore: scene.stage.groove ? scene.rhythm.score : null,
+      grooveScore: isGrooveActive(scene.stage, scene.flow.followBeat) ? scene.rhythm.score : null,
     });
     setBeatRecord(update.beatDefense || update.beatGroove);
     if (update.records !== recordsRef.current) applyRecords(update.records);
@@ -799,7 +1228,7 @@ export default function GameEngine() {
       defense: scene.round.score,
       groove: scene.rhythm.score,
     };
-    const message = scene.stage.groove
+    const message = isGrooveActive(scene.stage, scene.flow.followBeat)
       ? format(strings.share.withGroove, parameters)
       : format(strings.share.defenseOnly, parameters);
 
@@ -810,6 +1239,16 @@ export default function GameEngine() {
   // Leaving the app mid-show must not keep the clock or the music running.
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (next) => {
+      /*
+       * Crowd Mode has no pause state — nothing moves without a throw except
+       * the waiter — so backgrounding only has to silence the band, and
+       * coming back only has to let it play on (M32, rule 11).
+       */
+      if (entities.scene.flow.screen === 'CROWD') {
+        if (next === 'active') audio.resumeMusic();
+        else audio.pauseMusic();
+        return;
+      }
       if (next !== 'active') {
         const round = entities.scene.round;
         if (round.state === 'PLAYING' || round.state === 'VOCALIST_EVENT') {
@@ -837,28 +1276,37 @@ export default function GameEngine() {
   }, [audio, entities, refreshFlow]);
 
   const scene = entities.scene;
+  const compositionPreview = showCrowdCompositionPreview();
 
   return (
     <LocaleProvider locale={scene.flow.locale}>
       <View style={styles.root}>
         <EngineComponent
-          systems={[flowSystem, roundSystem]}
+          systems={[flowSystem, crowdSystem, roundSystem]}
           entities={entities}
           running
           style={styles.engine}
         >
-          <Overlays
+          {!compositionPreview && <Overlays
             flow={scene.flow}
             stage={scene.stage}
             state={uiState}
             round={scene.round}
             rhythm={scene.rhythm}
             story={scene.story}
+            crowd={scene.crowd}
             audioAvailable={audio.available}
             onStoryAdvance={handleStoryAdvance}
             onStorySkip={handleStorySkip}
             audition={audition}
             onSelectStage={handleSelectStage}
+            onOpenBandMode={handleOpenBandMode}
+            onOpenCrowdMode={handleOpenCrowdMode}
+            onResetCrowd={handleResetCrowd}
+            onSelectCrowdStage={handleSelectCrowdStage}
+            onOpenCrowdStages={handleOpenCrowdMode}
+            onStartCrowdRound={handleStartCrowdRound}
+            onNextCrowdStage={handleNextCrowdStage}
             onReplayStory={handleReplayStory}
             onShowBriefing={handleShowBriefing}
             onBeginRound={handleBeginRound}
@@ -869,6 +1317,7 @@ export default function GameEngine() {
             onNextStage={handleNextStage}
             onQuit={handleQuit}
             onToggleClick={handleToggleClick}
+            onToggleFollowBeat={handleToggleFollowBeat}
             onCycleLocale={handleCycleLocale}
             onChooseLocale={handleChooseLocale}
             selectableTracks={selectableTracks}
@@ -882,7 +1331,12 @@ export default function GameEngine() {
             records={records}
             beatRecord={beatRecord}
             onShare={handleShare}
-          />
+            removeAds={removeAdsView}
+            onOpenRemoveAds={handleOpenRemoveAds}
+            onBuyRemoveAds={handleBuyRemoveAds}
+            onRestorePurchases={handleRestorePurchases}
+            onShowPrivacyOptions={handleShowPrivacyOptions}
+          />}
         </EngineComponent>
       </View>
     </LocaleProvider>

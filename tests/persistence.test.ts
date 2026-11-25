@@ -279,9 +279,12 @@ test('M22: a full save survives a round trip unchanged', () => {
     records,
     bestStageCleared: 2,
     clickEnabled: false,
+    /* Not the default, so a round trip that dropped it would be caught (M33). */
+    followBeat: true,
     locale: 'pt-BR',
     /* Every field, so a new one added without a round trip fails here (M24C). */
     customSetlist: availableTracks(true).slice(0, SETLIST_SLOTS),
+    adsRemoved: true,
   } as const;
 
   const parsed = parseSave(serializeSave(original));
@@ -480,4 +483,65 @@ test('M22: the clamp helper agrees with the flow it protects', () => {
     const index = clampStageIndex(value);
     assert.ok(index >= 0 && index < STAGES.length, `${value} escaped the stage list`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// The cached entitlement (M23)
+// ---------------------------------------------------------------------------
+
+test('M23: a fresh save owns nothing, and neither does an unreadable one', () => {
+  assert.equal(emptySave().adsRemoved, false, 'a fresh install came with the purchase');
+  assert.equal(parseSave(null).state.adsRemoved, false, 'no file on disk granted the purchase');
+  assert.equal(
+    parseSave('not json at all').state.adsRemoved,
+    false,
+    'an unreadable file granted the purchase',
+  );
+  assert.equal(parseSave('{}').state.adsRemoved, false, 'an empty object granted the purchase');
+  // And the schema did not have to move for an additive optional field.
+  assert.equal(emptySave().schemaVersion, 1, 'the schema was bumped without a reader needing it');
+});
+
+/**
+ * The parse is `=== true` and nothing looser, and this is the test that says
+ * why rather than merely that.
+ *
+ * Every value below is one a corrupt, truncated or hand-edited file can hold,
+ * and every one of them is a way a cheaper check gives the product away:
+ * `Boolean(value)` grants for the string `'false'` and for `1`;
+ * `value !== false` grants for `undefined`, which is what a save written by
+ * any build before this one contains.
+ */
+test('M23: only the exact value this build writes means "owned"', () => {
+  for (const value of ['true', 'false', 1, 0, {}, [], null]) {
+    const raw = JSON.stringify({ adsRemoved: value });
+    assert.equal(
+      parseSave(raw).state.adsRemoved,
+      false,
+      `${JSON.stringify(value)} was read as ownership`,
+    );
+  }
+  assert.equal(parseSave(JSON.stringify({ adsRemoved: true })).state.adsRemoved, true);
+});
+
+/**
+ * A save written before M23 must open, and must not grant.
+ *
+ * The field is additive and optional, so `SCHEMA_VERSION` stays 1 — which
+ * means an old file reaches this build with no `adsRemoved` at all. It reads
+ * as `false`, the store is then asked, and a player who really did buy it gets
+ * it back from Google Play rather than from the file.
+ */
+test('M23: a save from before the purchase existed still opens', () => {
+  const old = JSON.stringify({
+    schemaVersion: 1,
+    records: {},
+    bestStageCleared: 3,
+    clickEnabled: true,
+    locale: 'en',
+  });
+  const parsed = parseSave(old);
+  assert.equal(parsed.unreadable, false);
+  assert.equal(parsed.state.adsRemoved, false);
+  assert.equal(parsed.state.bestStageCleared, 3, 'the rest of the save was lost');
 });

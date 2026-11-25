@@ -1,4 +1,5 @@
 export * from './approach.ts';
+export * from './crowdSystem.ts';
 export * from './effects.ts';
 export * from './roundSystem.ts';
 export * from './shards.ts';

@@ -32,11 +32,13 @@
     "audit:provenance": "node scripts/audit-provenance.mjs",
     "make:gulp": "node scripts/make-mug-gulp.mjs",
     "build:library": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/build-library.mjs",
-    "build:release": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-release.apk && echo 'wrote build-out/worst-gig-ever-release.apk' && npm run check:permissions",
+    "build:release": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-release.apk && echo 'wrote build-out/worst-gig-ever-release.apk' && npm run check:permissions && npm run check:signing -- build-out/worst-gig-ever-release.apk",
     "condition:track": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/condition-track.mjs",
     "build:audition": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && EXPO_PUBLIC_AUDITION_BUILD=1 ./gradlew assembleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/apk/release/app-release.apk build-out/worst-gig-ever-audition.apk && echo 'wrote build-out/worst-gig-ever-audition.apk' && npm run check:permissions",
     "check:monetization": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-monetization-config.mjs",
-    "check:permissions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-android-permissions.mjs"
+    "check:permissions": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-android-permissions.mjs",
+    "build:bundle": "rm -rf android/app/build/generated/assets/createBundleReleaseJsAndAssets && cd android && ./gradlew bundleRelease && cd .. && mkdir -p build-out && cp android/app/build/outputs/bundle/release/app-release.aab build-out/worst-gig-ever-release.aab && echo 'wrote build-out/worst-gig-ever-release.aab' && npm run check:permissions && npm run check:signing -- build-out/worst-gig-ever-release.aab --require-upload",
+    "check:signing": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/check-upload-signing.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -49,7 +51,6 @@
     "expo-dev-client": "~5.2.4",
     "expo-file-system": "~18.1.11",
     "expo-font": "~13.3.2",
-    "expo-iap": "^5.5.1",
     "expo-keep-awake": "~14.1.4",
     "expo-localization": "~16.1.6",
     "expo-status-bar": "~2.2.3",
@@ -59,7 +60,8 @@
     "react-game-engine": "^1.2.0",
     "react-native": "0.79.6",
     "react-native-game-engine": "^1.2.0",
-    "react-native-google-mobile-ads": "^16.5.0",
+    "react-native-google-mobile-ads": "15.8.3",
+    "react-native-purchases": "10.9.1",
     "react-native-reanimated": "~3.17.4",
     "react-native-safe-area-context": "5.4.0",
     "react-native-svg": "15.11.2",

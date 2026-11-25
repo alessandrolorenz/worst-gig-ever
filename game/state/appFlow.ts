@@ -69,8 +69,16 @@ export const APP_SCREENS = [
   'LANGUAGE',
   /** The five-panel opening story. */
   'STORY',
-  /** Title, stage picker, and the way back into the story. */
+  /** Product title and the choice between the two sides of the gig (M26). */
   'TITLE',
+  /** The existing Band Mode stage picker, unchanged behind one explicit choice. */
+  'BAND_SELECT',
+  /** The three Crowd difficulty stages, picked before a round (M30). */
+  'CROWD_SELECT',
+  /** How to play, in front of the picked Crowd stage, before it starts (M32). */
+  'CROWD_BRIEFING',
+  /** A Crowd Mode round: throw, destroy, win or run dry (M27–M29). */
+  'CROWD',
   /**
    * The setlist builder (M24C).
    *
@@ -84,6 +92,21 @@ export const APP_SCREENS = [
    * button happens to be drawn.
    */
   'SETLIST',
+  /**
+   * The Remove Ads support screen (M23).
+   *
+   * Reached from the title and from nowhere else, and it is deliberately a
+   * screen rather than a modal over the title: it has to hold a price, a
+   * description, four outcome sentences and up to three controls, and M23
+   * requires all of that to be scroll-safe in every language.
+   *
+   * No gate. Unlike `SETLIST`, which `openSetlist` refuses until the show has
+   * been survived, this is reachable on a fresh install — a player who wants
+   * to pay should not have to earn the right to. It stays reachable after the
+   * purchase, too, because the privacy-options control lives here and buying
+   * Remove Ads removes ads, not the right to change a privacy choice.
+   */
+  'REMOVE_ADS',
   /** The stage's how-to-play card, shown immediately before its round. */
   'BRIEFING',
   /**
@@ -94,6 +117,27 @@ export const APP_SCREENS = [
 ] as const;
 
 export type AppScreen = (typeof APP_SCREENS)[number];
+
+export const GAME_MODES = ['band', 'crowd'] as const;
+export type GameMode = (typeof GAME_MODES)[number];
+
+/**
+ * The active perspective is derived from the screen instead of stored beside
+ * it, so navigation and mode can never disagree.
+ */
+export function gameMode(flow: AppFlowState): GameMode | null {
+  if (
+    flow.screen === 'CROWD' ||
+    flow.screen === 'CROWD_SELECT' ||
+    flow.screen === 'CROWD_BRIEFING'
+  ) {
+    return 'crowd';
+  }
+  if (flow.screen === 'BAND_SELECT' || flow.screen === 'BRIEFING' || flow.screen === 'ROUND') {
+    return 'band';
+  }
+  return null;
+}
 
 export interface AppFlowState {
   screen: AppScreen;
@@ -128,6 +172,19 @@ export interface AppFlowState {
    * by care.
    */
   clickEnabled: boolean;
+  /**
+   * Follow the beat (M33): whether the Groove is live on a stage that lets the
+   * player choose — Stage 3 onward. **Off by default**, so the show can be
+   * played as the defense game it is underneath, and the beat is a challenge
+   * the player opts into.
+   *
+   * A player choice about the whole run, so it lives here beside the click
+   * and is saved the same way. It decides nothing by itself:
+   * `isGrooveActive(stage, followBeat)` in `stages.ts` combines it with the
+   * stage, and that is what the round bridge and every screen read. Stages 1
+   * and 2 ignore it.
+   */
+  followBeat: boolean;
   /**
    * The language the game is being read in (M19).
    *
@@ -248,6 +305,7 @@ export function createAppFlow(initialLocale: Locale = DEFAULT_LOCALE): AppFlowSt
     bestStageCleared: -1,
     introSeen: false,
     clickEnabled: true,
+    followBeat: false,
     locale: initialLocale,
     setlist: OFFICIAL_SETLIST,
     draftSetlist: emptyDraft(),
@@ -355,6 +413,11 @@ export function toggleClick(flow: AppFlowState): void {
   flow.clickEnabled = !flow.clickEnabled;
 }
 
+/** Follow the beat (M33), from a Stage 3+ briefing or a paused Stage 3+ round. */
+export function toggleFollowBeat(flow: AppFlowState): void {
+  flow.followBeat = !flow.followBeat;
+}
+
 export function currentStage(flow: AppFlowState): StageDefinition {
   return stageAt(flow.stageIndex);
 }
@@ -373,6 +436,52 @@ export function finishIntro(flow: AppFlowState): void {
 /** "Story" on the title: watch it again. Does not reset anything else. */
 export function replayIntro(flow: AppFlowState): void {
   flow.screen = 'STORY';
+}
+
+/** The mode selector's Band card opens the existing stage picker. */
+export function openBandMode(flow: AppFlowState): void {
+  flow.screen = 'BAND_SELECT';
+}
+
+/**
+ * The mode selector's Crowd card opens the Crowd stage picker (M30). Also the
+ * way back from a finished or abandoned round.
+ */
+export function openCrowdMode(flow: AppFlowState): void {
+  flow.screen = 'CROWD_SELECT';
+}
+
+/**
+ * A picked Crowd stage shows its how-to-play card first (M32). The round's
+ * screen carries no instructions, so this is where they live.
+ */
+export function showCrowdBriefing(flow: AppFlowState): void {
+  flow.screen = 'CROWD_BRIEFING';
+}
+
+/**
+ * A picked Crowd stage begins its round. Which stage is `CrowdState`'s to
+ * know, not the flow's: the flow only says a round is on screen.
+ */
+export function startCrowdRound(flow: AppFlowState): void {
+  flow.screen = 'CROWD';
+}
+
+/**
+ * "Remove ads" on the title: the support screen (M23).
+ *
+ * A plain transition with no gate and no return value, unlike `openSetlist`.
+ * There is nothing to earn and nothing to refuse — the screen's own controls
+ * are what report a store that cannot be reached, and they have copy for it.
+ *
+ * It touches nothing else on the flow. In particular it does **not** reset
+ * `setlist` or `runBeers`: this is only ever reached from the title, where
+ * both are already the authored show and zero, and a transition that resets
+ * state it does not own is one that goes wrong the first time it is reached
+ * from somewhere else.
+ */
+export function openRemoveAds(flow: AppFlowState): void {
+  flow.screen = 'REMOVE_ADS';
 }
 
 /**

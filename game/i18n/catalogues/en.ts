@@ -26,13 +26,21 @@ import type { BriefingFigureId, StageId } from '../../levels/stages.ts';
 import type { StoryPanelId } from '../../state/storyState.ts';
 
 /** What a stage is called and what its briefing card says. */
-interface StageStrings {
+export interface StageStrings {
   /** Short name on the title screen's stage button and the briefing heading. */
   readonly name: string;
   /** One line under the name: what this stage is for. */
   readonly subtitle: string;
   /** The briefing card, one whole sentence per entry, in reading order. */
   readonly briefing: readonly string[];
+  /**
+   * The briefing with Follow the beat off (M33), on a stage that offers it.
+   *
+   * A list of its own rather than `briefing` with lines filtered out, because
+   * several sentences teach both jobs at once and a filter would either keep
+   * a pad the player cannot see or drop a rule about the kit they still need.
+   */
+  readonly briefingWithoutBeat?: readonly string[];
 }
 
 export const en = {
@@ -56,8 +64,131 @@ export const en = {
      */
     clickOn: 'Click: on',
     clickOff: 'Click: off',
+    /* Follow the beat (M33). States what is true, like the click switch. */
+    followBeatOn: 'Follow the beat: on',
+    followBeatOff: 'Follow the beat: off',
     audioUnavailable:
       'Audio unavailable in this build — rebuild the development client to hear the show.',
+  },
+
+  modeSelect: {
+    heading: 'PLAY AS',
+    band: 'THE BAND',
+    bandSubtitle: 'Survive the gig.',
+    crowd: 'THE CROWD',
+    crowdSubtitle: 'Ruin the gig.',
+    back: 'Back to modes',
+  },
+
+  crowd: {
+    title: 'CROWD MODE',
+    invalid: 'THROW UPWARD!',
+    miss: 'MISS  -50',
+    wrongTarget: 'NOT THE WAITER!  -300',
+    /** The checklist's one standing rule, under the things to hit. */
+    spareWaiter: 'Spare the waiter',
+    /**
+     * The card in front of a stage (M32). Everything the round screen used to
+     * say while the player was trying to throw.
+     */
+    howTo: {
+      kicker: 'HOW TO PLAY',
+      swipe: 'Swipe up from the bottle to throw. Swipe farther to throw farther.',
+      goal: 'Hit everything on the list before you run out of beers.',
+      waiter: 'Never hit the waiter. He costs you {penalty} points every time.',
+      waiterTag: 'DO NOT HIT',
+      start: 'Start',
+    },
+    score: 'SCORE {score}',
+    beers: 'BEERS {count}',
+    objectivesHeading: 'RUIN THE GIG',
+    /** One checklist line per target. Short: nine of them share a corner. */
+    objectives: {
+      bassist: 'Hit the bassist',
+      vocalist: 'Hit the singer',
+      guitarist: 'Hit the guitarist',
+      amplifier: 'Wreck the amp',
+      microphone: 'Knock the mic away',
+      crashCymbal: 'Down the crash',
+      rideCymbal: 'Down the ride',
+      guitar: 'Disarm the guitarist',
+      bass: 'Disarm the bassist',
+    },
+    result: {
+      success: 'GIG RUINED',
+      failure: 'SHOW SURVIVED',
+      score: 'SCORE {score}',
+      throws: 'THROWS USED {count}',
+      objectives: 'OBJECTIVES {done}/{total}',
+      retry: 'Retry',
+      nextStage: 'Next stage',
+      stages: 'Stages',
+    },
+    stageSelect: {
+      heading: 'PICK YOUR NIGHT',
+      summary: '{objectives} targets · {bottles} beers',
+    },
+    stages: {
+      warmUp: 'WARM-UP',
+      gettingWorse: 'THE CROWD GETS WORSE',
+      destroyTheGig: 'DESTROY THE GIG',
+    },
+    targets: {
+      bassist: 'BASSIST',
+      vocalist: 'VOCALIST',
+      guitarist: 'GUITARIST',
+      amplifier: 'AMPLIFIER',
+      microphone: 'MICROPHONE',
+      crashCymbal: 'CRASH CYMBAL',
+      rideCymbal: 'RIDE CYMBAL',
+      guitar: 'GUITAR',
+      bass: 'BASS',
+    },
+  },
+
+  /**
+   * The ad-removal support screen (M23).
+   *
+   * Everything here is about advertising and nothing here is about the game.
+   * M23 forbids implying that paying changes gameplay or buys currency, and
+   * the easiest way to break that rule is an enthusiastic verb — so the copy
+   * describes a thing that stops happening, never a thing you gain.
+   *
+   * Each store outcome in `game/state/entitlement.ts` has exactly one line
+   * here, and they say different things on purpose. "Pending" is not a
+   * failure and must not read like one: the player did nothing wrong and
+   * nothing has been charged. "Cancelled" is not an error either — backing
+   * out of a purchase is a normal thing to do, and apologising for it implies
+   * they made a mistake.
+   */
+  removeAds: {
+    /** The title-screen entry, and the screen's own heading. */
+    entry: 'REMOVE ADS',
+    heading: 'REMOVE ADS',
+    /**
+     * Stated as a limit rather than a benefit. It buys the absence of one
+     * interruption; it does not buy anything inside the show.
+     */
+    description:
+      'A one-time purchase that removes the ad break between songs. Nothing else changes — same stages, same songs, same scores.',
+    /**
+     * The price is store metadata and never a catalogue literal (M23).
+     * Google Play supplies it already formatted for the buyer's country and
+     * currency, so a number typed here would be wrong somewhere on day one.
+     */
+    buy: 'Buy — {price}',
+    restore: 'Restore purchase',
+    /** Shown only when the consent SDK reports that privacy options exist. */
+    privacyOptions: 'Privacy choices',
+    owned: 'Ads removed. Thank you.',
+    pending:
+      'Waiting for your payment to clear. Nothing has been charged yet, and the ads stop as soon as it goes through.',
+    cancelled: 'Purchase cancelled. Nothing was charged.',
+    unavailable:
+      'The store is not available on this device right now, so there is nothing to buy from here.',
+    error: 'That did not go through. Nothing was charged — it is worth trying again.',
+    restoring: 'Checking your purchases…',
+    nothingToRestore: 'No previous purchase found on this account.',
   },
 
   briefing: {
@@ -242,6 +373,13 @@ export const en = {
         'A missed beat costs you the streak. A missed bottle costs the show.',
         'Someone may get in your way. Deal with them.',
       ],
+      briefingWithoutBeat: [
+        'The real show, and the crowd has warmed up.',
+        'Follow the beat is off: no beat to keep, just the kit to save. Switch it on for the full challenge.',
+        'Mugs are back: let one reach you and you drink it instead of smashing it.',
+        'A missed bottle costs the show.',
+        'Someone may get in your way. Deal with them.',
+      ],
     },
     'stage-4-encore': {
       name: 'Encore',
@@ -251,6 +389,12 @@ export const en = {
         'It starts easy and it does not stay that way: faster, and closer together.',
         'They come in threes now — same spot, or side to side. Smash all of them.',
         'Keep the beat on the pad. Three through the kit and the show is over.',
+      ],
+      briefingWithoutBeat: [
+        'The crowd wants one more song. They brought more bottles.',
+        'It starts easy and it does not stay that way: faster, and closer together.',
+        'They come in threes now — same spot, or side to side. Smash all of them.',
+        'Follow the beat is off. Three through the kit and the show is over.',
       ],
     },
   } satisfies Record<StageId, StageStrings>,

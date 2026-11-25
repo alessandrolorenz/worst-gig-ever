@@ -77,8 +77,59 @@ test('M23: no blocked permission survives into the merged manifest', t => {
   for (const permission of [
     'android.permission.INTERNET',
     'android.permission.MODIFY_AUDIO_SETTINGS',
-    'com.android.vending.BILLING',
   ]) {
     assert.ok(declared.includes(permission), `${permission} must reach the manifest`);
   }
+
+  /*
+   * Billing is back in scope, so BILLING is now required rather than
+   * forbidden (ADR 0015). The assertion flipped on 2026-09-11 and the reason
+   * it is still an assertion is unchanged: a mismatch between the manifest and
+   * the feature set is what makes Play ask questions, and it is a mismatch in
+   * both directions. An app that declares billing and cannot sell anything is
+   * the failure ADR 0014 guarded against; an app that sells something and does
+   * not declare it cannot open the Play sheet at all.
+   */
+  assert.ok(
+    declared.includes('com.android.vending.BILLING'),
+    'BILLING must reach the manifest now that remove_ads is implemented',
+  );
+});
+
+/**
+ * Where BILLING comes from, which is the half `declared.includes` cannot see.
+ *
+ * ADR 0014 removed this permission because it had outlived the dependency that
+ * contributed it. The guard against that recurring is not "is it present" —
+ * it was present then too — but "is the Play Billing Library still in the
+ * build". Reading the merger report ties the permission to the artifact that
+ * justifies it, so removing the billing library and leaving the permission
+ * behind fails here rather than in a Play review.
+ */
+test('M23: BILLING is contributed by the Play Billing Library, not left over', t => {
+  const reportPath = join(
+    repoRoot,
+    'android/app/build/outputs/logs/manifest-merger-release-report.txt',
+  );
+  if (!existsSync(reportPath)) {
+    t.skip('no merger report built yet; run a release build');
+    return;
+  }
+
+  const report = readFileSync(reportPath, 'utf8');
+  const line = report
+    .split('\n')
+    .find(entry => entry.includes('uses-permission#com.android.vending.BILLING'));
+  assert.ok(line !== undefined, 'the merger report does not mention BILLING at all');
+
+  const source = report
+    .slice(report.indexOf(line as string))
+    .split('\n')
+    .slice(1, 3)
+    .join('\n');
+  assert.match(
+    source,
+    /com\.android\.billingclient:billing/,
+    'BILLING must come from the Play Billing Library, not from a leftover manifest entry',
+  );
 });

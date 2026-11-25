@@ -9,6 +9,7 @@
 import { VOCALIST_BLOCKING_RECT } from '../config/stage.ts';
 import { HIT_FORGIVENESS } from '../config/targets.ts';
 import type { GameEntities } from '../entities/sceneEntities.ts';
+import { isGrooveActive } from '../levels/stages.ts';
 import { fitCanvas, screenToCanvas, type CanvasFit, type Viewport } from '../rendering/layout.ts';
 import type { GameState } from '../state/gameState.ts';
 import type { RoundEvent } from '../state/roundEvents.ts';
@@ -318,9 +319,10 @@ export function roundSystem(entities: GameEntities, args: RoundSystemArgs): Game
   const previousState = round.state;
   const delta = args.time?.delta ?? 0;
   // Stage 1 is defense only, so the Groove is switched off for the whole round
-  // rather than merely hidden (M15). The stage is read once per frame and
+  // rather than merely hidden (M15) — and from Stage 3 it is off the same way
+  // unless the player chose Follow the beat (M33). Read once per frame and
   // handed to the rhythm domain, which decides what to do about it.
-  const grooveEnabled = scene.stage.groove;
+  const grooveEnabled = isGrooveActive(scene.stage, scene.flow.followBeat);
 
   // Taps are resolved against the frame the player actually saw, before the
   // world moves on.

@@ -238,3 +238,60 @@ test('M23: no production ad unit is claimed before one exists', () => {
   assert.equal(isGoogleDemoId(PRODUCTION_INTERSTITIAL_UNIT_ID), false);
   assert.equal(isValidAdUnitId(PRODUCTION_INTERSTITIAL_UNIT_ID), true);
 });
+
+// ---------------------------------------------------------------------------
+// The web export (M23 verification contract)
+// ---------------------------------------------------------------------------
+
+/**
+ * **"Web remains playable with monetization adapters disabled."**
+ *
+ * That line is in the M23 verification contract, and between piece 5A and this
+ * test it was false: `npx expo export --platform web` failed outright with
+ *
+ *     Importing native-only module
+ *     "react-native/Libraries/Utilities/codegenNativeCommands" on web
+ *
+ * out of the ads SDK's banner component — a component this game does not use.
+ * Both adapters were already careful in the way that reads as sufficient: a
+ * `Platform.OS` check, a lazy `require`, a `try/catch`. None of it applies.
+ * Metro resolves a statically-analyzable `require()` whether or not it will
+ * ever run, so the package joins the web graph before any guard executes, and
+ * a build that does not happen cannot be caught at runtime.
+ *
+ * The fix is a resolver rule in `metro.config.js`. This test is what keeps the
+ * rule in step with the adapters: a third native SDK added tomorrow, behind
+ * the same careful-looking guards, breaks the web build again and would
+ * otherwise be found by whoever next ran an export by hand.
+ */
+test('M23: every native-only SDK an adapter requires is stubbed on web', () => {
+  const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+  const metroConfig = readFileSync(join(repoRoot, 'metro.config.js'), 'utf8');
+
+  const stubbed = new Set(
+    [...metroConfig.matchAll(/'(react-native-[a-z0-9-]+)',/g)].map((match) => match[1]),
+  );
+
+  const adapters = ['game/ads/adService.ts', 'game/billing/billingService.ts'];
+  const required = new Set<string>();
+
+  for (const adapter of adapters) {
+    const source = readFileSync(join(repoRoot, adapter), 'utf8');
+    for (const match of source.matchAll(/require\('([^']+)'\)/g)) {
+      const name = match[1];
+      // Relative imports are this repository's own code and bundle fine.
+      if (name.startsWith('.')) continue;
+      required.add(name);
+    }
+  }
+
+  assert.ok(required.size > 0, 'no adapter requires anything — this test stopped reading them');
+
+  for (const name of required) {
+    assert.ok(
+      stubbed.has(name),
+      `${name} is required by an adapter but is not stubbed for web in metro.config.js — ` +
+        'the web export will fail to build',
+    );
+  }
+});

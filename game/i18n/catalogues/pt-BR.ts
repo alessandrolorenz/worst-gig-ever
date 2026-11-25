@@ -47,8 +47,108 @@ export const ptBR: Catalogue = {
     story: 'História',
     clickOn: 'Clique: ligado',
     clickOff: 'Clique: desligado',
+    followBeatOn: 'Seguir o ritmo: ligado',
+    followBeatOff: 'Seguir o ritmo: desligado',
     audioUnavailable:
       'Áudio indisponível nesta build — recompile o cliente de desenvolvimento para ouvir o show.',
+  },
+
+  modeSelect: {
+    heading: 'JOGUE COMO',
+    band: 'A BANDA',
+    bandSubtitle: 'Sobreviva ao show.',
+    crowd: 'A PLATEIA',
+    crowdSubtitle: 'Acabe com o show.',
+    back: 'Voltar aos modos',
+  },
+
+  crowd: {
+    title: 'MODO PLATEIA',
+    invalid: 'ARREMESSE PARA CIMA!',
+    miss: 'ERROU  -50',
+    wrongTarget: 'NO GARÇOM NÃO!  -300',
+    spareWaiter: 'Poupe o garçom',
+    howTo: {
+      kicker: 'COMO JOGAR',
+      swipe: 'Deslize para cima a partir da garrafa. Quanto mais longo, mais longe.',
+      goal: 'Acerte tudo o que está na lista antes de as cervejas acabarem.',
+      waiter: 'Nunca acerte o garçom. Cada vez custa {penalty} pontos.',
+      waiterTag: 'NÃO ACERTE',
+      start: 'Começar',
+    },
+    score: 'PONTOS {score}',
+    beers: 'CERVEJAS {count}',
+    objectivesHeading: 'ACABE COM O SHOW',
+    objectives: {
+      bassist: 'Acerte o baixista',
+      vocalist: 'Acerte o vocalista',
+      guitarist: 'Acerte o guitarrista',
+      amplifier: 'Detone o amplificador',
+      microphone: 'Derrube o microfone',
+      crashCymbal: 'Derrube o prato de ataque',
+      rideCymbal: 'Derrube o prato de condução',
+      guitar: 'Desarme o guitarrista',
+      bass: 'Desarme o baixista',
+    },
+    result: {
+      success: 'SHOW ARRUINADO',
+      failure: 'O SHOW SOBREVIVEU',
+      score: 'PONTOS {score}',
+      throws: 'ARREMESSOS USADOS {count}',
+      objectives: 'OBJETIVOS {done}/{total}',
+      retry: 'De novo',
+      nextStage: 'Próxima fase',
+      stages: 'Fases',
+    },
+    stageSelect: {
+      heading: 'ESCOLHA A NOITE',
+      summary: '{objectives} alvos · {bottles} cervejas',
+    },
+    stages: {
+      warmUp: 'AQUECIMENTO',
+      gettingWorse: 'A PLATEIA PIORA',
+      destroyTheGig: 'DESTRUA O SHOW',
+    },
+    targets: {
+      bassist: 'BAIXISTA',
+      vocalist: 'VOCALISTA',
+      guitarist: 'GUITARRISTA',
+      amplifier: 'AMPLIFICADOR',
+      microphone: 'MICROFONE',
+      crashCymbal: 'PRATO DE ATAQUE',
+      rideCymbal: 'PRATO DE CONDUÇÃO',
+      guitar: 'GUITARRA',
+      bass: 'BAIXO',
+    },
+  },
+
+  removeAds: {
+    entry: 'REMOVER ANÚNCIOS',
+    heading: 'REMOVER ANÚNCIOS',
+    description:
+      'Uma compra única que remove o intervalo de anúncio entre as músicas. Nada mais muda — mesmos palcos, mesmas músicas, mesmas pontuações.',
+    /*
+     * REVIEW: o preço chega formatado pela Google Play, já com R$ e a
+     * convenção decimal do país do comprador. O placeholder se move na frase;
+     * o que entra nele nunca é traduzido.
+     */
+    buy: 'Comprar — {price}',
+    restore: 'Restaurar compra',
+    privacyOptions: 'Opções de privacidade',
+    owned: 'Anúncios removidos. Obrigado.',
+    /*
+     * REVIEW: "Aguardando" e não "Pendente". A Google Play chama este estado
+     * de pending, mas para quem está lendo o que importa é que ninguém errou
+     * nada e ninguém foi cobrado ainda.
+     */
+    pending:
+      'Aguardando a confirmação do pagamento. Nada foi cobrado ainda, e os anúncios param assim que ele for aprovado.',
+    cancelled: 'Compra cancelada. Nada foi cobrado.',
+    unavailable:
+      'A loja não está disponível neste aparelho agora, então não há o que comprar por aqui.',
+    error: 'Não deu certo. Nada foi cobrado — vale tentar de novo.',
+    restoring: 'Verificando suas compras…',
+    nothingToRestore: 'Nenhuma compra anterior encontrada nesta conta.',
   },
 
   briefing: {
@@ -219,6 +319,13 @@ export const ptBR: Catalogue = {
         'Uma batida perdida custa a sequência. Uma garrafa perdida custa o show.',
         'Alguém pode entrar na sua frente. Resolva.',
       ],
+      briefingWithoutBeat: [
+        'O show de verdade, e a plateia esquentou.',
+        'Seguir o ritmo está desligado: nenhuma batida para segurar, só a bateria para salvar. Ligue para o desafio completo.',
+        'Os copos voltaram: deixe um chegar até você e você bebe em vez de quebrar.',
+        'Uma garrafa perdida custa o show.',
+        'Alguém pode entrar na sua frente. Resolva.',
+      ],
     },
     'stage-4-encore': {
       /* "Bis" is what the audience actually shouts in Brazil. */
@@ -231,6 +338,12 @@ export const ptBR: Catalogue = {
         'Começa fácil e não continua assim: mais rápido, e mais junto.',
         'Vêm de três em três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
         'Segure o ritmo no pad. Três passam pela bateria e o show acabou.',
+      ],
+      briefingWithoutBeat: [
+        'A plateia quer mais uma. E trouxe mais garrafas.',
+        'Começa fácil e não continua assim: mais rápido, e mais junto.',
+        'Vêm de três em três agora — no mesmo ponto, ou de um lado para o outro. Quebre todas.',
+        'Seguir o ritmo está desligado. Três passam pela bateria e o show acabou.',
       ],
     },
   },

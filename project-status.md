@@ -34,11 +34,91 @@ while every device build came off the branch; the trunk has caught up.
 | M20 | Translation-safe layout | **done**, on `main`. Emulator-validated 2026-09-05 |
 | M21 | pt-BR | **draft on `main`, not finished.** The copy needs the owner's read: lines marked `REVIEW:` in `game/i18n/catalogues/pt-BR.ts` are where the joke was re-invented rather than translated |
 | M22 | Local memory and sharing | **done**, on `main`. Emulator- and device-validated 2026-09-05 |
-| M24A | Setlist foundation and tempo evidence | **complete**, on `m24/setlist-foundation` → `m24/music-library`. Not on `main` |
-| M24B | Music library and audition | **complete and closed**, on `m24/music-library`. Owner kept 11/11 on 2026-09-06. Not on `main` |
-| M24C | Custom setlist unlock and builder | **complete**, on `m24/custom-setlist`. Not on `main` |
+| M24A | Setlist foundation and tempo evidence | **complete**, on `main` |
+| M24B | Music library and audition | **complete and closed**, on `main`. Owner kept 11/11 on 2026-09-06 |
+| M24C | Custom setlist unlock and builder | **complete**, on `main` |
 | M24D | Physical replay validation | **superseded.** Absorbed into M25's final device validation — see "M24 closure" below |
-| M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `m24/custom-setlist`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md`. Not on `main` |
+| M25 | Pre-release polish, first-run clarity and friend beta | **implementation done**, on `main`. **Owner device validation pending** — `docs/verification/M25-final-device-validation.md` |
+| M23 | Monetization and store readiness | **in progress.** On `main` through the Remove Ads copy (`07bf6b1`); piece 5A onward is only on `m23/admob-compat-15.8.3`. Pieces below |
+| M26–M32 | Crowd Mode, the second perspective | **implemented**, on `m26/crowd-mode` (branched from `m23/admob-compat-15.8.3`). Second phone playtest pending. See "Crowd Mode" below |
+| M33 | Crowd checklist in the bottom corners; Follow the beat optional from Band Stage 3 | **implemented**, merged to `main` 2026-11-05 with M23 5A onward and Crowd Mode. 733 tests; web export checked at 784x384 and 923x411. Local release **1.4.1 (10)** installed on the Galaxy S23 FE 2026-11-04. `docs/specs/M33-crowd-checklist-and-optional-beat.md` |
+
+### M23 pieces
+
+Numbered out of order in the table above because M23 was opened after M24/M25.
+
+| Piece | State |
+|---|---|
+| Ad eligibility rules | **done**, committed. Stage 2 is the only boundary; Stage 4 is provably never one (ADR-level amendment, 2026-09-09) |
+| Entitlement rules | **done**, committed. Pure, monotonic, pending ≠ owned |
+| Remove Ads copy, en + pt-BR | **done**, committed |
+| 5A — AdMob and UMP adapter | **done**, and **validated on a physical handset** 2026-09-11. Two defects only hardware exposed; see `docs/verification/M23-piece-5A-device-validation.md` |
+| 5B — RevenueCat billing adapter | **done**, ADR 0015. Builds, links, and is mapped — **no purchase has ever been made** |
+| Permissions gate | **done**. Reads the *merged* manifest, which is the only artifact that proves what an installed app asks for |
+| 6 — Remove Ads screen | **done** 2026-09-22, emulator-validated: `docs/verification/M23-piece-6-remove-ads-screen.md`. This is the piece that connected the entitlement to the ad break — `GameEngine` had been passing a literal `adsRemoved: false` since 5A |
+
+**What blocks M23 now is entirely external**, and none of it is code:
+
+1. No RevenueCat project, so no `EXPO_PUBLIC_REVENUECAT_ANDROID_KEY`. The
+   adapter reports `unavailable`, which is a correct and playable state.
+2. No Google Play app, no `remove_ads` product, no licence testers, no internal
+   test track. A one-time product cannot be bought from a locally-signed APK,
+   so every purchase path is unexercised.
+3. ~~The AdMob consent message is not resolving for this App ID.~~ **Closed
+   2026-09-25.** It was resolving; `debugGeography` was being ignored because
+   the phone was not a registered UMP test device. The form has now been
+   observed on hardware, and the privacy-options control inside the Remove Ads
+   screen — the one section 4 of the privacy policy promises — was opened from
+   it. See `docs/verification/M23-consent-message-validated.md`.
+
+**So M23's remaining blockers are Google Play and RevenueCat accounts, and
+nothing else.** The signing and bundle tooling that stood between the repo and
+an upload landed 2026-09-25: `npm run build:bundle` produces a store AAB and
+refuses to hand over a debug-signed one.
+
+The full external checklist is ADR 0015 §"Play Console / RevenueCat checklist".
+
+**Two things this branch fixed that were quietly broken:**
+
+- **The web export had not built since piece 5A.** A native-only import inside
+  the ads SDK's banner component — a format this game does not use — failed the
+  bundle outright. Both adapters guarded against exactly this with a
+  `Platform.OS` check, a lazy `require` and a `try/catch`, and none of it
+  applies: Metro resolves a statically-analyzable `require()` whether or not it
+  runs, so the package joined the web graph before any guard executed. A build
+  that never happens cannot be caught at runtime. Fixed with a resolver stub;
+  `tests/monetizationConfig.test.ts` now keeps the stub list in step with the
+  adapters.
+- **The purchase was wired to nothing.** `shouldShowAdBreak` was being asked
+  about a literal `false`. Every test passed, because a literal satisfies the
+  type and the eligibility rules. It would have shipped a purchase a player
+  could complete, be charged for, and see change nothing.
+
+### Crowd Mode — M26–M32 (2026-10-07 → 2026-10-08, `m26/crowd-mode`)
+
+The title now asks which side of the gig you are on. Band Mode is the existing
+game, unchanged behind that choice. Crowd Mode is new: swipe a beer from the
+front row, destroy the listed things before the bottles run out, and do not hit
+the waiter. Three open stages, original generated art for all 15 required
+slots, and music from the Band show's existing beds.
+
+The current state of the mode is `docs/handoff/CROWD-MODE-STATUS.md`; the
+contracts are the four `docs/specs/M26…M32` files and
+`docs/assets/CROWD-MODE-ASSET-CONTRACT.md`.
+
+**It sat uncommitted in the worktree for almost a month.** It was built on top
+of `922c98b` and committed on 2026-11-03 as three commits on `m26/crowd-mode`:
+art, feature, evidence. The feature is one commit rather than one per milestone
+because the files several milestones touched only ever existed in their final
+state; the specs keep the milestone boundaries. Each commit passes
+`npm run verify` on its own (670 and 717 tests).
+
+| | |
+|---|---|
+| Tests | **717**, up from 670 |
+| Physical device | First playtest done (it is what M32 tuned). M32's code has been installed on the phone since 2026-10-11; no playtest of it is recorded |
+| Next action | Second phone playtest: HUD clarity, waiter readability, Next-stage flow, Band picker fit, music feel |
+| Build for it | **1.4.0 (9)**, commit `be1d893`, upload-key signed, test ads, installed on the Galaxy S23 FE 2026-11-03. Identity in `docs/handoff/CROWD-MODE-STATUS.md` |
 
 ### M24 closure
 

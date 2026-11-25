@@ -61,6 +61,20 @@ export interface StageDefinition {
    */
   readonly groove: boolean;
   /**
+   * Whether the player may switch this stage's Groove off (M33).
+   *
+   * Stages 1 and 2 are where the two jobs are *taught*, so they keep their
+   * rules and offer no choice. From Stage 3 the beat is a challenge the player
+   * opts into with **Follow the beat**, which is off by default. Off is not a
+   * hidden pad: it resolves to exactly the `groove: false` round Stage 1 has
+   * always played — no beat scheduled, scored or missed, no click, no Groove
+   * readout, one results column.
+   *
+   * Only meaningful when `groove` is true. Never read directly outside this
+   * module: `isGrooveActive` is the one place the two are combined.
+   */
+  readonly grooveOptional: boolean;
+  /**
    * Which bed this stage plays in the **official** show (M16, M24A).
    *
    * Per stage rather than one track for the game, because the stages stopped
@@ -107,6 +121,7 @@ const stageOne: StageDefinition = {
   number: 1,
   level: defenseDrill,
   groove: false,
+  grooveOptional: false,
   /*
    * The rock loop keeps this stage, and the fact that it is a 120 BPM track
    * against a 90 BPM clock does not matter here: no beat is scheduled, scored,
@@ -133,6 +148,8 @@ const stageTwo: StageDefinition = {
   number: 2,
   level: findTheBeat,
   groove: true,
+  // The stage that teaches the beat cannot let the player skip it.
+  grooveOptional: false,
   /*
    * The generated 90 BPM bed. This is the one stage where the music absolutely
    * must not drift — twelve of its thirty-five seconds are nothing but the
@@ -153,6 +170,7 @@ const stageThree: StageDefinition = {
   number: 3,
   level: level01,
   groove: true,
+  grooveOptional: true,
   /*
    * The generated show bed, which closes the last open piece of M16. The show
    * scores beats, so its bed has to agree with them; the rock loop it used to
@@ -179,6 +197,7 @@ const stageFour: StageDefinition = {
   number: 4,
   level: encore,
   groove: true,
+  grooveOptional: true,
   /*
    * The show bed, as this stage's own comment promised it would take as soon
    * as one existed. It had been playing the *teaching* bed — the right
@@ -201,6 +220,27 @@ export function stageAt(index: number): StageDefinition {
 export function clampStageIndex(index: number): number {
   if (!Number.isFinite(index)) return FIRST_STAGE_INDEX;
   return Math.max(0, Math.min(STAGES.length - 1, Math.floor(index)));
+}
+
+/** True if this stage lets the player choose whether to follow the beat (M33). */
+export function offersFollowBeat(stage: StageDefinition): boolean {
+  return stage.groove && stage.grooveOptional;
+}
+
+/**
+ * Whether this round asks for the Groove, given the player's choice (M33).
+ *
+ * The single answer to "is the beat live?". Everything that used to read
+ * `stage.groove` — the round bridge, the pad, the HUD, the results, the
+ * records, the share line and the payout — reads this instead, so the switch
+ * cannot be honoured in one place and forgotten in another.
+ *
+ * `followBeat` is ignored where the stage offers no choice: Stage 1 is always
+ * defense only and Stage 2 always scores the beat, whatever the setting says.
+ */
+export function isGrooveActive(stage: StageDefinition, followBeat: boolean): boolean {
+  if (!stage.groove) return false;
+  return stage.grooveOptional ? followBeat : true;
 }
 
 /** True if there is another stage after this one. */

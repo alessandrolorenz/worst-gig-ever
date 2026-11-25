@@ -184,3 +184,77 @@ export function canRequestAds(state: EntitlementState, consentAllowsAds: boolean
 export function entitlementToSave(state: EntitlementState): boolean {
   return state.adsRemoved;
 }
+
+/* ---------------------------------------------------------------- *
+ * What the screen says about it (M23, piece 6)
+ * ---------------------------------------------------------------- */
+
+/**
+ * The lines the Remove Ads screen can show after a store call.
+ *
+ * Every one of these is a key in `catalogue.removeAds`, and
+ * `tests/removeAdsCopy.test.ts` already requires every locale to supply them.
+ * Naming them here rather than in the renderer is what lets the mapping below
+ * be decided in Node: which sentence a player sees after tapping Buy is a
+ * rule, and a rule tested through a renderer is a rule nobody tests.
+ *
+ * `restoring` is deliberately absent. It is not an outcome — it is what the
+ * screen shows *while* a call is in flight, which the screen knows and this
+ * function cannot.
+ */
+export const REMOVE_ADS_MESSAGES = [
+  'owned',
+  'pending',
+  'cancelled',
+  'unavailable',
+  'error',
+  'nothingToRestore',
+] as const;
+
+export type RemoveAdsMessage = (typeof REMOVE_ADS_MESSAGES)[number];
+
+/**
+ * Which sentence to show for what the store just said.
+ *
+ * `restore` is non-null when the call was Restore rather than Buy, and carries
+ * whether the call **completed** as well as whether it found anything. Both
+ * halves are needed and neither is redundant: a restore that ran and found
+ * nothing is "No previous purchase found on this account", while a restore
+ * that never ran is "The store is not available" — and the adapter reports
+ * `unavailable` for both, because an empty `CustomerInfo` and a dead billing
+ * client are the same absence of an entitlement.
+ *
+ * Telling them apart matters on the one device where it is visible: a handset
+ * with no Play Store would otherwise be told, confidently and wrongly, that
+ * the purchase it is looking for does not exist.
+ */
+export function removeAdsMessage(
+  report: StoreReport,
+  restore: { completed: boolean; found: boolean } | null = null,
+): RemoveAdsMessage {
+  if (restore !== null && restore.completed && !restore.found) return 'nothingToRestore';
+
+  switch (report.outcome) {
+    case 'purchased':
+    case 'alreadyOwned':
+      /*
+       * A granting outcome that is not finished did not grant — see
+       * `applyStoreReport`, whose first rule this mirrors — so it must not say
+       * "Ads removed. Thank you."
+       *
+       * `pending` is the one line in the catalogue that is true of it: money
+       * has moved and the entitlement has not arrived. `error` would be worse
+       * than imprecise, it would be false — "Nothing was charged" is exactly
+       * what cannot be promised about an unacknowledged purchase.
+       */
+      return report.finished ? 'owned' : 'pending';
+    case 'pending':
+      return 'pending';
+    case 'cancelled':
+      return 'cancelled';
+    case 'unavailable':
+      return 'unavailable';
+    case 'error':
+      return 'error';
+  }
+}

@@ -144,6 +144,125 @@ therefore an external gate.
 
 ## Amendments
 
+### 2026-09-25 — the consent message was never the problem
+
+**Closed.** The 5A report recorded the European regulations message as **not
+validated**, and listed three candidates: not published, not targeting this
+app, or propagation delay. It was none of them. The message was published and
+correctly targeted the whole time.
+
+`debugGeography` was being **silently ignored**, because the handset was not a
+registered UMP test device — the mechanism 5A had already named, whose two-build
+sequence had simply never been run. The first log line says it outright once
+you know to read it: `forcedEea: true` beside `testDevice: false`. Everything
+after that was correct behaviour, which is what made it look like a dead flag.
+
+Build one prints the device's hashed id; build two passes it back. The
+registration is confirmed by `testDevice: true` and by the SDK *ceasing* to
+print its `addTestDeviceHashedId` hint — neither of which is an error message,
+so both have to be looked for.
+
+Observed: `status: OBTAINED`, `privacyOptions: REQUIRED`,
+`formAvailable: true`, the form on screen, and — tapped from the Remove Ads
+screen — Google's privacy options form carrying the app's own name. That last
+one is the promise section 4 of the published privacy policy makes, which this
+document calls a release blocker for the listing. It is now kept.
+
+The hashed device id is deliberately not recorded in this repository.
+
+Full record: `docs/verification/M23-consent-message-validated.md`.
+
+### 2026-09-22 — the web export was never playable, and the guards that were supposed to make it so could not
+
+**Correction.** The Verification contract below requires that "web remains
+playable with monetization adapters disabled". Between piece 5A and 2026-09-22
+that was false, and nothing in the repository could have said so: the
+verification suite does not export web, and the failure was a build failure
+rather than a test failure.
+
+```
+npx expo export --platform web
+  Error: Importing native-only module
+  "react-native/Libraries/Utilities/codegenNativeCommands" on web from
+  react-native-google-mobile-ads/.../GoogleMobileAdsBannerViewNativeComponent.js
+```
+
+**Why the existing care did not help, which is the part worth recording.** Both
+adapters were written against this exact risk. `adService.ts` and
+`billingService.ts` each check `Platform.OS` before touching an SDK, each load
+it with a lazy `require()` rather than a hoisted `import`, and each wrap the
+call in `try/catch`. `adService.ts` even carries a comment explaining that a
+static import "would put the native module in the web bundle's dependency
+graph".
+
+Every one of those is a **runtime** guard, and the failure is at **build**
+time. Metro resolves a statically-analyzable `require()` whether or not it will
+ever execute, so the package joins the web graph before any guard runs — and a
+bundle that is never produced cannot be rescued by a `try/catch` inside it. The
+banner component that breaks the build belongs to a format this game does not
+use and never renders.
+
+**Decision.** A resolver rule in `metro.config.js` maps both packages to
+`metro/native-only-stub.js` when the platform is web. The stub is an empty
+object and is never reached at runtime, because the platform guards already
+return `null` before requiring; it exists so the graph closes.
+
+**Enforced by.** `tests/monetizationConfig.test.ts`, "every native-only SDK an
+adapter requires is stubbed on web", which reads the adapters for their
+`require()` calls and the config for its stub list and fails when they
+disagree. A third native SDK added behind the same careful-looking guards
+breaks the web build again; this is what finds it before an export does.
+
+### 2026-09-22 — the Remove Ads screen, and the entitlement it turns on (piece 6)
+
+**Implemented.** The player surface this document specifies now exists, and the
+purchase it makes now does something. Reachable from the title in every state,
+including once owned — see below.
+
+**What the entitlement was connected to.** Piece 5A left `GameEngine` passing a
+literal `adsRemoved: false` into `shouldShowAdBreak`, because the entitlement
+had nowhere to live yet. That was honest at the time and it would have shipped
+a purchase a player could complete, be charged for, and see change nothing.
+Every test in `tests/adBreak.test.ts` passed the whole time, because a literal
+satisfies the type and the eligibility rules; the defect was only visible on a
+phone with a receipt on it. `tests/adBreak.test.ts` now also asserts that the
+game asks the entitlement rather than a literal.
+
+**The Remove Ads entry is never hidden.** Not even for a player who already
+owns the product. Section 4 of the published privacy policy promises the
+privacy-choices control lives inside this screen, and ADR 0015 records that
+buying Remove Ads removes ads and not the right to change a privacy choice.
+Hiding the entry once owned reads as tidiness and takes the consent form away
+from exactly the European players entitled to one. The *screen* adapts instead:
+Buy is dropped when there is nothing left to sell.
+
+**Buy is drawn only against a store price.** `'Buy — {price}'` with a null
+price renders a button that looks purchasable and is not, so a product that did
+not load removes the button and the screen says the store is unavailable. This
+is the render-side half of the rule that the price is store metadata and never
+a catalogue literal.
+
+**One correction to piece 5B.** `BillingService.restorePurchases()` reported
+`{ report, found }`, and a restore that ran and found nothing is indistinguishable
+from a device with no Play Store: both produce `unavailable`, because an empty
+`CustomerInfo` and a dead billing client are the same absence of an
+entitlement. It now also reports `completed`, and `removeAdsMessage` reads it —
+otherwise a handset with no Play Store is told, confidently and wrongly, that
+the purchase it is looking for does not exist.
+
+**The save carries the confirmed entitlement.** `adsRemoved` is additive and
+optional, so `SCHEMA_VERSION` stays 1 and a save written before this build
+opens unchanged. It is parsed as `=== true` and nothing looser: `Boolean(value)`
+grants for the string `'false'`, and `value !== false` grants for a missing
+field, which is what every older save contains. The cached value may only ever
+mean "already owned" — `restoreCachedEntitlement` is where that asymmetry lives.
+
+**Still not validated on hardware.** No purchase has been made on a device, and
+the list in ADR 0015 §"Still open" is unchanged by this piece: the RevenueCat
+project, the API key, and the Play Console product do not exist yet. Without a
+key the adapter reports `unavailable`, which is a correct and playable state
+with copy already written — it is what this screen shows today.
+
 ### 2026-09-10 — permissions are verified from the merged manifest, not app.json
 
 **Correction.** The published privacy policy claimed the game "requests a
@@ -321,8 +440,11 @@ so that screen is a release blocker for the listing, not a nice-to-have.
   `worst-gig-ever`; do not create a replacement project.
 - Google Play app, product, license testers, and signing track are not yet
   recorded in this repository.
-- The AdMob consent message (European regulations) is not yet published for
-  this App ID. Piece 5 cannot honestly exercise the consent flow until it is.
+- ~~The AdMob consent message (European regulations) is not yet published for
+  this App ID.~~ **Closed 2026-09-25.** The message was published and targeting
+  this app correctly all along; `debugGeography` was being ignored because the
+  handset was not a registered UMP test device. Form observed, privacy-options
+  control exercised — `docs/verification/M23-consent-message-validated.md`.
 
 These block store submission and live monetization, not the local test-mode
 implementation.
