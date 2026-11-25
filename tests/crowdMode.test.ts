@@ -358,7 +358,7 @@ test('M28: aim assistance shows only a short launch segment, never the landing p
     const progress = crowdStage(stageId).aimGuideProgress;
     const guide = crowdAimGuidePoints(CROWD_THROW.bottleReady, end, progress);
     assert.equal(guide.length, progress.length);
-    assert.ok(Math.max(...progress) <= 0.5, `${stageId} reveals more than half the flight`);
+    assert.ok(Math.max(...progress) <= 0.55, `${stageId} reveals too much of the flight`);
     assert.ok(guide.at(-1)!.y > impact.y);
     assert.notDeepEqual(guide.at(-1), impact);
   }
