@@ -2,7 +2,7 @@
   "expo": {
     "name": "Worst Gig Ever",
     "slug": "worst-gig-ever",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "orientation": "landscape",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -37,7 +37,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.VIBRATE"
       ],
-      "versionCode": 10
+      "versionCode": 11
     },
     "web": {
       "favicon": "./assets/favicon.png"
