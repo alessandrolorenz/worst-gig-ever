@@ -109,6 +109,10 @@ three decreasing dots show only progress 0.08, 0.16 and 0.24 of the launch
 path. The guide teaches direction while hiding the landing point. The existing
 swipe projection and projectile trajectory are unchanged.
 
+> **Values superseded.** M30 made the guide a per-stage field, and on
+> 2026-11-25 it was lengthened so it clears the finger. See the stage table in
+> `M29-M30-crowd-destruction-and-stages.md`.
+
 A 250 ms input-arm delay absorbs the pointer release used to enter or reset
 Crowd Mode. It prevents a menu selection from becoming an invalid throw without
 changing an armed swipe.

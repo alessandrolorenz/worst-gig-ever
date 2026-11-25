@@ -96,7 +96,7 @@ the bottom-left corner only reads them.
 | Bottles | 10 | 11 | 12 |
 | Spare bottles | 6 | 4 | 3 |
 | Prop hit-rect scale | 1.2 | 1.0 | 0.85 |
-| Aim guide shows | 5 dots to 50% | 3 dots to 24% | 2 dots to 12% |
+| Aim guide shows | 5 dots to 55% | 3 dots to 45% | 2 dots to 40% |
 | Waiter delay / crossing / cycle (s) | 4.0 / 8.0 / 13.0 | 2.2 / 6.2 / 9.0 | 1.2 / 4.6 / 6.2 |
 | Bonus per spare bottle | 50 | 100 | 200 |
 
@@ -105,6 +105,24 @@ stage id. Performer rects are never scaled. All three stages are open from the
 start; there is no unlock or persistence. The waiter remains the only blocker.
 
 All values are first guesses for a device playtest, not tuned results.
+
+**Aim guide retuned 2026-11-25** (was 5 dots to 50% / 3 to 24% / 2 to 12%).
+Owner request after playing on the phone: the guide was hidden behind the
+finger. The dots start at the bottle, but with `CROWD_THROW.projection` at
+2.05 the finger already sits about halfway along the straight throw line. The
+arc lifts the dots, so a dot only clears the finger past roughly 0.4 of the
+flight. Assuming about 120 canvas px of fingertip above the touch point (an
+estimate, not a measurement), the old Stage 2 guide ended under the fingertip,
+the old Stage 3 guide was always under the hand, and Warm-up showed about one
+dot. The new values let about 1–2 Warm-up dots, and only the tip of the last
+Stage 2 and Stage 3 dot, show past the finger. Dot counts, the ladder (fewer
+and shorter at each stage) and "never the landing point" are unchanged. A
+physical retest with a finger decides whether these values hold.
+Local release **1.4.2 (11)**, upload key (`56b20661…ea51e`), installed
+2026-11-25 on the SM-S731B. Its 1.4.1 had been installed from Chrome on
+2026-11-16 with a different signer (`03e74b22…0535a`), so it was uninstalled
+first and that phone's save was lost, with the owner's approval. The app
+launched with no runtime error.
 
 ## Deviations from the M28 record
 
